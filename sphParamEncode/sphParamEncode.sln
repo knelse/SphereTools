@@ -1,0 +1,16 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "sphParamEncode", "sphParamEncode.csproj", "{711082AF-8448-4D08-A26F-4992276D9598}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{711082AF-8448-4D08-A26F-4992276D9598}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{711082AF-8448-4D08-A26F-4992276D9598}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{711082AF-8448-4D08-A26F-4992276D9598}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{711082AF-8448-4D08-A26F-4992276D9598}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
