@@ -15,11 +15,10 @@ _sphFilesUpdated*/*
 *.exe
 vcpkg
 */obj/*
-*/*/obj/*
 */bin/*
-*/*/bin/*
 */.idea/*
 */.vs/*
 client_*
 *.txt
 packets_*
+emu/*
