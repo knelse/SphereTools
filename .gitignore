@@ -22,3 +22,7 @@ client_*
 *.txt
 packets_*
 emu/*
+clientPacketDecodeCpp
+HexToBinaryString/HexToBinaryString.deps.json
+HexToBinaryString/HexToBinaryString.dll
+HexToBinaryString/HexToBinaryString.runtimeconfig.json
