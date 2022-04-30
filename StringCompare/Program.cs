@@ -1,6 +1,6 @@
-﻿var strA =
-    //"1a00354049022c0100c0024f6f084043006120c02600004000001101dda44c022c0100c0024f6f084043e07f4000008087ad47048e2d2caf4c4ee7e5652aed2c8d8d6b4b4c8eab8b6b2badedac874b64ae0c8ea52d8d8c05868586058645864b84ab8b6b4b4c8eab8b6b8bae874b64a42a698a4aea8b8aea2be96a46268c4b84ab8b6b2badedac874b24cdcdec6b4686a52d8d8c05864586c58645864b84ab0b846b6b8cada7a8a8a8a8a888ab2b5e1e1ebcbd1d5d1d042526856b6b8cada7a8a8a8a8a888ab8b6beb858eab8b6b4b4c8eab8b6b8bae874b64a42a698a4aea8b8aea2be96a66268c4b84ab8b6b2badedac874b24cdcdec6b6686a52d8d8c05864586c58645864b84ab0b846b6b8cada7a8a8a8a8a888ababbd7cfe1eb77d3f1d044526856b6b8cada70800570096ba4f022c0100c0024f6f084043a068402000a0a8a8a8a888ab8b6beb858eab8b6b4b4c8eab8b6b2badedac874b64ae0c8ea52d8d8c05868586058645864b84ab4bc4672aed2c8d8de785cd4707240c0000000000";
-    "55E9F41131DC5140C80F016050B15A4D71895622D1C3F25C31AB6A1E10";
+﻿// var strA =
+//     //"1a00354049022c0100c0024f6f084043006120c02600004000001101dda44c022c0100c0024f6f084043e07f4000008087ad47048e2d2caf4c4ee7e5652aed2c8d8d6b4b4c8eab8b6b2badedac874b64ae0c8ea52d8d8c05868586058645864b84ab8b6b4b4c8eab8b6b8bae874b64a42a698a4aea8b8aea2be96a46268c4b84ab8b6b2badedac874b24cdcdec6b4686a52d8d8c05864586c58645864b84ab0b846b6b8cada7a8a8a8a8a888ab2b5e1e1ebcbd1d5d1d042526856b6b8cada7a8a8a8a8a888ab8b6beb858eab8b6b4b4c8eab8b6b8bae874b64a42a698a4aea8b8aea2be96a66268c4b84ab8b6b2badedac874b24cdcdec6b6686a52d8d8c05864586c58645864b84ab0b846b6b8cada7a8a8a8a8a888ababbd7cfe1eb77d3f1d044526856b6b8cada70800570096ba4f022c0100c0024f6f084043a068402000a0a8a8a8a888ab8b6beb858eab8b6b4b4c8eab8b6b2badedac874b64ae0c8ea52d8d8c05868586058645864b84ab4bc4672aed2c8d8de785cd4707240c0000000000";
+//     "55E9F41131DC5140C80F016050B15A4D71895622D1C3F25C31AB6A1E10";
 
 Console.ForegroundColor = ConsoleColor.White;
 Console.WindowWidth = 200;
@@ -8,7 +8,7 @@ var offset = 0;
 // Console.WriteLine(strA[offset..].ToUpper());
 // Console.WriteLine("----");
 
-var strAbytes = Convert.FromHexString(strA[offset..]);
+// var strAbytes = Convert.FromHexString(strA[offset..]);
 
 // var comparisonStrings = new List<string>
 // {
@@ -32,20 +32,42 @@ var strAbytes = Convert.FromHexString(strA[offset..]);
 
 var comparisonStrings = new List<string>
 {
-    "55E9F41131DC5140C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
-    "55e9f411315c874ec80f016000",
-    "55E9F41131DC5D40C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
-    "55e9f41131dc884ec80f016000",
-    "55E9F41131DC6640C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
-    "55e9f411315c8a4ec80f016000",
-    "55E9F411315C7140C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
-    "55e9f41131dc8b4ec80f016000",
-    "55E9F411315C7D40C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
-    "55e9f411315c8d4ec80f016000",
-    "55E9F41131DC8A40C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
-    "55e9f41131dc8e4ec80f016000",
+    // "55E9F41131DC5140C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
+    // "55e9f411315c874ec80f016000",
+    // "55E9F41131DC5D40C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
+    // "55e9f41131dc884ec80f016000",
+    // "55E9F41131DC6640C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
+    // "55e9f411315c8a4ec80f016000",
+    // "55E9F411315C7140C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
+    // "55e9f41131dc8b4ec80f016000",
+    // "55E9F411315C7D40C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
+    // "55e9f411315c8d4ec80f016000",
+    // "55E9F41131DC8A40C80F016050B15A4D71895622D1C3F25C31AB6A1E10",
+    // "55e9f41131dc8e4ec80f016000",
 
 };
+
+while (true)
+{
+    var str = Console.ReadLine();
+
+    if (str is null || str.Trim().Length == 0)
+    {
+        break;
+    }
+
+    if (str.ReplaceLineEndings("\n").Contains("\n"))
+    {
+        comparisonStrings.AddRange(str.Replace(" ", "").ReplaceLineEndings("\n").Split("\n"));
+    }
+    else
+    {
+        comparisonStrings.Add(str.Trim().Replace(" ", ""));
+    }
+}
+
+var strA = comparisonStrings[0];
+var strAbytes = Convert.FromHexString(strA[offset..]);
 
 foreach (var stringToCompare in comparisonStrings)
 {
@@ -59,6 +81,11 @@ foreach (var stringToCompare in comparisonStrings)
         }
 
         Console.Write(Convert.ToHexString(strBbytes[i..(i + 1)]));
+
+        if (i % 4 == 3 && i > 0)
+        {
+            Console.Write(" ");
+        }
 
         if ((i + 1) % 100 == 0)
         {
