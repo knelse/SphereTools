@@ -80,8 +80,9 @@ void OnPacketArrival(object sender, PacketCapture c)
             return;
         }
 
+        var pattern = isClient ? "..00........2C0100" : @"..0.2C0100";
         var dataHex = Convert.ToHexString(data);
-        var packetIndices = Regex.Matches(dataHex, @"..0.2C0100", RegexOptions.Compiled);
+        var packetIndices = Regex.Matches(dataHex, pattern, RegexOptions.Compiled);
         var splitPacket = new StringBuilder();
         var splitPacketForMixed = new StringBuilder();
         var previousMatchIndex = 0;
