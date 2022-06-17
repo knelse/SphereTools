@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text;
+using System.Text.RegularExpressions;
 using SharpPcap;
 
 const string pingCaptureFilePath = "C:\\_sphereDumps\\ping";
@@ -75,21 +76,72 @@ void OnPacketArrival(object sender, PacketCapture c)
                 File.WriteAllText(currentWorldCoordsFilePath, coords.x + "\n" + coords.y + "\n" + coords.z + "\n" + coords.turn);
                 oldCoords = coords;
             }
+
+            return;
         }
+
+        var dataHex = Convert.ToHexString(data);
+        var packetIndices = Regex.Matches(dataHex, @"..0.2C0100", RegexOptions.Compiled);
+        var splitPacket = new StringBuilder();
+        var splitPacketForMixed = new StringBuilder();
+        var previousMatchIndex = 0;
+
+        foreach (Match match in packetIndices)
+        {
+            if (match.Success)
+            {
+                var substr = dataHex.Substring(previousMatchIndex, match.Index - previousMatchIndex);
+
+                if (!string.IsNullOrWhiteSpace(substr))
+                {
+                    var prefix = previousMatchIndex == 0 ? "" : "-------------------\t\t\t";
+                    splitPacket.Append($"{prefix}{substr}\n");
+                    var prefixForMixed = previousMatchIndex == 0 ? "" : "-------------------------------\t\t\t";
+                    splitPacketForMixed.Append($"{prefixForMixed}{substr}\n");
+                }
+
+                previousMatchIndex = match.Index;
+            }
+        }
+
+        var lastSubstr = dataHex.Substring(previousMatchIndex, dataHex.Length - previousMatchIndex);
+
+        if (!string.IsNullOrWhiteSpace(lastSubstr))
+        {
+            var prefix = previousMatchIndex == 0 ? "" : "-------------------\t\t\t";
+            splitPacket.Append($"{prefix}{lastSubstr}\n");
+            var prefixForMixed = previousMatchIndex == 0 ? "" : "-------------------------------\t\t\t";
+            splitPacketForMixed.Append($"{prefixForMixed}{lastSubstr}\n");
+        }
+
+        var splitPacketResult = splitPacket.ToString();
+        var splitPacketForMixedResult = splitPacketForMixed.ToString();
         
-        else if (isClient)
+        if (isClient)
         {
             var binary = ByteArrayToBinaryString(data);
-            File.AppendAllText(clientPath, $"{DateTime.Now}\t\t\t{Convert.ToHexString(data)}\n");
-            File.AppendAllText(mixedPath, $"CLI\t\t\t{DateTime.Now}\t\t\t{Convert.ToHexString(data)}\n");
+            File.AppendAllText(clientPath, $"{DateTime.Now}\t\t\t{splitPacketResult}");
+            File.AppendAllText(mixedPath, $"CLI\t\t\t{DateTime.Now}\t\t\t{splitPacketForMixedResult}");
+
+            if (data[0] == 0x1A)
+            {
+                // item move
+                File.AppendAllText("C:\\_sphereDumps\\itemMove", $"CLI\t\t\t{DateTime.Now}\t\t\t{splitPacketResult}");
+            }
         }
 
         // 0x17 is mob positions?
         else if (data[0] != 0x17)
         {
             var binary = ByteArrayToBinaryString(data);
-            File.AppendAllText(serverPath, $"{DateTime.Now}\t\t\t{Convert.ToHexString(data)}\n");
-            File.AppendAllText(mixedPath, $"SRV\t\t\t{DateTime.Now}\t\t\t{Convert.ToHexString(data)}\n");
+            File.AppendAllText(serverPath, $"{DateTime.Now}\t\t\t{splitPacketResult}");
+            File.AppendAllText(mixedPath, $"SRV\t\t\t{DateTime.Now}\t\t\t{splitPacketForMixedResult}");
+
+            if (data[0] == 0x2E)
+            {
+                // item move
+                File.AppendAllText("C:\\_sphereDumps\\itemMove", $"SRV\t\t\t{DateTime.Now}\t\t\t{splitPacketResult}\n");
+            }
         }
     }
     catch (Exception ex) {
