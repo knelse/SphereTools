@@ -19,7 +19,6 @@ vcpkg
 */.idea/*
 */.vs/*
 client_*
-*.txt
 packets_*
 emu/*
 clientPacketDecodeCpp
@@ -32,3 +31,4 @@ entityNamesCollected
 itemNamesCollected
 mobPacket
 server_sent_coords
+Kukla
