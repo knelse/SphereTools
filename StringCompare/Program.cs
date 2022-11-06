@@ -3,7 +3,7 @@
 //     "55E9F41131DC5140C80F016050B15A4D71895622D1C3F25C31AB6A1E10";
 
 Console.ForegroundColor = ConsoleColor.White;
-Console.WindowWidth = 200;
+Console.WindowWidth = 800;
 var offset = 0;
 // Console.WriteLine(strA[offset..].ToUpper());
 // Console.WriteLine("----");
@@ -95,4 +95,9 @@ foreach (var stringToCompare in comparisonStrings)
         Console.ForegroundColor = ConsoleColor.White;
     }
     Console.WriteLine();
+
+    for (var j = 0; j < strAbytes.Length; j++)
+    {
+        strAbytes[j] = strBbytes[j];
+    }
 }

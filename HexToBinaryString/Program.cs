@@ -28,7 +28,7 @@ static string ByteArrayToBinaryString(byte[] ba, bool noPadding = false)
     {
         var str = Convert.ToString(val, 2);
         if (!noPadding) str = str.PadLeft(8, '0');
-        hex.AppendLine(str);
+        hex.AppendLine(str); // + "\t" + $"{val:X2}");
         //hex.Append(' ');
     }
     

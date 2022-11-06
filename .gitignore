@@ -2,7 +2,6 @@ DIE/*
 dxwnd/*
 ida76sp1/*
 offzip/*
-packets/*
 packetTest/*
 signsrch/*
 vcpkg/*
@@ -32,3 +31,6 @@ itemNamesCollected
 mobPacket
 server_sent_coords
 Kukla
+DegTest
+clientCoords
+ClientCoordTest
