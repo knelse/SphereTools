@@ -87,6 +87,7 @@ public struct ItemPacket
                 result.GetStreamDataAsSmallMantraBook(stream);
                 break;
             case 411: // mantra book
+            case 412: // great mantra book
                 result.GetStreamDataAsMantraBook(stream);
                 break; 
             case 1000: // white mantra
@@ -349,6 +350,7 @@ public static class BitStreamTools
             }
             catch (IOException)
             {
+                // Console.WriteLine($"IOEx: {Convert.ToHexString(trimmedPacket)}");
                 break;
             }
         }
@@ -457,5 +459,23 @@ public static class BitStreamTools
     public static string ToByteString(this Bit[]? bits)
     {
         return Convert.ToHexString(BitArrayToBytes(bits));
+    }
+    
+    public static bool ByteArrayCompare(byte[] what, byte[] to, int fromIndex = 0)
+    {
+        if (to.Length > what.Length - fromIndex)
+        {
+            return false;
+        }
+
+        for (var i = 0; i < to.Length; i++)
+        {
+            if (what[i + fromIndex] != to[i])
+            {
+                return false;
+            }
+        }
+
+        return true;
     }
 }

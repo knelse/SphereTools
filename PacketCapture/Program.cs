@@ -2,10 +2,12 @@
 using System.Text;
 using System.Text.RegularExpressions;
 using SharpPcap;
+using static BitStreamTools;
 
 const string pingCaptureFilePath = "C:\\_sphereDumps\\ping";
 const string clientCaptureFilePath = "C:\\_sphereDumps\\client";
 const string serverCaptureFilePath = "C:\\_sphereDumps\\server";
+const string serverCaptureFilePathUnfiltered = "C:\\_sphereDumps\\server_unfiltered";
 const string mixedCaptureFilePath = "C:\\_sphereDumps\\mixed";
 const string currentWorldCoordsFilePath = "C:\\_sphereDumps\\currentWorldCoords";
 const string itemPacketDecodeFilePath = "C:\\_sphereDumps\\itemPackets";
@@ -16,6 +18,8 @@ const string clientCaptureFilePathLocal = "C:\\_sphereDumps\\local_client";
 const string serverCaptureFilePathLocal = "C:\\_sphereDumps\\local_server";
 const string mixedCaptureFilePathLocal = "C:\\_sphereDumps\\local_mixed";
 WorldCoords oldCoordsLocal = new WorldCoords(9999, 9999, 9999, 9999);
+
+byte[] packetRemainder = {};
 
 // 1200 - ping
 // 1300 - 6s ping
@@ -28,30 +32,25 @@ WorldCoords oldCoordsLocal = new WorldCoords(9999, 9999, 9999, 9999);
 // 2D00 - object position
 // 0F00 - idk
 // 1F00 - damage to client
-var serverPacketsToHide = new string[] { "12", "13", "10", "14", "17", "22", "0F", "2D", "11", "1D", "19", "0B", "43", "38", "1F"};//, "08", "0C"};// {"2D", "0E", "1D", "12"};
-// 4601 earth end
-// 4701 water air
-// 4801 shiny arbalet
-// 0C80 formula?
-// 1660 medit ring
-// 1460 dur ring
-// 1460 adventure belt 1
+var serverPacketsToHide = new HashSet<byte>
+    { 0x12, 0x13, 0x10, 0x14, 0x17, 0x22, 0x0F, 0x2D, 0x11, 0x1D, 0x19, 0x0B, 0x43, 0x38, 0x1F };//, "08", "0C"};// {"2D", "0E", "1D", "12"};
 var sessionDivider =
     "================================================================================================================================================================================================================\n" +
     "================================================================================================================================================================================================================\n";
 
-bool ShouldHidePacket(string str)
+var endPacket = new byte[] { 0x04, 0x00, 0xF4, 0x01 };
+var packetOkMarker = new byte[] { 0x2C, 0x01 };
+var newSessionFirstPacket = new byte[] { 0x0A, 0x00, 0xC8, 0x00 };
+
+bool ShouldHidePacket(byte[] packet)
 {
-    if (str.Equals("0400F401", StringComparison.InvariantCultureIgnoreCase)) return true;
-    foreach (var hidden in serverPacketsToHide!)
+    if (ByteArrayCompare(packet, endPacket))
     {
-        if (str.StartsWith(hidden + "002C01") || str.Length is 16 or 24)
-        {
-            return true;
-        }
+        return true;
     }
 
-    return false;
+    return packet.Length is 8 or 12 || 
+           serverPacketsToHide.Contains(packet[0]) && ByteArrayCompare(packet, packetOkMarker, 2);
 }
 
 void OnPacketArrival(object sender, PacketCapture c)
@@ -102,6 +101,14 @@ void OnPacketArrival(object sender, PacketCapture c)
         var clientPath = !isRemote ? clientCaptureFilePathLocal : clientCaptureFilePath;
         var serverPath = !isRemote ? serverCaptureFilePathLocal : serverCaptureFilePath;
         var mixedPath = !isRemote ? mixedCaptureFilePathLocal : mixedCaptureFilePath;
+
+        if (packetRemainder.Length > 0 && !isClient)
+        {
+            var dataConcatList = new List<byte>(packetRemainder);
+            dataConcatList.AddRange(data);
+            data = dataConcatList.ToArray();
+            packetRemainder = Array.Empty<byte>();
+        }
         
         // ping
         if (len == 38 && isClient && data[17] != 0)
@@ -118,145 +125,143 @@ void OnPacketArrival(object sender, PacketCapture c)
             return;
         }
 
-        var pattern = isClient ? "..00........2C0100" : @"..0.2C0100";
-        var dataHex = Convert.ToHexString(data);
-        var packetIndices = Regex.Matches(dataHex, pattern, RegexOptions.Compiled);
-        var splitPacket = new StringBuilder();
-        var splitPacketForMixed = new StringBuilder();
-        var previousMatchIndex = 0;
-
         var bytePacketSplit = new List<byte[]>();
 
-        for (var i = 0; i < data.Length - 4; i++)
+        try
         {
-            if (data[i + 2] == 0x2C && data[i + 3] == 0x01 && data[i + 4] == 0x00)
+            if (!isClient)
             {
-                var length = data[i+1] * 16 + data[i];
-                var split = data[i..(i + length - 1)];
-                bytePacketSplit.Add(split);
-                i += length - 1;
-            }
-        }
-
-        foreach (Match match in packetIndices)
-        {
-            if (match.Success)
-            {
-                var substr = dataHex.Substring(previousMatchIndex, match.Index - previousMatchIndex);
-
-                if (!string.IsNullOrWhiteSpace(substr) && !ShouldHidePacket(substr))
+                for (var i = 0; i < data.Length - 4; i++)
                 {
-                    var prefix = previousMatchIndex == 0 ? "" : "-------------------\t\t\t";
-                    splitPacket.Append($"{prefix}{substr}\n");
-                    var prefixForMixed = previousMatchIndex == 0 ? "" : "-------------------------------\t\t\t";
-                    splitPacketForMixed.Append($"{prefixForMixed}{substr}\n");
-                }
-
-                previousMatchIndex = match.Index;
-            }
-        }
-
-        var lastSubstr = dataHex.Substring(previousMatchIndex, dataHex.Length - previousMatchIndex);
-
-        if (!string.IsNullOrWhiteSpace(lastSubstr) && !ShouldHidePacket(lastSubstr))
-        {
-            var prefix = previousMatchIndex == 0 ? "" : "-------------------\t\t\t";
-            splitPacket.Append($"{prefix}{lastSubstr}\n");
-            var prefixForMixed = previousMatchIndex == 0 ? "" : "-------------------------------\t\t\t";
-            splitPacketForMixed.Append($"{prefixForMixed}{lastSubstr}\n");
-        }
-
-        if (splitPacket.Length == 0)
-        {
-            return;
-        }
-
-        var splitPacketResult = splitPacket.ToString();
-        var splitPacketForMixedResult = splitPacketForMixed.ToString();
-        var newSessionDivider = splitPacketResult.StartsWith("0A00C800") ? sessionDivider : "";
-        
-        if (isClient)
-        {
-            var binary = ByteArrayToBinaryString(data);
-
-            var actionSource = "";
-            var actionDestination = "";
-
-            if (data[0] == 0x20)
-            {
-                //damage
-                actionDestination = (Convert.ToString(GetDestinationIdFromDamagePacket(data), 16)).PadLeft(4, '0') + "\t\t\t";
-            }
-            
-            File.AppendAllText(clientPath, $"{newSessionDivider}{DateTime.Now}\t\t\t{actionSource}{actionDestination}{splitPacketResult}");
-            File.AppendAllText(mixedPath, $"{newSessionDivider}CLI\t\t\t{DateTime.Now}\t\t\t{actionSource}{actionDestination}{splitPacketForMixedResult}");
-
-            if (data[0] == 0x1A)
-            {
-                // item move
-                File.AppendAllText("C:\\_sphereDumps\\itemMove", $"CLI\t\t\t{DateTime.Now}\t\t\t{splitPacketResult}");
-            }
-        }
-
-        else
-        {
-            if (data[0] != 0x17)
-            {
-                var binary = ByteArrayToBinaryString(data);
-                File.AppendAllText(serverPath, $"{newSessionDivider}{DateTime.Now}\t\t\t{splitPacketResult}");
-                File.AppendAllText(mixedPath,
-                    $"{newSessionDivider}SRV\t\t\t{DateTime.Now}\t\t\t{splitPacketForMixedResult}");
-
-                if (data[0] == 0x2E)
-                {
-                    // item move
-                    File.AppendAllText("C:\\_sphereDumps\\itemMove",
-                        $"SRV\t\t\t{DateTime.Now}\t\t\t{splitPacketResult}\n");
-                }
-
-                if (data.Length > 25 && data[25] == 0x91 && data[26] == 0x45)
-                {
-                    // item packet?
-                    File.AppendAllText(itemPacketDecodeFilePath, $"\nSRV\t\t\t{DateTime.Now}\t\t\t{splitPacketResult}\n");
-
-                    foreach (var splitPacketBytes in bytePacketSplit)
+                    if (data[i + 2] == 0x2C && data[i + 3] == 0x01 && data[i + 4] == 0x00)
                     {
-                        var itemList = BitStreamTools.GetItemsFromPacket(splitPacketBytes);
-                        File.AppendAllText(itemPacketDecodeFilePath, $"{Convert.ToHexString(splitPacketBytes)}\n");
+                        var length = data[i + 1] * 16 + data[i];
 
-                        foreach (var item in itemList)
+                        if (i + length - 1 >= data.Length)
                         {
-                            File.AppendAllText(itemPacketDecodeFilePath, $"{item.ToDebugString()}\n");
+                            // packet got split in the middle
+                            packetRemainder = data[i..];
+                        }
+                        else
+                        {
+                            var split = data[i..(i + length - 1)];
+                            bytePacketSplit.Add(split);
+                            i += length - 1;
                         }
                     }
                 }
             }
+        }
+        catch (ArgumentOutOfRangeException)
+        {
+            Console.WriteLine("Broken: " + Convert.ToHexString(data));
+        }
+
+        for (int i = 0; i < bytePacketSplit.Count; i++)
+        {
+            var prefix = i == 0 ? "" : "-------------------\t\t\t";
+            var prefixForMixed = i == 0 ? "" : "-------------------------------\t\t\t";
+            var currentPacket = bytePacketSplit[i];
+            var newSessionDivider = ByteArrayCompare(currentPacket, newSessionFirstPacket) ? sessionDivider : "";
+            var currentPacketPaddedHex = prefix + Convert.ToHexString(currentPacket) + "\n";
+            var currentPacketPaddedHexForMixed = prefixForMixed + Convert.ToHexString(currentPacket) + "\n";
+
+            if (isClient)
+            {
+                var actionSource = "";
+                var actionDestination = "";
+
+                if (data[0] == 0x20)
+                {
+                    //damage
+                    actionDestination = (Convert.ToString(GetDestinationIdFromDamagePacket(data), 16)).PadLeft(4, '0') +
+                                        "\t\t\t";
+                }
+
+                File.AppendAllText(clientPath,
+                    $"{newSessionDivider}{DateTime.Now}\t\t\t{actionSource}{actionDestination}{currentPacketPaddedHex}");
+                File.AppendAllText(mixedPath,
+                    $"{newSessionDivider}CLI\t\t\t{DateTime.Now}\t\t\t{actionSource}{actionDestination}{currentPacketPaddedHexForMixed}");
+
+                if (data[0] == 0x1A)
+                {
+                    // item move
+                    File.AppendAllText("C:\\_sphereDumps\\itemMove",
+                        $"CLI\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
+                }
+            }
+
             else
             {
-                // mob move
-                var x = (data[5] & 0b1111111) + (data[6] << 7) + ((data[7] % 2) << 15) - 32768;
-                var y = ((data[7] & 0b11111110) >> 1) + ((data[8] & 0b111111) << 7) - 1200;
-                var z = ((data[8] & 0b11000000) >> 6) + (data[9] << 2) + ((data[10] & 0b111111) << 10) - 32768;
-                var id = ((data[12] & 0b11100000) >> 5) + (data[13] << 3) + ((data[14] & 0b11111) << 11);
-                var xDec = 4096 - (((data[17] & 0b11111100) >> 2) + ((data[18] & 0b11111) << 6));
-                var yDec = 2048 - (((data[18] & 0b11000000) >> 6) + (data[19] << 2) + ((data[20] & 0b1) << 10));
-                var zDec = 4096 - (((data[20] & 0b11111100) >> 2) + ((data[21] & 0b11111) << 6));
-                var t = ((data[21] & 0b11000000) >> 6) + ((data[22] & 0b11111) << 2);
+                if (!ShouldHidePacket(currentPacket))
+                {
+                    if (data[0] != 0x17)
+                    {
+                        File.AppendAllText(serverPath,
+                            $"{newSessionDivider}{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
+                        File.AppendAllText(mixedPath,
+                            $"{newSessionDivider}SRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHexForMixed}");
 
-                xDec *= (data[18] & 0b100000) > 0 ? -1 : 1;
-                yDec *= (data[20] & 0b10) > 0 ? -1 : 1;
-                zDec *= (data[21] & 0b100000) > 0 ? -1 : 1;
-                t *= (data[22] & 0b100000) > 0 ? -1 : 1;
+                        if (data[0] == 0x2E)
+                        {
+                            // item move
+                            File.AppendAllText("C:\\_sphereDumps\\itemMove",
+                                $"SRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}\n");
+                        }
 
-                var xDecFloat = (float)xDec / 2048;
-                var yDecFloat = (float)yDec / 2048;
-                var zDecFloat = (float)zDec / 2048;
+                        if (data.Length > 25 && data[25] == 0x91 && data[26] == 0x45)
+                        {
+                            // item packet?
+                            File.AppendAllText(itemPacketDecodeFilePath,
+                                $"\nSRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}\n");
 
-                var idStr = Convert.ToString(id, 16).PadLeft(4, '0');
-                
-                File.AppendAllText(serverPath, $"{newSessionDivider}{DateTime.Now}\t\t\t{idStr}\t{x + xDecFloat:F6}\t{y + yDecFloat:F6}\t{z + zDecFloat:F6}\t{t}\t\t\t{splitPacketResult}");
-                File.AppendAllText(mixedPath,
-                    $"{newSessionDivider}SRV\t\t\t{DateTime.Now}\t\t\t{idStr}\t{x + xDecFloat:F6}\t{y + yDecFloat:F6}\t{z + zDecFloat:F6}\t{t}\t\t\t{splitPacketResult}");
+                            foreach (var splitPacketBytes in bytePacketSplit)
+                            {
+                                var itemList = GetItemsFromPacket(splitPacketBytes);
+                                File.AppendAllText(itemPacketDecodeFilePath,
+                                    $"{Convert.ToHexString(splitPacketBytes)}\n");
+
+                                foreach (var item in itemList)
+                                {
+                                    File.AppendAllText(itemPacketDecodeFilePath, $"{item.ToDebugString()}\n");
+                                }
+                            }
+                        }
+                    }
+                    else
+                    {
+                        // mob move
+                        var x = (data[5] & 0b1111111) + (data[6] << 7) + ((data[7] % 2) << 15) - 32768;
+                        var y = ((data[7] & 0b11111110) >> 1) + ((data[8] & 0b111111) << 7) - 1200;
+                        var z = ((data[8] & 0b11000000) >> 6) + (data[9] << 2) + ((data[10] & 0b111111) << 10) - 32768;
+                        var id = ((data[12] & 0b11100000) >> 5) + (data[13] << 3) + ((data[14] & 0b11111) << 11);
+                        var xDec = 4096 - (((data[17] & 0b11111100) >> 2) + ((data[18] & 0b11111) << 6));
+                        var yDec = 2048 - (((data[18] & 0b11000000) >> 6) + (data[19] << 2) + ((data[20] & 0b1) << 10));
+                        var zDec = 4096 - (((data[20] & 0b11111100) >> 2) + ((data[21] & 0b11111) << 6));
+                        var t = ((data[21] & 0b11000000) >> 6) + ((data[22] & 0b11111) << 2);
+
+                        xDec *= (data[18] & 0b100000) > 0 ? -1 : 1;
+                        yDec *= (data[20] & 0b10) > 0 ? -1 : 1;
+                        zDec *= (data[21] & 0b100000) > 0 ? -1 : 1;
+                        t *= (data[22] & 0b100000) > 0 ? -1 : 1;
+
+                        var xDecFloat = (float) xDec / 2048;
+                        var yDecFloat = (float) yDec / 2048;
+                        var zDecFloat = (float) zDec / 2048;
+
+                        var idStr = Convert.ToString(id, 16).PadLeft(4, '0');
+
+                        File.AppendAllText(serverPath,
+                            $"{newSessionDivider}{DateTime.Now}\t\t\t{idStr}\t{x + xDecFloat:F6}\t{y + yDecFloat:F6}\t{z + zDecFloat:F6}\t{t}\t\t\t{currentPacketPaddedHex}");
+                        File.AppendAllText(mixedPath,
+                            $"{newSessionDivider}SRV\t\t\t{DateTime.Now}\t\t\t{idStr}\t{x + xDecFloat:F6}\t{y + yDecFloat:F6}\t{z + zDecFloat:F6}\t{t}\t\t\t{currentPacketPaddedHex}");
+                    }
+                }
+                else
+                {
+                    File.AppendAllText(serverCaptureFilePathUnfiltered,
+                        $"{newSessionDivider}{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
+                }
             }
         }
     }
