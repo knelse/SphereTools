@@ -8,10 +8,6 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="SharpPcap" Version="6.2.1" />
-    </ItemGroup>
-
-    <ItemGroup>
       <ProjectReference Include="..\ItemPacketTools\ItemPacketTools.csproj" />
     </ItemGroup>
 

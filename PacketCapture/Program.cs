@@ -8,6 +8,7 @@ const string clientCaptureFilePath = "C:\\_sphereDumps\\client";
 const string serverCaptureFilePath = "C:\\_sphereDumps\\server";
 const string mixedCaptureFilePath = "C:\\_sphereDumps\\mixed";
 const string currentWorldCoordsFilePath = "C:\\_sphereDumps\\currentWorldCoords";
+const string itemPacketDecodeFilePath = "C:\\_sphereDumps\\itemPackets";
 WorldCoords oldCoords = new WorldCoords(9999, 9999, 9999, 9999);
 
 const string pingCaptureFilePathLocal = "C:\\_sphereDumps\\local_ping";
@@ -124,6 +125,19 @@ void OnPacketArrival(object sender, PacketCapture c)
         var splitPacketForMixed = new StringBuilder();
         var previousMatchIndex = 0;
 
+        var bytePacketSplit = new List<byte[]>();
+
+        for (var i = 0; i < data.Length - 4; i++)
+        {
+            if (data[i + 2] == 0x2C && data[i + 3] == 0x01 && data[i + 4] == 0x00)
+            {
+                var length = data[i+1] * 16 + data[i];
+                var split = data[i..(i + length - 1)];
+                bytePacketSplit.Add(split);
+                i += length - 1;
+            }
+        }
+
         foreach (Match match in packetIndices)
         {
             if (match.Success)
@@ -198,6 +212,23 @@ void OnPacketArrival(object sender, PacketCapture c)
                     // item move
                     File.AppendAllText("C:\\_sphereDumps\\itemMove",
                         $"SRV\t\t\t{DateTime.Now}\t\t\t{splitPacketResult}\n");
+                }
+
+                if (data.Length > 25 && data[25] == 0x91 && data[26] == 0x45)
+                {
+                    // item packet?
+                    File.AppendAllText(itemPacketDecodeFilePath, $"\nSRV\t\t\t{DateTime.Now}\t\t\t{splitPacketResult}\n");
+
+                    foreach (var splitPacketBytes in bytePacketSplit)
+                    {
+                        var itemList = BitStreamTools.GetItemsFromPacket(splitPacketBytes);
+                        File.AppendAllText(itemPacketDecodeFilePath, $"{Convert.ToHexString(splitPacketBytes)}\n");
+
+                        foreach (var item in itemList)
+                        {
+                            File.AppendAllText(itemPacketDecodeFilePath, $"{item.ToDebugString()}\n");
+                        }
+                    }
                 }
             }
             else
