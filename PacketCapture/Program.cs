@@ -84,17 +84,22 @@ void OnPacketArrival(object sender, PacketCapture c)
         {
             return;
         }
+        
+        ProcessPacket(tcpPacket.PayloadData, tcpPacket.DestinationPort == 25860, isRemote);
+    }
+    catch (Exception ex) {
+        Console.WriteLine(ex);
+    }
+}
 
-        var data = tcpPacket.PayloadData;
-
+void ProcessPacket(byte[] data, bool isClient, bool isRemote)
+{
         var len = data.Length;
 
         if (len is 0 or 4)// or 8 or 11 or 12 or 13 or 16 or 17 or 18)
         {
             return;
         }
-
-        var isClient = tcpPacket.DestinationPort == 25860;
 
         data = isClient && isRemote ? DecodeClientPacket(data) : data;
         var pingPath = !isRemote ? pingCaptureFilePathLocal : pingCaptureFilePath;
@@ -126,6 +131,7 @@ void OnPacketArrival(object sender, PacketCapture c)
         }
 
         var bytePacketSplit = new List<byte[]>();
+        var bytePacketForAnalysis = new List<byte>();
 
         try
         {
@@ -137,16 +143,21 @@ void OnPacketArrival(object sender, PacketCapture c)
                     {
                         var length = data[i + 1] * 16 + data[i];
 
-                        if (i + length - 1 >= data.Length)
+                        if (i + length - 1 > data.Length)
                         {
                             // packet got split in the middle
                             packetRemainder = data[i..];
                         }
                         else
                         {
-                            var split = data[i..(i + length - 1)];
+                            var end = i + length > data.Length ? data.Length : i + length;
+                            var split =  data[i..end];
+
                             bytePacketSplit.Add(split);
-                            i += length - 1;
+                            // size_1 size_2 00 2C 01 sync_1 sync_2 id...
+                            var forAnalysis = data[(i + 7)..end];
+                            bytePacketForAnalysis.AddRange(forAnalysis);
+                            i += length - 4;
                         }
                     }
                 }
@@ -157,7 +168,7 @@ void OnPacketArrival(object sender, PacketCapture c)
             Console.WriteLine("Broken: " + Convert.ToHexString(data));
         }
 
-        for (int i = 0; i < bytePacketSplit.Count; i++)
+        for (var i = 0; i < bytePacketSplit.Count; i++)
         {
             var prefix = i == 0 ? "" : "-------------------\t\t\t";
             var prefixForMixed = i == 0 ? "" : "-------------------------------\t\t\t";
@@ -206,26 +217,14 @@ void OnPacketArrival(object sender, PacketCapture c)
                         {
                             // item move
                             File.AppendAllText("C:\\_sphereDumps\\itemMove",
-                                $"SRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}\n");
+                                $"SRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
                         }
 
                         if (data.Length > 25 && data[25] == 0x91 && data[26] == 0x45)
                         {
                             // item packet?
                             File.AppendAllText(itemPacketDecodeFilePath,
-                                $"\nSRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}\n");
-
-                            foreach (var splitPacketBytes in bytePacketSplit)
-                            {
-                                var itemList = GetItemsFromPacket(splitPacketBytes);
-                                File.AppendAllText(itemPacketDecodeFilePath,
-                                    $"{Convert.ToHexString(splitPacketBytes)}\n");
-
-                                foreach (var item in itemList)
-                                {
-                                    File.AppendAllText(itemPacketDecodeFilePath, $"{item.ToDebugString()}\n");
-                                }
-                            }
+                                $"SRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
                         }
                     }
                     else
@@ -264,10 +263,19 @@ void OnPacketArrival(object sender, PacketCapture c)
                 }
             }
         }
-    }
-    catch (Exception ex) {
-        Console.WriteLine(ex);
-    }
+
+        var bytesForAnalysis = bytePacketForAnalysis.ToArray();
+        // analysis
+        if (!isClient && bytesForAnalysis.Length > 25 && IsItemPacket(bytesForAnalysis[16..20]))
+        {
+            File.AppendAllText(itemPacketDecodeFilePath, $"{Convert.ToHexString(bytesForAnalysis)}\n");;
+            var itemList = GetItemsFromPacket(bytesForAnalysis);
+            foreach (var item in itemList)
+            {
+                File.AppendAllText(itemPacketDecodeFilePath, $"{item.ToDebugString()}\n");
+            }
+            File.AppendAllText(itemPacketDecodeFilePath, "\n\n");
+        }
 }
 
 static byte[] DecodeClientPacket(byte [] input)
@@ -322,6 +330,11 @@ static int GetDestinationIdFromDamagePacket(byte[] rcvBuffer)
 var devices = CaptureDeviceList.Instance;
 var ethernet = devices.FirstOrDefault(x => x.MacAddress?.ToString() == "00D861BEC926");
 ethernet.OnPacketArrival += OnPacketArrival;
+
+// var test = Convert.FromHexString(
+//     "C8002C0100BC6A9A7EE48B0FF8B52F09402DFF18009AC018409145A69CA44B0106CAFA000A5900F0FFFFFF5FF08080DFA61FB8E303142E11DAE01E3AE69060339E576491F9B040051828EB03286401C0FFFFFFFF8FD38FCAF001A1C9250132A322038096160328B2C800508081B23E80C20404145E618CEE6B2E6CEC6B8E06E0D7E947BEF8800CF4924058AC9301C85E8E811553642A48BA1460A0AC0FA0900500FFFFFFFF050F08F879FA51193E60E3BA244078516400A0B36200451619000A3050D607509880C6002C0100BC6A9E7E5446E115C6E8BEE6C2C6BEE660007E9F7ED88B0FB8192F09E008071900B09D18409145A610031760A0AC0FA0900500FFFFFFFF3F503F2AC3071C48970478538C0C00484D04A0C82203400106CAFA000A131050788531BAAFB9B0B1AFB91A805FA81F9CE1039EBE4B0258614106000E2AC651649101A00003657D00850908F889FAE12E3E9456FBE391CAE864C0BEF26300851599DE8B30051828EB03286401C0FFFFFFFF6FD40F7AF101E0CB250108C3220300BC160128A8C8AC8B84C6002C0100BC6AA37ED04B0106CAFA000A5900F0FFFFFFFF23F583337C40837A49000F07C800E0F6C5008A2C32001460A0AC0FA0300101BF523F78C7074C409704C047740C003B630CA0C822F35D010A3050D60750C80280FFFFFFFF9FA91FF3E2036EC64B0238C24106006C2706506491F97B45051828EB03286401C0FFFFFFFFEFD40FDDF1017FF0250104812003003F140128B2C8F457B0020C94F50114B200E0FFFFFFFF87EA4765F800F3F1920008E29001801F8B011459640028C040591F40610202CC002C0100BC6AA87E5446E115C6E8BEE6C2C6BEE666007EA97EDC8B0F98802E09808FE8180076C6184091456674151560A0AC0FA0900500FFFFFFFFBF553FDEC507BC3E97042CAC910C80226D0CA0C822B3F591A20003657D00852C00F8FFFFFFFFB1FA512C3EE0F6BD2400A3FF6300180763004516999640548081B23E80421600FCFFFFFF1758C000E0D7EA87BBF88071DF9280C5869201109E8D01145664962FC21460A0AC0FA0900500FFFFFFFF050F08F8B9FA912F3E8025BD240020276400A0F362004516993292BD002C0100BC6AAE7EE44B0106CAFA000A5900F0FFFFFFFF7BF5434B7CC0B3744900E6AAC700702DC6008A2C32A187A80003657D00852C00F8FFFFFF2FB00002C00FD68FEBF00152D22501701E230300BC120128B2C81C15A2020C94F50114B200E0FFFFFFBFC0020D6EBF583F8AC30700A09704D003890C00D85E3CA0C8227344880A3050D60750C80280FFFFFFFF020BDC07FC64FD280E1F20385E1280C320320000000080228B4C08212AC040591F40210B00FEFFFFFF0B2C403BAF002C0100BC6AB37E14876FCB58AB58832AE4986A4BBD98409145A68B101560A0AC0FA0900500FFFFFFFF05162800F8D1FA511C3EA0A4B92400AA90630030F562704516997C58548081B23E80421600FCFFFFFF1758405EE057EB4771F8B0565D8BB9C8128F35E50A8D09145964D208510106CAFA000A5900F0FFFFFF5F600105809FAD1FC5E103DEC44B023C42440600212F06506491492344051828EB03286401C0FFFFFF7F8105F4010A1E10");
+//
+// ProcessPacket(test, false, true);
 
 ethernet.Open();
 ethernet.Capture();

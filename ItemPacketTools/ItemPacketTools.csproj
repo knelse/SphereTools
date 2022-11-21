@@ -7,7 +7,7 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <PackageReference Include="rubendal.BitStream" Version="1.2.0" />
+      <ProjectReference Include="..\BitStream\BitStream.csproj" />
     </ItemGroup>
 
 </Project>
