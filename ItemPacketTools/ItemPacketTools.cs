@@ -10,11 +10,11 @@ public enum ItemPacketEncodingGroup
     Ring,
     WeaponArmor,
     FourSlotBag,
-    Short4SlotBag,
     BrushwoodFood,
     Token,
     CraftFormula,
-    ChestContainer
+    ChestContainer,
+    Scroll
 }
 
 public struct ItemPacket
@@ -33,7 +33,6 @@ public struct ItemPacket
     public ushort BagId;
     public Bit[] _skip4;
     public ushort Count;
-    // public Bit[] _skip5;
     public bool IsPremium;
     public Bit[] _premiumSkip;
     public Bit[] _strangeSkip;
@@ -53,40 +52,16 @@ public struct ItemPacket
 
     public static ItemPacket FromStream(BitStream stream)
     {
-        var offset = stream.Offset;
-        var bit = stream.Bit;
-        
-        // var shortTypeMarkerOffset = 28; // 7th byte is 4 for short and 8 for long?
-        // // shortTypeMarkerOffset -= (stream.Bit == 0 ? 0 : 8 - stream.Bit);
-        // var shortOffset = offset + shortTypeMarkerOffset / 8;
-        // var shortBit = shortTypeMarkerOffset % 8;
-        // stream.Seek(shortOffset, shortBit);
-        // // var itemIsShort = stream.ReadByte(4) == 0x4;
-        var itemIsShort = false;
-        // stream.Seek(offset, bit);
-        
         var result = new ItemPacket
         {
             Id = stream.ReadUInt16(),
             _skip1 = stream.ReadBits(2),
             Type = stream.ReadUInt16(10),
             _skip2 = stream.ReadBits(10),
+            X = stream.ReadBytes(4, true),
+            Y = stream.ReadBytes(4, true),
+            Z = stream.ReadBytes(4, true)
         };
-        
-        // short item could be anything, but type would be correct
-        // TODO: fix short items
-        // if (itemIsShort)
-        // {
-        //     result._skip3 = stream.ReadBits(result.Type == 405 ? 91 : 50);
-        //         result.EncodingGroup = result.Type == 405 ? ItemPacketEncodingGroup.FourSlotBag : ItemPacketEncodingGroup.Short4SlotBag;
-        //
-        //     return result;
-        // }
-        // if (!itemIsShort)
-        // {
-        result.X = stream.ReadBytes(4, true);
-        result.Y = stream.ReadBytes(4, true);
-        result.Z = stream.ReadBytes(4, true);
         var longTailTest = stream.ReadBytes(4, true);
         var hasLongTail = longTailTest[2] != 0x16; 
         stream.SeekBack(32);
@@ -106,16 +81,16 @@ public struct ItemPacket
         switch (result.Type)
         {
             case 405: // 4 bag slot
-                result.GetStreamDataAs4SlotBag(stream, itemIsShort);
+                result.GetStreamDataAs4SlotBag(stream);
                 break;
             case 409: // small mantra book
             case 411: // mantra book
             case 412: // great mantra book
-                result.GetStreamDataAsMantraBook(stream, itemIsShort);
+                result.GetStreamDataAsMantraBook(stream);
                 break; 
             case 1000: // white mantra
             case 1001: // black mantra
-                result.GetStreamDataAsMantra(stream, itemIsShort);
+                result.GetStreamDataAsMantra(stream);
                 break;
             case 600: // mineral
             case 601: // plant
@@ -125,29 +100,33 @@ public struct ItemPacket
             case 471: // castle elixir
             case 472: // trap elixir
             case 709: // mob part
-                result.GetStreamDataAsMaterialPowderElixir(stream, itemIsShort);
+                result.GetStreamDataAsMaterialPowderElixir(stream);
                 break;
             case 760: // ring
             case 762: // golem ring
-                result.GetStreamDataAsRing(stream, itemIsShort);
+                result.GetStreamDataAsRing(stream);
                 break;
             case 552: // ruby ring
+            case 650: // apple
             case 653: // food
             case 700: // brushwood
-                result.GetStreamDataAsBrushwoodFood(stream, itemIsShort);
+                result.GetStreamDataAsBrushwoodFood(stream);
                 break;
             case 66: // token
             case 8: // token
-                result.GetStreamDataAsToken(stream, itemIsShort);
+                result.GetStreamDataAsToken(stream);
                 break;
             case 804: // craft formula
-                result.GetStreamDataAsCraftFormula(stream, itemIsShort);
+                result.GetStreamDataAsCraftFormula(stream);
                 break;
             case 0: // TBD: figure out, some chests get there
             case 210: // chest, container
             case 406: // chest
             case 415: // container with different shift
-                result.GetStreamDataAsChestContainer(stream, itemIsShort);
+                result.GetStreamDataAsChestContainer(stream);
+                break;
+            case 407:
+                result.GetStreamDataAsScroll(stream);
                 break;
             default:
                 result.GetStreamDataAsWeaponArmor(stream, hasLongTail);
@@ -215,7 +194,7 @@ public struct ItemPacket
         }
     }
 
-    private void GetSuffixModSkip3BagId(BitStream stream, bool isShort)
+    private void GetSuffixModSkip3BagId(BitStream stream)
     {
         SuffixMod = FourBitShiftedSuffix ? stream.ReadUInt16(12) : stream.ReadByte();
 
@@ -240,16 +219,16 @@ public struct ItemPacket
         BagId = stream.ReadUInt16();
     }
 
-    private void GetStreamDataAsMantra(BitStream stream, bool isShort)
+    private void GetStreamDataAsMantra(BitStream stream)
     {
-        GetSuffixModSkip3BagId(stream, isShort);
+        GetSuffixModSkip3BagId(stream);
         _skip4 = stream.ReadBits(42);
         EncodingGroup = ItemPacketEncodingGroup.Mantra;
     }
 
-    private void GetStreamDataAsMaterialPowderElixir(BitStream stream, bool isShort)
+    private void GetStreamDataAsMaterialPowderElixir(BitStream stream)
     {
-        GetSuffixModSkip3BagId(stream, isShort);
+        GetSuffixModSkip3BagId(stream);
         _skip4 = stream.ReadBits(86);
         Count = stream.ReadUInt16(16);
 
@@ -269,23 +248,23 @@ public struct ItemPacket
         EncodingGroup = ItemPacketEncodingGroup.MatPowderEli;
     }
 
-    private void GetStreamDataAsRing(BitStream stream, bool isShort)
+    private void GetStreamDataAsRing(BitStream stream)
     {
-        GetSuffixModSkip3BagId(stream, isShort);
+        GetSuffixModSkip3BagId(stream);
         _skip4 = stream.ReadBits(197);
         EncodingGroup = ItemPacketEncodingGroup.Ring;
     }
 
-    private void GetStreamDataAsMantraBook(BitStream stream, bool isShort)
+    private void GetStreamDataAsMantraBook(BitStream stream)
     {
         SuffixMod = stream.ReadByte();
         _skip3 = stream.ReadBits(6);
         BagId = stream.ReadUInt16();
-        _skip4 = stream.ReadBits(isShort ? 22 : 34); //93
+        _skip4 = stream.ReadBits(34); //93
         EncodingGroup = ItemPacketEncodingGroup.MantraBook;
     }
 
-    private void GetStreamDataAs4SlotBag(BitStream stream, bool isShort)
+    private void GetStreamDataAs4SlotBag(BitStream stream)
     {
         SuffixMod = stream.ReadByte();
 
@@ -300,42 +279,9 @@ public struct ItemPacket
         BagId = stream.ReadUInt16();
         EncodingGroup = ItemPacketEncodingGroup.FourSlotBag;
         _skip4 = stream.ReadBits(int.MaxValue);
-
-        // var endPacketTest = stream.ReadByte();
-        // while (endPacketTest != 0b00001100)
-        // {
-        //     stream.SeekBack(8);
-        //     skipList.Add(stream.ReadBit());
-        //     endPacketTest = stream.ReadByte();
-        // }
-        // Bit skipBit;
-        //
-        // while ((skipBit = stream.ReadBit())!= 1)
-        // {
-        //     skipList.Add(skipBit);
-        // }
-        // stream.SeekBack(1);
-        // var nextBits = BitStreamTools.BitArrayToString(stream.ReadBits(120));
-        // stream.SeekBack(160);
-        // var previousBits = BitStreamTools.BitArrayToString(stream.ReadBits(40));
-        // var splitByteTest = stream.ReadByte(7);
-        //
-        // if (splitByteTest is not (0x3F))
-        // {
-        //     stream.SeekBack(7);
-        //     skipList.AddRange(BitStreamTools.IntToBits(splitByteTest, 7));
-        // }
-        // _skip4 = skipList.ToArray();
-        // var t = Convert.ToHexString(BitStream.BitArrayToBytes(_skip4));
-        // Console.WriteLine(BitStreamTools.BitArrayToString(_skip4));
-        // if ((Z[3]) == 0x63)
-        // {
-        //     // uhh
-        //     stream.SeekBack(3);
-        // }
     }
 
-    private void GetStreamDataAsBrushwoodFood(BitStream stream, bool isShort)
+    private void GetStreamDataAsBrushwoodFood(BitStream stream)
     {
         SuffixMod = stream.ReadByte();
         _skip3 = stream.ReadBits(6);
@@ -345,7 +291,7 @@ public struct ItemPacket
         EncodingGroup = ItemPacketEncodingGroup.BrushwoodFood;
     }
 
-    private void GetStreamDataAsToken(BitStream stream, bool isShort)
+    private void GetStreamDataAsToken(BitStream stream)
     {
         SuffixMod = stream.ReadByte();
         _skip3 = stream.ReadBits(6);
@@ -358,7 +304,7 @@ public struct ItemPacket
 
     private void GetStreamDataAsWeaponArmor(BitStream stream, bool hasLongTail)
     {
-        GetSuffixModSkip3BagId(stream, false);
+        GetSuffixModSkip3BagId(stream);
         //         _skip4 = stream.ReadBits(isPremium ? 86 : 71),
         _skip4 = stream.ReadBits(67);
         var skipBytes = BitStream.BitArrayToBytes(_skip4);
@@ -381,7 +327,7 @@ public struct ItemPacket
         EncodingGroup = ItemPacketEncodingGroup.WeaponArmor;
     }
 
-    private void GetStreamDataAsCraftFormula(BitStream stream, bool isShort)
+    private void GetStreamDataAsCraftFormula(BitStream stream)
     {
         SuffixMod = stream.ReadByte();
         _skip3 = stream.ReadBits(6);
@@ -390,7 +336,7 @@ public struct ItemPacket
         EncodingGroup = ItemPacketEncodingGroup.CraftFormula;
     }
 
-    private void GetStreamDataAsChestContainer(BitStream stream, bool isShort)
+    private void GetStreamDataAsChestContainer(BitStream stream)
     {
         SuffixMod = stream.ReadByte(5);
 
@@ -409,6 +355,15 @@ public struct ItemPacket
             _skip3 = stream.ReadBits(64);
         }
         EncodingGroup = ItemPacketEncodingGroup.ChestContainer;
+    }
+
+    private void GetStreamDataAsScroll(BitStream stream)
+    {
+        SuffixMod = stream.ReadByte();
+        _skip3 = stream.ReadBits(6);
+        BagId = stream.ReadUInt16();
+        // _skip4 = stream.ReadBits(414);
+        EncodingGroup = ItemPacketEncodingGroup.Scroll;
     }
 
     public string ToDebugString()
@@ -451,13 +406,15 @@ public static class BitStreamTools
             while (containerStream.ValidPosition)
             {
                 var test = containerStream.ReadBytes(4, true);
-
+                containerStream.SeekBack(32);
                 if (IsItemPacket(test))
                 {
                     var pos = (containerStream.Offset - 16) * 8 + containerStream.Bit;
+
                     offsets.Add(pos);
                 }
-                containerStream.SeekBack(31);
+
+                containerStream.ReadBit();
             }
         }
         catch (IOException)
@@ -466,59 +423,34 @@ public static class BitStreamTools
         }
         finally
         {
-            containerStream.Seek(0, 0);
+            if (offsets.Count > 0)
+            {
+                containerStream.Seek(offsets[0] / 8, (int) (offsets[0] % 8));
+            }
         }
+        
+        offsets.Add(containerStream.Length * 8);
 
         var packets = new List<byte[]>();
 
-        for (var i = 0; i < offsets.Count - 1; i++)
+        for (var i = 1; i < offsets.Count; i++)
         {
-            var bitLength = offsets[i + 1] - offsets[i];
+            var bitLength = offsets[i] - offsets[i - 1];
             var bits = containerStream.ReadBits(bitLength);
             var itemPacket = BitStream.BitArrayToBytes(bits);
             packets.Add(itemPacket);
         }
-
-        var lastBits = containerStream.ReadBits(int.MaxValue);
-        packets.Add(BitStream.BitArrayToBytes(lastBits));
-
+        
         foreach (var itemPacket in packets)
         {
             var packetStream = new BitStream(itemPacket);
             var item = ItemPacket.FromStream(packetStream);
             result.Add(item);
             Console.WriteLine(Convert.ToHexString(itemPacket));
-            
         }
-        //
-        // while (containerStream.ValidPosition)
-        // {
-        //     try
-        //     {
-        //         var offsetStart = containerStream.Offset;
-        //         var bitStart = containerStream.Bit;
-        //         var item = ItemPacket.FromStream(containerStream);
-        //         result.Add(item);
-        //         var offsetEnd = containerStream.Offset;
-        //         var bitEnd = containerStream.Bit;
-        //
-        //         if (item.ItemSeparatorLength != 0)
-        //         {
-        //             containerStream.ReadByte(item.ItemSeparatorLength);
-        //         }
-        //
-        //         if (writeItemBytesToConsole)
-        //         {
-        //             var packetBytes = containerStream.GetStreamDataBetween(offsetStart, bitStart, offsetEnd, bitEnd);
-        //             Console.WriteLine("----" + Convert.ToHexString(packetBytes) + "----");
-        //         }
-        //     }
-        //     catch (IOException)
-        //     {
-        //         break;
-        //     }
-        // }
-
+        
+        containerStream.GetStream().Dispose();
+        
         return result;
     }
     public static void SeekBack(this BitStream bitStream, int countBits)
@@ -611,7 +543,7 @@ public static class BitStreamTools
 
     public static bool IsItemPacket(byte[] test)
     {
-        return ((test[0] & 0b1111) is 0x8 or 0x9)// or 0xF9 or 0x08 or 0xF8 or 0x78 or 0x98)
+        return ((test[0] & 0b1111) is 0x8 or 0x9 or 0x0)// or 0xF9 or 0x08 or 0xF8 or 0x78 or 0x98)
                 && ((test[1] >> 4) is 0x4 or 0x5) //0 or 0x4F or 0x5F or 0x5E or 0x5C or 0x58 or 0x47 or 0x50)
                 && (test[2] & 0b1111) is 0x1
                 && (test[3] is 0x44 or 0x45);
