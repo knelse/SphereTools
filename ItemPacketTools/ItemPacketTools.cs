@@ -219,14 +219,23 @@ public struct ItemPacket
     {
         SuffixMod = FourBitShiftedSuffix ? stream.ReadUInt16(12) : stream.ReadByte();
 
-        if (SuffixMod is 0x11 or 0xD1)
+        _strangeSkip = stream.ReadBits(SuffixMod switch
         {
-            _strangeSkip = stream.ReadBits(SuffixMod is 0x11 ? 28 : 22);
+            0x11 => 28,
+            0xD1 => 22,
+            0xBA => 22,
+            0xC2 => 27,
+            _ => 0
+        });
+
+        if (_strangeSkip.Length != 0)
+        {
             var suffix = stream.ReadUInt16(12) >> 8;
             FourBitShiftedSuffix = suffix == 0x4;
             stream.SeekBack(12);
             SuffixMod = FourBitShiftedSuffix ? stream.ReadUInt16(12) : stream.ReadByte();
         }
+
         _skip3 = stream.ReadBits(17);
         BagId = stream.ReadUInt16();
     }
@@ -244,17 +253,17 @@ public struct ItemPacket
         _skip4 = stream.ReadBits(86);
         Count = stream.ReadUInt16(16);
 
-        if (Count >> 15 == 1)
+        if ((ushort) (Count & 0xFFF) == 0xFFF)
+        {
+            Count = 1;
+        }
+        else if (Count >> 15 == 1)
         {
             Count &= 0b111111111111;
             stream.SeekBack(12);
         }
         else
         {
-            if (Id == 0x98D8)
-            {
-                stream.SeekBack(5);
-            }
             stream.SeekBack(1);
         }
         EncodingGroup = ItemPacketEncodingGroup.MatPowderEli;
