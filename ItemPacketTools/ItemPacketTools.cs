@@ -128,6 +128,7 @@ public struct ItemPacket
                 result.GetStreamDataAsMaterialPowderElixir(stream, itemIsShort);
                 break;
             case 760: // ring
+            case 762: // golem ring
                 result.GetStreamDataAsRing(stream, itemIsShort);
                 break;
             case 552: // ruby ring
@@ -135,6 +136,7 @@ public struct ItemPacket
             case 700: // brushwood
                 result.GetStreamDataAsBrushwoodFood(stream, itemIsShort);
                 break;
+            case 66: // token
             case 8: // token
                 result.GetStreamDataAsToken(stream, itemIsShort);
                 break;
@@ -217,9 +219,9 @@ public struct ItemPacket
     {
         SuffixMod = FourBitShiftedSuffix ? stream.ReadUInt16(12) : stream.ReadByte();
 
-        if (SuffixMod == 0x11)
+        if (SuffixMod is 0x11 or 0xD1)
         {
-            _strangeSkip = stream.ReadBits(28);
+            _strangeSkip = stream.ReadBits(SuffixMod is 0x11 ? 28 : 22);
             var suffix = stream.ReadUInt16(12) >> 8;
             FourBitShiftedSuffix = suffix == 0x4;
             stream.SeekBack(12);
@@ -277,6 +279,14 @@ public struct ItemPacket
     private void GetStreamDataAs4SlotBag(BitStream stream, bool isShort)
     {
         SuffixMod = stream.ReadByte();
+
+        if (SuffixMod != 192)
+        {
+            stream.SeekBack(22);
+            _strangeSkip = stream.ReadBits(33);
+            GameId = stream.ReadUInt16(14);
+            SuffixMod = stream.ReadByte();
+        }
         _skip3 = stream.ReadBits(6);
         BagId = stream.ReadUInt16();
         EncodingGroup = ItemPacketEncodingGroup.FourSlotBag;
@@ -592,8 +602,8 @@ public static class BitStreamTools
 
     public static bool IsItemPacket(byte[] test)
     {
-        return (test[0] is 0x18 or 0x08 or 0xF8 or 0x78 or 0x98)
-                && (test[1] is 0x40 or 0x5F or 0x5E or 0x5C or 0x58 or 0x47)
+        return ((test[0] & 0b1111) is 0x8 or 0x9)// or 0xF9 or 0x08 or 0xF8 or 0x78 or 0x98)
+                && ((test[1] >> 4) is 0x4 or 0x5) //0 or 0x4F or 0x5F or 0x5E or 0x5C or 0x58 or 0x47 or 0x50)
                 && (test[2] & 0b1111) is 0x1
                 && (test[3] is 0x44 or 0x45);
     }

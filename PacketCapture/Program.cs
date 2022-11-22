@@ -19,8 +19,6 @@ const string serverCaptureFilePathLocal = "C:\\_sphereDumps\\local_server";
 const string mixedCaptureFilePathLocal = "C:\\_sphereDumps\\local_mixed";
 WorldCoords oldCoordsLocal = new WorldCoords(9999, 9999, 9999, 9999);
 
-byte[] packetRemainder = {};
-
 // 1200 - ping
 // 1300 - 6s ping
 // 1000 - 15s ping
@@ -41,6 +39,8 @@ var sessionDivider =
 var endPacket = new byte[] { 0x04, 0x00, 0xF4, 0x01 };
 var packetOkMarker = new byte[] { 0x2C, 0x01 };
 var newSessionFirstPacket = new byte[] { 0x0A, 0x00, 0xC8, 0x00 };
+
+var lastSplitPacket = new List<byte>();
 
 bool ShouldHidePacket(byte[] packet)
 {
@@ -107,12 +107,13 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
         var serverPath = !isRemote ? serverCaptureFilePathLocal : serverCaptureFilePath;
         var mixedPath = !isRemote ? mixedCaptureFilePathLocal : mixedCaptureFilePath;
 
-        if (packetRemainder.Length > 0 && !isClient)
+        if (lastSplitPacket.Count > 0 && len >=4 && !isClient)
         {
-            var dataConcatList = new List<byte>(packetRemainder);
-            dataConcatList.AddRange(data);
-            data = dataConcatList.ToArray();
-            packetRemainder = Array.Empty<byte>();
+            //continuation of a split packet
+            lastSplitPacket.AddRange(data);
+            data = lastSplitPacket.ToArray();
+            // Console.WriteLine($"Concat data: {Convert.ToHexString(data)}");
+            lastSplitPacket.Clear();
         }
         
         // ping
@@ -146,7 +147,9 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                         if (i + length - 1 > data.Length)
                         {
                             // packet got split in the middle
-                            packetRemainder = data[i..];
+                            lastSplitPacket.AddRange(data);
+                            bytePacketSplit.Clear();
+                            bytePacketForAnalysis.Clear();
                         }
                         else
                         {
@@ -270,6 +273,7 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
         {
             File.AppendAllText(itemPacketDecodeFilePath, $"{Convert.ToHexString(bytesForAnalysis)}\n");;
             var itemList = GetItemsFromPacket(bytesForAnalysis);
+            File.AppendAllText(itemPacketDecodeFilePath, $"[{itemList.Count}]\n");
             foreach (var item in itemList)
             {
                 File.AppendAllText(itemPacketDecodeFilePath, $"{item.ToDebugString()}\n");
