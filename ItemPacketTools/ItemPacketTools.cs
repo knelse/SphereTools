@@ -108,7 +108,10 @@ public struct ItemPacket
                 break;
             case 552: // ruby ring
             case 650: // apple
-            case 653: // food
+            case 651: // pear
+            case 652: // meat
+            case 653: // bread
+            case 655: // fish
             case 700: // brushwood
                 result.GetStreamDataAsBrushwoodFood(stream);
                 break;
@@ -126,8 +129,11 @@ public struct ItemPacket
                 result.GetStreamDataAsChestContainer(stream);
                 break;
             case 407:
+            case 90: // legend
+            case 91: // recipe
                 result.GetStreamDataAsScroll(stream);
                 break;
+            case 30: // mut added
             default:
                 result.GetStreamDataAsWeaponArmor(stream, hasLongTail);
                 break;

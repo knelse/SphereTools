@@ -269,16 +269,22 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
 
         var bytesForAnalysis = bytePacketForAnalysis.ToArray();
         // analysis
-        if (!isClient && bytesForAnalysis.Length > 25 && IsItemPacket(bytesForAnalysis[16..20]))
+        if (!isClient && bytesForAnalysis.Length > 25)
         {
-            File.AppendAllText(itemPacketDecodeFilePath, $"{Convert.ToHexString(bytesForAnalysis)}\n");;
             var itemList = GetItemsFromPacket(bytesForAnalysis);
-            File.AppendAllText(itemPacketDecodeFilePath, $"[{itemList.Count}]\n");
-            foreach (var item in itemList)
+
+            if (itemList.Count > 0)
             {
-                File.AppendAllText(itemPacketDecodeFilePath, $"{item.ToDebugString()}\n");
+                File.AppendAllText(itemPacketDecodeFilePath, $"{Convert.ToHexString(bytesForAnalysis)}\n");
+                File.AppendAllText(itemPacketDecodeFilePath, $"[{itemList.Count}]\n");
+
+                foreach (var item in itemList)
+                {
+                    File.AppendAllText(itemPacketDecodeFilePath, $"{item.ToDebugString()}\n");
+                }
+
+                File.AppendAllText(itemPacketDecodeFilePath, "\n\n");
             }
-            File.AppendAllText(itemPacketDecodeFilePath, "\n\n");
         }
 }
 
