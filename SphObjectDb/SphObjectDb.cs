@@ -1,5 +1,5 @@
 ﻿using System.Text;
-
+using Newtonsoft.Json;
 using LocalizationEntryArray = System.Collections.Generic.Dictionary<Locale, string[]>;
 using LocalizationEntryString = System.Collections.Generic.Dictionary<Locale, string>;
 
@@ -8,6 +8,9 @@ public static class SphObjectDb
     private static readonly char[] TabCharacter = { '\t' };
     private const string gameDataPath = "c:\\source\\_sphFilesDecode\\params\\";
     private const string localeDataPath = "c:\\source\\_sphFilesDecode\\language\\";
+    private const string gameDataJsonPath = "C:\\source\\objectData.json";
+    private const string localizationContentJsonPath = "C:\\source\\localizationContent.json";
+    private const string objectLocalizationJsonPath = "C:\\source\\objectLocalization.json";
     public static readonly Dictionary<int, SphGameObject> GameObjectDataDb = new();
     private const string langSuffixEnglish = "_e";
     private const string langSuffixItalian = "_i";
@@ -18,9 +21,52 @@ public static class SphObjectDb
 
     static SphObjectDb()
     {
-        LoadGameObjects();
-        LoadLocalisationData();
-        LoadGameObjectLocalization();
+        if (!File.Exists(gameDataJsonPath) 
+            || !File.Exists(localizationContentJsonPath)
+            || !File.Exists(objectLocalizationJsonPath)
+            || File.GetLastWriteTimeUtc(gameDataJsonPath) < DateTime.UtcNow.AddHours(-72)
+            || File.GetLastWriteTimeUtc(localizationContentJsonPath) < DateTime.UtcNow.AddHours(-72)
+            || File.GetLastWriteTimeUtc(objectLocalizationJsonPath) < DateTime.UtcNow.AddHours(-72))
+        {
+            // regenerate json every 3 days to be safe
+
+            Console.WriteLine("Loading game data and generating json");
+            LoadGameObjects();
+            LoadLocalisationData();
+            GenerateGameObjectLocale();
+            LoadGameObjectLocalization();
+            
+            using var gameDataFile = File.OpenWrite(gameDataJsonPath);
+            using var gameDataWriter = new StreamWriter(gameDataFile);
+            var gameDataJson = JsonConvert.SerializeObject(GameObjectDataDb, Formatting.Indented);
+            gameDataWriter.Write(gameDataJson);
+            
+            using var localeContentFile = File.OpenWrite(localizationContentJsonPath);
+            using var localeContentWriter = new StreamWriter(localeContentFile);
+            var localeContentJson = JsonConvert.SerializeObject(LocalisationContent, Formatting.Indented);
+            localeContentWriter.Write(localeContentJson);
+            
+            using var objectLocaleFile = File.OpenWrite(objectLocalizationJsonPath);
+            using var objectLocaleWriter = new StreamWriter(objectLocaleFile);
+            var objectLocaleJson = JsonConvert.SerializeObject(ObjectNameToLocalizationMap, Formatting.Indented);
+            objectLocaleWriter.Write(objectLocaleJson);
+        }
+
+        else
+        {
+            Console.WriteLine("Loading game data from preexisting json");
+            using var gameDataFile = File.OpenRead(gameDataJsonPath);
+            using var gameDataReader = new StreamReader(gameDataFile);
+            GameObjectDataDb = JsonConvert.DeserializeObject<Dictionary<int, SphGameObject>>(gameDataReader.ReadToEnd()) ?? throw new InvalidOperationException();
+            
+            using var localeContentFile = File.OpenRead(localizationContentJsonPath);
+            using var localeContentReader = new StreamReader(localeContentFile);
+            LocalisationContent = JsonConvert.DeserializeObject<Dictionary<string, LocalizationEntryArray>>(localeContentReader.ReadToEnd()) ?? throw new InvalidOperationException();
+            
+            using var objectLocaleFile = File.OpenRead(objectLocalizationJsonPath);
+            using var objectLocaleReader = new StreamReader(objectLocaleFile);
+            ObjectNameToLocalizationMap = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<int, LocalizationEntryString>>>(objectLocaleReader.ReadToEnd()) ?? throw new InvalidOperationException();
+        }
     }
 
     private static void LoadGameObjects()
@@ -192,6 +238,11 @@ public static class SphObjectDb
                 LocalisationContent[name][locale] = File.ReadAllLines(localeFile, Win1251);
             }
         }
+    }
+
+    private static void GenerateGameObjectLocale()
+    {
+        
 
         foreach ((var name, var localeEntry) in LocalisationContent)
         {
@@ -221,7 +272,7 @@ public static class SphObjectDb
                         // range of ints
                         var bounds = localeContent[i][1..].Split('-');
                         var start = int.Parse(bounds[0]);
-                        var end = int.Parse(bounds[1] + 1);
+                        var end = int.Parse(bounds[1]) + 1;
 
                         for (var j = start; j < end; j++)
                         {

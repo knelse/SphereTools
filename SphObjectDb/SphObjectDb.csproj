@@ -10,4 +10,8 @@
       <ProjectReference Include="..\SphGameObject\SphGameObject.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <PackageReference Include="Newtonsoft.Json" Version="13.0.2" />
+    </ItemGroup>
+
 </Project>
