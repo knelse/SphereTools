@@ -17,6 +17,94 @@ public enum ItemPacketEncodingGroup
     Scroll
 }
 
+public enum ObjectType : ushort
+{
+    Token = 8,
+    SeedCastle = 40,
+    XpPillDegree = 47,
+    TokenMultiuse = 66,
+    TradeLicense = 68,
+    ScrollLegend = 90,
+    ScrollRecipe = 91,
+    TokenIsland = 104,
+    TokenIslandGuest = 105,
+    Bead = 236,
+    BackpackLarge = 400,
+    BackpackSmall = 401,
+    Sack = 405,
+    Chest = 406,
+    MantraBookSmall = 409,
+    RecipeBook = 410,
+    MantraBookLarge = 411,
+    MantraBookGreat = 412,
+    MapBook = 413,
+    KeyBarn = 418,
+    PowderFinale = 451,
+    PowderTarget = 453,
+    PowderAmilus = 454,
+    PowderAoE = 455,
+    ElixirCastle = 471,
+    ElixirTrap = 472,
+    WeaponSword = 500,
+    WeaponAxe = 501,
+    WeaponCrossbow = 502,
+    Arrows = 503,
+    RingDiamond = 551,
+    RingRuby = 552,
+    Ruby = 553,
+    RingGold = 555,
+    AlchemyMineral = 600,
+    AlchemyPlant = 601,
+    AlchemyMetal = 602,
+    FoodApple = 650,
+    FoodPear = 651,
+    FoodMeat = 652,
+    FoodBread = 653,
+    FoodFish = 655,
+    AlchemyBrushwood = 700,
+    Key = 701,
+    Map = 703,
+    Inkpot = 704,
+    Firecracker = 705,
+    Ear = 706,
+    EarString = 708,
+    MonsterPart = 709,
+    Firework = 712,
+    ArmorChest = 750,
+    ArmorAmulet = 751,
+    ArmorBoots = 752,
+    ArmorGloves = 754,
+    ArmorBelt = 755,
+    ArmorShield = 756,
+    ArmorHelmet = 757,
+    ArmorPants = 758,
+    ArmorBracelet = 759,
+    Ring = 760,
+    ArmorRobe = 761,
+    RingGolem = 762,
+    AlchemyPot = 800,
+    Blueprint = 804,
+    QuestArmorChest = 949,
+    QuestArmorAmulet = 950, // unused?
+    QuestArmorBoots = 952,
+    QuestArmorGloves = 953,
+    QuestArmorBelt = 954,
+    QuestArmorShield = 955,
+    QuestArmorHelmet = 956,
+    QuestArmorPants = 957,
+    QuestArmorBracelet = 958, // unused?
+    QuestArmorRing = 959, // unused?
+    QuestArmorRobe = 960,
+    QuestWeaponSword = 961,
+    QuestWeaponAxe = 962,
+    QuestWeaponCrossbow = 963,
+    SpecialAbility = 977, // same type for specialization itself
+    ArmorHelmetPremium = 990,
+    MantraWhite = 1000,
+    MantraBlack = 1001,
+    Unknown = ushort.MaxValue,
+}
+
 public struct ItemPacket
 {
     public ushort Id;
@@ -40,6 +128,7 @@ public struct ItemPacket
     public bool FourBitShiftedSuffix;
     public bool IsStrangeSuffix;
     public ItemPacketEncodingGroup EncodingGroup;
+    public ObjectType ObjectType;
     public byte ItemSeparator => shorterItemSeparator ? (byte) (0x7E >> 1) : (byte) 0x7E;
     // short item bags can have 7F as separator?
     public int ItemSeparatorLength => shorterItemSeparator ? 7 : noItemSeparator ? 0 : 8;
@@ -78,62 +167,103 @@ public struct ItemPacket
             result._strangeSkip = stream.ReadBits(suffix is 0xE ? 31 : 26);
         }
 
-        switch (result.Type)
+        result.ObjectType = ObjectType.Unknown;
+        if (Enum.IsDefined(typeof(ObjectType), result.Type))
         {
-            case 405: // 4 bag slot
+            result.ObjectType = (ObjectType) result.Type;
+        }
+
+        switch (result.ObjectType)
+        {
+            case ObjectType.Sack: // 4 bag slot
                 result.GetStreamDataAs4SlotBag(stream);
                 break;
-            case 409: // small mantra book
-            case 411: // mantra book
-            case 412: // great mantra book
+            case ObjectType.MantraBookSmall:
+            case ObjectType.MantraBookLarge:
+            case ObjectType.MantraBookGreat:
                 result.GetStreamDataAsMantraBook(stream);
                 break; 
-            case 1000: // white mantra
-            case 1001: // black mantra
+            case ObjectType.MantraWhite:
+            case ObjectType.MantraBlack:
                 result.GetStreamDataAsMantra(stream);
                 break;
-            case 600: // mineral
-            case 601: // plant
-            case 602: // metal
-            case 453: // powder
-            case 455: // aoe powder
-            case 471: // castle elixir
-            case 472: // trap elixir
-            case 709: // mob part
+            case ObjectType.AlchemyMineral:
+            case ObjectType.AlchemyPlant:
+            case ObjectType.AlchemyMetal:
+            case ObjectType.PowderTarget:
+            case ObjectType.PowderAoE:
+            case ObjectType.ElixirCastle:
+            case ObjectType.ElixirTrap:
+            case ObjectType.MonsterPart:
+            case ObjectType.Arrows:
                 result.GetStreamDataAsMaterialPowderElixir(stream);
                 break;
-            case 760: // ring
-            case 762: // golem ring
+            case ObjectType.Ring:
+            case ObjectType.RingGolem:
                 result.GetStreamDataAsRing(stream);
                 break;
-            case 552: // ruby ring
-            case 650: // apple
-            case 651: // pear
-            case 652: // meat
-            case 653: // bread
-            case 655: // fish
-            case 700: // brushwood
+            case ObjectType.RingRuby:
+            case ObjectType.RingDiamond:
+            case ObjectType.RingGold:
+            case ObjectType.FoodApple:
+            case ObjectType.FoodPear:
+            case ObjectType.FoodMeat:
+            case ObjectType.FoodBread:
+            case ObjectType.FoodFish:
+            case ObjectType.AlchemyBrushwood:
                 result.GetStreamDataAsBrushwoodFood(stream);
                 break;
-            case 66: // token
-            case 8: // token
+            case ObjectType.Token:
+            case ObjectType.TokenMultiuse:
+            case ObjectType.TokenIsland:
+            case ObjectType.TokenIslandGuest:
                 result.GetStreamDataAsToken(stream);
                 break;
-            case 804: // craft formula
+            case ObjectType.Blueprint: // craft formula
                 result.GetStreamDataAsCraftFormula(stream);
                 break;
-            case 0: // TBD: figure out, some chests get there
-            case 210: // chest, container
-            case 406: // chest
-            case 415: // container with different shift
+            // case 0: // TBD: figure out, some chests get there
+            // case 210: // chest, container
+            case ObjectType.Chest: // chest
+            // case 415: // container with different shift
                 result.GetStreamDataAsChestContainer(stream);
                 break;
-            case 407:
-            case 90: // legend
-            case 91: // recipe
+            // case 407:
+            case ObjectType.ScrollLegend:
+            case ObjectType.ScrollRecipe:
                 result.GetStreamDataAsScroll(stream);
                 break;
-            case 30: // mut added
+            // case 30: // mut added
+            case ObjectType.ArmorAmulet:
+            case ObjectType.ArmorBelt:
+            case ObjectType.ArmorBoots:
+            case ObjectType.ArmorBracelet:
+            case ObjectType.ArmorChest:
+            case ObjectType.ArmorGloves:
+            case ObjectType.ArmorHelmet:
+            case ObjectType.ArmorPants:
+            case ObjectType.ArmorRobe:
+            case ObjectType.ArmorShield:
+            case ObjectType.QuestArmorAmulet:
+            case ObjectType.QuestArmorBelt:
+            case ObjectType.QuestArmorBoots:
+            case ObjectType.QuestArmorBracelet:
+            case ObjectType.QuestArmorChest:
+            case ObjectType.QuestArmorGloves:
+            case ObjectType.QuestArmorHelmet:
+            case ObjectType.QuestArmorPants:
+            case ObjectType.QuestArmorRing:
+            case ObjectType.QuestArmorRobe:
+            case ObjectType.QuestArmorShield:
+            case ObjectType.WeaponAxe:
+            case ObjectType.WeaponCrossbow:
+            case ObjectType.WeaponSword:
+            case ObjectType.QuestWeaponAxe:
+            case ObjectType.QuestWeaponCrossbow:
+            case ObjectType.QuestWeaponSword:
+            case ObjectType.ArmorHelmetPremium:
+            
+            case ObjectType.Unknown:
             default:
                 result.GetStreamDataAsWeaponArmor(stream, hasLongTail);
                 break;
@@ -374,7 +504,7 @@ public struct ItemPacket
 
     public string ToDebugString()
     {
-        var typeName = Enum.GetName(EncodingGroup);
+        var typeName = Enum.GetName(ObjectType);
         string tabs = "\t";
 
         if (typeName.Length <= 11)
@@ -551,7 +681,7 @@ public static class BitStreamTools
     {
         return ((test[0] & 0b1111) is 0x8 or 0x9 or 0x0)// or 0xF9 or 0x08 or 0xF8 or 0x78 or 0x98)
                 && ((test[1] >> 4) is 0x4 or 0x5) //0 or 0x4F or 0x5F or 0x5E or 0x5C or 0x58 or 0x47 or 0x50)
-                && (test[2] & 0b1111) is 0x1
+                && (test[2] & 0b1111) is 0x1 or 0xD
                 && (test[3] is 0x44 or 0x45);
     }
 }
