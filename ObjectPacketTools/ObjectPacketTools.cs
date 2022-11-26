@@ -466,7 +466,7 @@ public struct ObjectPacket
 
 public static class ObjectPacketTools
 {
-    public static List<ObjectPacket> GetObjectsFromPacket(byte[] packet, bool writeBytesToConsole = false)
+    public static List<ObjectPacket> GetObjectsFromPacket(byte[] packet, bool writeBytesToConsole = true)
     {
         byte[] trimmedPacket;
         if (packet[2] == 0x2C && packet[3] == 0x01 && packet[4] == 0x00)
@@ -488,7 +488,11 @@ public static class ObjectPacketTools
             while (containerStream.ValidPosition)
             {
                 var test = containerStream.ReadBytes(4, true);
+
+                if (!containerStream.ValidPosition) break;
+
                 containerStream.SeekBack(32);
+
                 if (IsObjectPacket(test))
                 {
                     var pos = (containerStream.Offset - 16) * 8 + containerStream.Bit;
@@ -528,7 +532,11 @@ public static class ObjectPacketTools
             var packetStream = new BitStream(objectPacket);
             var obj = ObjectPacket.FromStream(packetStream);
             result.Add(obj);
-            Console.WriteLine(Convert.ToHexString(objectPacket));
+
+            if (writeBytesToConsole)
+            {
+                Console.WriteLine(Convert.ToHexString(objectPacket));
+            }
         }
         
         containerStream.GetStream().Dispose();
