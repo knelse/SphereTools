@@ -1,8 +1,7 @@
 ﻿using System.Net;
 using System.Text;
-using System.Text.RegularExpressions;
 using SharpPcap;
-using static BitStreamTools;
+using static ObjectPacketTools;
 
 const string pingCaptureFilePath = "C:\\_sphereDumps\\ping";
 const string clientCaptureFilePath = "C:\\_sphereDumps\\client";
@@ -10,7 +9,7 @@ const string serverCaptureFilePath = "C:\\_sphereDumps\\server";
 const string serverCaptureFilePathUnfiltered = "C:\\_sphereDumps\\server_unfiltered";
 const string mixedCaptureFilePath = "C:\\_sphereDumps\\mixed";
 const string currentWorldCoordsFilePath = "C:\\_sphereDumps\\currentWorldCoords";
-const string itemPacketDecodeFilePath = "C:\\_sphereDumps\\itemPackets";
+const string objectPacketDecodeFilePath = "C:\\_sphereDumps\\objectPackets";
 WorldCoords oldCoords = new WorldCoords(9999, 9999, 9999, 9999);
 
 const string pingCaptureFilePathLocal = "C:\\_sphereDumps\\local_ping";
@@ -225,8 +224,8 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
 
                         if (data.Length > 25 && data[25] == 0x91 && data[26] == 0x45)
                         {
-                            // item packet?
-                            File.AppendAllText(itemPacketDecodeFilePath,
+                            // object packet?
+                            File.AppendAllText(objectPacketDecodeFilePath,
                                 $"SRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
                         }
                     }
@@ -271,19 +270,19 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
         // analysis
         if (!isClient && bytesForAnalysis.Length > 25)
         {
-            var itemList = GetItemsFromPacket(bytesForAnalysis);
+            var objectList = GetObjectsFromPacket(bytesForAnalysis);
 
-            if (itemList.Count > 0)
+            if (objectList.Count > 0)
             {
-                File.AppendAllText(itemPacketDecodeFilePath, $"{Convert.ToHexString(bytesForAnalysis)}\n");
-                File.AppendAllText(itemPacketDecodeFilePath, $"[{itemList.Count}]\n");
+                File.AppendAllText(objectPacketDecodeFilePath, $"{Convert.ToHexString(bytesForAnalysis)}\n");
+                File.AppendAllText(objectPacketDecodeFilePath, $"[{objectList.Count}]\n");
 
-                foreach (var item in itemList)
+                foreach (var obj in objectList)
                 {
-                    File.AppendAllText(itemPacketDecodeFilePath, $"{item.ToDebugString()}\n");
+                    File.AppendAllText(objectPacketDecodeFilePath, $"{obj.ToDebugString()}\n");
                 }
 
-                File.AppendAllText(itemPacketDecodeFilePath, "\n\n");
+                File.AppendAllText(objectPacketDecodeFilePath, "\n\n");
             }
         }
 }

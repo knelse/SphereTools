@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ItemPacketPlayground", "ItemPacketPlayground.csproj", "{F54DBC6E-FBA1-4EE6-A545-76871A363930}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ItemPacketTools", "..\ItemPacketTools\ItemPacketTools.csproj", "{F34FF5A0-1339-466F-913D-AF72C4CF5591}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ObjectPacketTools", "..\ObjectPacketTools\ObjectPacketTools.csproj", "{F34FF5A0-1339-466F-913D-AF72C4CF5591}"
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitStream", "..\BitStream\BitStream.csproj", "{7F9B3E21-7824-4F77-9F6C-A9D31E3204D5}"
 EndProject

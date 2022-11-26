@@ -12,7 +12,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\ItemPacketTools\ItemPacketTools.csproj" />
+      <ProjectReference Include="..\ObjectPacketTools\ObjectPacketTools.csproj" />
     </ItemGroup>
 
 </Project>

@@ -2,110 +2,7 @@
 using System.Text;
 using BitStreams;
 
-public enum ItemPacketEncodingGroup
-{
-    MantraBook,
-    Mantra,
-    MatPowderEli,
-    Ring,
-    WeaponArmor,
-    FourSlotBag,
-    BrushwoodFood,
-    Token,
-    CraftFormula,
-    ChestContainer,
-    Scroll
-}
-
-public enum ObjectType : ushort
-{
-    Token = 8,
-    SeedCastle = 40,
-    XpPillDegree = 47,
-    TokenMultiuse = 66,
-    TradeLicense = 68,
-    ScrollLegend = 90,
-    ScrollRecipe = 91,
-    TokenIsland = 104,
-    TokenIslandGuest = 105,
-    Bead = 236,
-    BackpackLarge = 400,
-    BackpackSmall = 401,
-    Sack = 405,
-    Chest = 406,
-    MantraBookSmall = 409,
-    RecipeBook = 410,
-    MantraBookLarge = 411,
-    MantraBookGreat = 412,
-    MapBook = 413,
-    KeyBarn = 418,
-    PowderFinale = 451,
-    PowderTarget = 453,
-    PowderAmilus = 454,
-    PowderAoE = 455,
-    ElixirCastle = 471,
-    ElixirTrap = 472,
-    WeaponSword = 500,
-    WeaponAxe = 501,
-    WeaponCrossbow = 502,
-    Arrows = 503,
-    RingDiamond = 551,
-    RingRuby = 552,
-    Ruby = 553,
-    RingGold = 555,
-    AlchemyMineral = 600,
-    AlchemyPlant = 601,
-    AlchemyMetal = 602,
-    FoodApple = 650,
-    FoodPear = 651,
-    FoodMeat = 652,
-    FoodBread = 653,
-    FoodFish = 655,
-    AlchemyBrushwood = 700,
-    Key = 701,
-    Map = 703,
-    Inkpot = 704,
-    Firecracker = 705,
-    Ear = 706,
-    EarString = 708,
-    MonsterPart = 709,
-    Firework = 712,
-    ArmorChest = 750,
-    ArmorAmulet = 751,
-    ArmorBoots = 752,
-    ArmorGloves = 754,
-    ArmorBelt = 755,
-    ArmorShield = 756,
-    ArmorHelmet = 757,
-    ArmorPants = 758,
-    ArmorBracelet = 759,
-    Ring = 760,
-    ArmorRobe = 761,
-    RingGolem = 762,
-    AlchemyPot = 800,
-    Blueprint = 804,
-    QuestArmorChest = 949,
-    QuestArmorAmulet = 950, // unused?
-    QuestArmorBoots = 952,
-    QuestArmorGloves = 953,
-    QuestArmorBelt = 954,
-    QuestArmorShield = 955,
-    QuestArmorHelmet = 956,
-    QuestArmorPants = 957,
-    QuestArmorBracelet = 958, // unused?
-    QuestArmorRing = 959, // unused?
-    QuestArmorRobe = 960,
-    QuestWeaponSword = 961,
-    QuestWeaponAxe = 962,
-    QuestWeaponCrossbow = 963,
-    SpecialAbility = 977, // same type for specialization itself
-    ArmorHelmetPremium = 990,
-    MantraWhite = 1000,
-    MantraBlack = 1001,
-    Unknown = ushort.MaxValue,
-}
-
-public struct ItemPacket
+public struct ObjectPacket
 {
     public ushort Id;
     public Bit[] _skip1;
@@ -127,21 +24,20 @@ public struct ItemPacket
 
     public bool FourBitShiftedSuffix;
     public bool IsStrangeSuffix;
-    public ItemPacketEncodingGroup EncodingGroup;
+    public ObjectPacketEncodingGroup EncodingGroup;
     public ObjectType ObjectType;
-    public byte ItemSeparator => shorterItemSeparator ? (byte) (0x7E >> 1) : (byte) 0x7E;
-    // short item bags can have 7F as separator?
-    public int ItemSeparatorLength => shorterItemSeparator ? 7 : noItemSeparator ? 0 : 8;
+    public byte ObjectSeparator => shorterObjectSeparator ? (byte) (0x7E >> 1) : (byte) 0x7E;
+    public int ObjectSeparatorLength => shorterObjectSeparator ? 7 : noObjectSeparator ? 0 : 8;
 
     private static readonly byte[] premiumByteMarker = { 0x05, 0x0F, 0x08 };
     private const int premiumIntMarker = 0x050F08;
-    private bool shorterItemSeparator =>
-        EncodingGroup is ItemPacketEncodingGroup.WeaponArmor;
-    private bool noItemSeparator => EncodingGroup is ItemPacketEncodingGroup.FourSlotBag;
+    private bool shorterObjectSeparator =>
+        EncodingGroup is ObjectPacketEncodingGroup.WeaponArmor;
+    private bool noObjectSeparator => EncodingGroup is ObjectPacketEncodingGroup.FourSlotBag;
 
-    public static ItemPacket FromStream(BitStream stream)
+    public static ObjectPacket FromStream(BitStream stream)
     {
-        var result = new ItemPacket
+        var result = new ObjectPacket
         {
             Id = stream.ReadUInt16(),
             _skip1 = stream.ReadBits(2),
@@ -318,7 +214,7 @@ public struct ItemPacket
         stream.WriteBits(_skip4);
 
         // TODO: mantras (and prob other stuff) can have Count param too
-        if (EncodingGroup is ItemPacketEncodingGroup.MatPowderEli)
+        if (EncodingGroup is ObjectPacketEncodingGroup.MatPowderEli)
         {
             stream.WriteUInt16(Count, 13);
         }
@@ -359,7 +255,7 @@ public struct ItemPacket
     {
         GetSuffixModSkip3BagId(stream);
         _skip4 = stream.ReadBits(42);
-        EncodingGroup = ItemPacketEncodingGroup.Mantra;
+        EncodingGroup = ObjectPacketEncodingGroup.Mantra;
     }
 
     private void GetStreamDataAsMaterialPowderElixir(BitStream stream)
@@ -381,14 +277,14 @@ public struct ItemPacket
         {
             stream.SeekBack(1);
         }
-        EncodingGroup = ItemPacketEncodingGroup.MatPowderEli;
+        EncodingGroup = ObjectPacketEncodingGroup.MatPowderEli;
     }
 
     private void GetStreamDataAsRing(BitStream stream)
     {
         GetSuffixModSkip3BagId(stream);
         _skip4 = stream.ReadBits(197);
-        EncodingGroup = ItemPacketEncodingGroup.Ring;
+        EncodingGroup = ObjectPacketEncodingGroup.Ring;
     }
 
     private void GetStreamDataAsMantraBook(BitStream stream)
@@ -397,7 +293,7 @@ public struct ItemPacket
         _skip3 = stream.ReadBits(6);
         BagId = stream.ReadUInt16();
         _skip4 = stream.ReadBits(34); //93
-        EncodingGroup = ItemPacketEncodingGroup.MantraBook;
+        EncodingGroup = ObjectPacketEncodingGroup.MantraBook;
     }
 
     private void GetStreamDataAs4SlotBag(BitStream stream)
@@ -413,7 +309,7 @@ public struct ItemPacket
         }
         _skip3 = stream.ReadBits(6);
         BagId = stream.ReadUInt16();
-        EncodingGroup = ItemPacketEncodingGroup.FourSlotBag;
+        EncodingGroup = ObjectPacketEncodingGroup.FourSlotBag;
         _skip4 = stream.ReadBits(int.MaxValue);
     }
 
@@ -424,7 +320,7 @@ public struct ItemPacket
         BagId = stream.ReadUInt16();
         _skip4 = stream.ReadBits(86);
         Count = stream.ReadUInt16(15);
-        EncodingGroup = ItemPacketEncodingGroup.BrushwoodFood;
+        EncodingGroup = ObjectPacketEncodingGroup.BrushwoodFood;
     }
 
     private void GetStreamDataAsToken(BitStream stream)
@@ -435,7 +331,7 @@ public struct ItemPacket
         _skip4 = stream.ReadBits(86);
         Count = stream.ReadUInt16(15);
         _skip4 = stream.ReadBits(51); // 58 total
-        EncodingGroup = ItemPacketEncodingGroup.Token;
+        EncodingGroup = ObjectPacketEncodingGroup.Token;
     }
 
     private void GetStreamDataAsWeaponArmor(BitStream stream, bool hasLongTail)
@@ -460,7 +356,7 @@ public struct ItemPacket
             skipList.AddRange(_skip);
             _skip4 = skipList.ToArray();
         }
-        EncodingGroup = ItemPacketEncodingGroup.WeaponArmor;
+        EncodingGroup = ObjectPacketEncodingGroup.WeaponArmor;
     }
 
     private void GetStreamDataAsCraftFormula(BitStream stream)
@@ -469,7 +365,7 @@ public struct ItemPacket
         _skip3 = stream.ReadBits(6);
         BagId = stream.ReadUInt16();
         _skip4 = stream.ReadBits(414);
-        EncodingGroup = ItemPacketEncodingGroup.CraftFormula;
+        EncodingGroup = ObjectPacketEncodingGroup.CraftFormula;
     }
 
     private void GetStreamDataAsChestContainer(BitStream stream)
@@ -490,7 +386,7 @@ public struct ItemPacket
             // happens with Type = 415, TBD
             _skip3 = stream.ReadBits(64);
         }
-        EncodingGroup = ItemPacketEncodingGroup.ChestContainer;
+        EncodingGroup = ObjectPacketEncodingGroup.ChestContainer;
     }
 
     private void GetStreamDataAsScroll(BitStream stream)
@@ -499,15 +395,15 @@ public struct ItemPacket
         _skip3 = stream.ReadBits(6);
         BagId = stream.ReadUInt16();
         // _skip4 = stream.ReadBits(414);
-        EncodingGroup = ItemPacketEncodingGroup.Scroll;
+        EncodingGroup = ObjectPacketEncodingGroup.Scroll;
     }
 
     public string ToDebugString()
     {
         var typeName = Enum.GetName(ObjectType);
-        string tabs = "\t";
+        var tabs = "\t";
 
-        if (typeName.Length <= 11)
+        if (typeName!.Length <= 11)
         {
             tabs = "\t\t";
         }
@@ -518,9 +414,9 @@ public struct ItemPacket
     }
 }
 
-public static class BitStreamTools
+public static class ObjectPacketTools
 {
-    public static List<ItemPacket> GetItemsFromPacket(byte[] packet, bool writeItemBytesToConsole = false)
+    public static List<ObjectPacket> GetObjectsFromPacket(byte[] packet, bool writeBytesToConsole = false)
     {
         byte[] trimmedPacket;
         if (packet[2] == 0x2C && packet[3] == 0x01 && packet[4] == 0x00)
@@ -534,7 +430,7 @@ public static class BitStreamTools
             trimmedPacket = packet;
         }
         var containerStream = new BitStream(trimmedPacket);
-        var result = new List<ItemPacket>();
+        var result = new List<ObjectPacket>();
         var offsets = new List<long>();
 
         try
@@ -543,7 +439,7 @@ public static class BitStreamTools
             {
                 var test = containerStream.ReadBytes(4, true);
                 containerStream.SeekBack(32);
-                if (IsItemPacket(test))
+                if (IsObjectPacket(test))
                 {
                     var pos = (containerStream.Offset - 16) * 8 + containerStream.Bit;
 
@@ -573,16 +469,16 @@ public static class BitStreamTools
         {
             var bitLength = offsets[i] - offsets[i - 1];
             var bits = containerStream.ReadBits(bitLength);
-            var itemPacket = BitStream.BitArrayToBytes(bits);
-            packets.Add(itemPacket);
+            var objectPacket = BitStream.BitArrayToBytes(bits);
+            packets.Add(objectPacket);
         }
         
-        foreach (var itemPacket in packets)
+        foreach (var objectPacket in packets)
         {
-            var packetStream = new BitStream(itemPacket);
-            var item = ItemPacket.FromStream(packetStream);
-            result.Add(item);
-            Console.WriteLine(Convert.ToHexString(itemPacket));
+            var packetStream = new BitStream(objectPacket);
+            var obj = ObjectPacket.FromStream(packetStream);
+            result.Add(obj);
+            Console.WriteLine(Convert.ToHexString(objectPacket));
         }
         
         containerStream.GetStream().Dispose();
@@ -677,7 +573,7 @@ public static class BitStreamTools
         return true;
     }
 
-    public static bool IsItemPacket(byte[] test)
+    public static bool IsObjectPacket(byte[] test)
     {
         return ((test[0] & 0b1111) is 0x8 or 0x9 or 0x0)// or 0xF9 or 0x08 or 0xF8 or 0x78 or 0x98)
                 && ((test[1] >> 4) is 0x4 or 0x5) //0 or 0x4F or 0x5F or 0x5E or 0x5C or 0x58 or 0x47 or 0x50)
