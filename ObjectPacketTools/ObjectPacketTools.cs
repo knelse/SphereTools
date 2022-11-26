@@ -21,6 +21,7 @@ public struct ObjectPacket
     public bool IsPremium;
     public Bit[] _premiumSkip;
     public Bit[] _strangeSkip;
+    public string FriendlyName;
 
     public bool FourBitShiftedSuffix;
     public bool IsStrangeSuffix;
@@ -35,7 +36,7 @@ public struct ObjectPacket
         EncodingGroup is ObjectPacketEncodingGroup.WeaponArmor;
     private bool noObjectSeparator => EncodingGroup is ObjectPacketEncodingGroup.FourSlotBag;
 
-    public static ObjectPacket FromStream(BitStream stream)
+    public static ObjectPacket FromStream(BitStream stream, Locale localeForFriendlyName = Locale.Russian)
     {
         var result = new ObjectPacket
         {
@@ -183,6 +184,60 @@ public struct ObjectPacket
         catch (IOException)
         {
             // expected for non-premium at the end of the packet
+        }
+
+        if (SphObjectDb.GameObjectDataDb.ContainsKey(result.GameId))
+        {
+            result.FriendlyName = SphObjectDb.GameObjectDataDb[result.GameId].Localisation[localeForFriendlyName];
+        }
+        else
+        {
+            result.FriendlyName = result.ObjectType switch
+            {
+                ObjectType.Arrows => "Стрелы",
+                ObjectType.Bead => "Бусинка",
+                ObjectType.Blueprint => "Формула",
+                ObjectType.Ear => "Ухо",
+                ObjectType.Firecracker => "Петарда",
+                ObjectType.Firework => "Фейерверк",
+                ObjectType.Inkpot => "Чернильница",
+                ObjectType.Key => "Ключ",
+                ObjectType.Sack => "Мешочек",
+                ObjectType.Token => "Жетон телепортации",
+                ObjectType.AlchemyBrushwood => "Хворост",
+                ObjectType.AlchemyPot => "Алхимический котелок",
+                ObjectType.BackpackLarge => "Большая торба",
+                ObjectType.BackpackSmall => "Малая торба",
+                ObjectType.EarString => "Нитка для ушей",
+                ObjectType.FoodApple => "Яблоко",
+                ObjectType.FoodBread => "Хлебная лепешка",
+                ObjectType.FoodFish => "Сушеная рыба",
+                ObjectType.FoodMeat => "Вяленое мясо",
+                ObjectType.FoodPear => "Груша",
+                ObjectType.KeyBarn => "Ключ от амбара",
+                ObjectType.MapBook => "Книга карт",
+                ObjectType.RecipeBook => "Книга рецептов",
+                ObjectType.ScrollLegend => "Свиток (легенда)",
+                ObjectType.ScrollRecipe => "Свиток, рецепт",
+                ObjectType.SeedCastle => "Замковое семя",
+                ObjectType.SpecialAbility => "Спецспособность",
+                ObjectType.TokenIsland => "Жетон телепортации на ЛО",
+                ObjectType.TokenMultiuse => "Жетон телепортации",
+                ObjectType.TradeLicense => "Торговая лицензия",
+                ObjectType.MantraBookGreat => "Великая книга мантр",
+                ObjectType.MantraBookLarge => "Большая книга мантр",
+                ObjectType.MantraBookSmall => "Малая книга мантр",
+                ObjectType.TokenIslandGuest => "Гостевой жетон на ЛО",
+                ObjectType.XpPillDegree => "Пилюля опыта (степень)",
+                ObjectType.RingDiamond => "Кольцо с алмазом",
+                ObjectType.RingGold => "Золотое кольцо",
+                ObjectType.RingRuby => "Кольцо с рубином",
+                ObjectType.Ruby => "Рубин",
+                ObjectType.Mutator => "Мутатор",
+                ObjectType.PowderAmilus => "Порошок Амилуса",
+                ObjectType.PowderFinale => "Порошок Файналя",
+                _ => "<пусто>"
+            };
         }
 
         return result;
@@ -400,16 +455,11 @@ public struct ObjectPacket
 
     public string ToDebugString()
     {
-        var typeName = Enum.GetName(ObjectType);
-        var tabs = "\t";
-
-        if (typeName!.Length <= 11)
-        {
-            tabs = "\t\t";
-        }
-        return $"ID: {Id:X4}\tGMID: {GameId:D4}\tType: {Type} ({typeName}){tabs}Suff: {SuffixMod:D4}\tBag: {BagId:X4}\t" +
-               $"X: {Convert.ToHexString(X)}\tY: {Convert.ToHexString(Y)}\tZ: {Convert.ToHexString(Z)}\tT: " +
-               $"{Convert.ToHexString(X)}\tCount: {Count}\t PA: {IsPremium}\t{_skip1.ToByteString()}\t{_skip2.ToByteString()}\t" +
+        var typeName = $"({Enum.GetName(ObjectType)!})";
+        return $"{FriendlyName.PadRight(32)}ID: {Id:X4}  GMID: {GameId.ToString().PadLeft(5)}  " +
+               $"Type: {Type.ToString().PadLeft(4)} {typeName.PadRight(24)} Suff: {SuffixMod.ToString().PadLeft(4)}  Bag: {BagId:X4}  " +
+               $"X: {Convert.ToHexString(X)}  Y: {Convert.ToHexString(Y)}  Z: {Convert.ToHexString(Z)}  T: " +
+               $"{Convert.ToHexString(T)}  Count: {Count}\t PA: {IsPremium.ToString().PadLeft(5)} {_skip1.ToByteString()}\t{_skip2.ToByteString()}\t" +
                $"{_skip3.ToByteString()}\t{_skip4.ToByteString()}\tPA: {_premiumSkip.ToByteString()}";
     }
 }
@@ -577,7 +627,7 @@ public static class ObjectPacketTools
     {
         return ((test[0] & 0b1111) is 0x8 or 0x9 or 0x0)// or 0xF9 or 0x08 or 0xF8 or 0x78 or 0x98)
                 && ((test[1] >> 4) is 0x4 or 0x5) //0 or 0x4F or 0x5F or 0x5E or 0x5C or 0x58 or 0x47 or 0x50)
-                && (test[2] & 0b1111) is 0x1 or 0xD
+                && (test[2] & 0b1) is 0x1
                 && (test[3] is 0x44 or 0x45);
     }
 }

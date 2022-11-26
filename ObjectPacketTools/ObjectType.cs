@@ -1,6 +1,7 @@
 public enum ObjectType : ushort
 {
     Token = 8,
+    Mutator = 30,
     SeedCastle = 40,
     XpPillDegree = 47,
     TokenMultiuse = 66,
