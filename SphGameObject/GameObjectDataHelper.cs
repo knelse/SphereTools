@@ -1,6 +1,6 @@
 public static class GameObjectDataHelper
 {
-    public static bool firstTypeRolled = false;
+    // public static bool firstTypeRolled = false;
     public static HashSet<ItemSuffix> RingSuffixes = new ()
     {
         ItemSuffix.Health,
@@ -160,6 +160,33 @@ public static class GameObjectDataHelper
                 Console.WriteLine($"Unknown GameObjectType: {sphName}");
                 return GameObjectType.Unknown;
         }
+    }
+
+    public static string ToRomanTierLiteral(this SphGameObject gameObject)
+    {
+        if (!gameObject.IsTierVisible())
+        {
+            return string.Empty;
+        }
+        return gameObject.Tier switch
+        {
+            1 => "I",
+            2 => "II",
+            3 => "III",
+            4 => "IV",
+            5 => "V",
+            6 => "VI",
+            7 => "VII",
+            8 => "VIII",
+            9 => "IX",
+            10 => "X",
+            11 => "XI",
+            12 => "XII",
+            13 => "XIII",
+            14 => "XIV",
+            15 => "XV",
+            _ => string.Empty
+        };
     }
     //
     // public static SphGameObject GetRandomObjectData(int titleLevelMinusOne, int gameIdOverride = -1)

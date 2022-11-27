@@ -8,6 +8,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitStream", "..\BitStream\B
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SphObjectDb", "..\SphObjectDb\SphObjectDb.csproj", "{3C8862BC-FDA5-489F-AFD9-C6F1EA3A595B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SphGameObject", "..\SphGameObject\SphGameObject.csproj", "{ABDE8E94-09C9-4072-8C37-FB95A9D4DDEA}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -30,5 +32,9 @@ Global
 		{3C8862BC-FDA5-489F-AFD9-C6F1EA3A595B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{3C8862BC-FDA5-489F-AFD9-C6F1EA3A595B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{3C8862BC-FDA5-489F-AFD9-C6F1EA3A595B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{ABDE8E94-09C9-4072-8C37-FB95A9D4DDEA}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{ABDE8E94-09C9-4072-8C37-FB95A9D4DDEA}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{ABDE8E94-09C9-4072-8C37-FB95A9D4DDEA}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{ABDE8E94-09C9-4072-8C37-FB95A9D4DDEA}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

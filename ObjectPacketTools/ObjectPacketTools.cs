@@ -22,6 +22,8 @@ public struct ObjectPacket
     public Bit[] _premiumSkip;
     public Bit[] _strangeSkip;
     public string FriendlyName;
+    public SphGameObject? GameObject;
+    public byte[] Packet;
 
     public bool FourBitShiftedSuffix;
     public bool IsStrangeSuffix;
@@ -189,10 +191,11 @@ public struct ObjectPacket
         if (SphObjectDb.GameObjectDataDb.ContainsKey(result.GameId))
         {
             result.FriendlyName = SphObjectDb.GameObjectDataDb[result.GameId].Localisation[localeForFriendlyName];
+            result.GameObject = SphObjectDb.GameObjectDataDb[result.GameId];
         }
         else
         {
-            result.FriendlyName = result.ObjectType switch
+            result.FriendlyName = (result.ObjectType switch
             {
                 ObjectType.Arrows => "Стрелы",
                 ObjectType.Bead => "Бусинка",
@@ -236,8 +239,8 @@ public struct ObjectPacket
                 ObjectType.Mutator => "Мутатор",
                 ObjectType.PowderAmilus => "Порошок Амилуса",
                 ObjectType.PowderFinale => "Порошок Файналя",
-                _ => "<пусто>"
-            };
+                _ => Enum.GetName(result.ObjectType)
+            })!;
         }
 
         return result;
@@ -456,17 +459,20 @@ public struct ObjectPacket
     public string ToDebugString()
     {
         var typeName = $"({Enum.GetName(ObjectType)!})";
-        return $"{FriendlyName.PadRight(32)}ID: {Id:X4}  GMID: {GameId.ToString().PadLeft(5)}  " +
+        var tier = GameObject?.ToRomanTierLiteral() ?? string.Empty;
+        var count = Count > 1 ? $" ({Count})" : string.Empty;
+        var name = $"{FriendlyName}" + (string.IsNullOrEmpty(tier) ? tier : $" {tier}") + count;
+        return $"{name.PadRight(40)}ID: {Id:X4}  GMID: {GameId.ToString().PadLeft(5)}  " +
                $"Type: {Type.ToString().PadLeft(4)} {typeName.PadRight(24)} Suff: {SuffixMod.ToString().PadLeft(4)}  Bag: {BagId:X4}  " +
                $"X: {Convert.ToHexString(X)}  Y: {Convert.ToHexString(Y)}  Z: {Convert.ToHexString(Z)}  T: " +
-               $"{Convert.ToHexString(T)}  Count: {Count}\t PA: {IsPremium.ToString().PadLeft(5)} {_skip1.ToByteString()}\t{_skip2.ToByteString()}\t" +
+               $"{Convert.ToHexString(T)}  PA: {IsPremium.ToString().PadLeft(5)} {_skip1.ToByteString()}\t{_skip2.ToByteString()}\t" +
                $"{_skip3.ToByteString()}\t{_skip4.ToByteString()}\tPA: {_premiumSkip.ToByteString()}";
     }
 }
 
 public static class ObjectPacketTools
 {
-    public static List<ObjectPacket> GetObjectsFromPacket(byte[] packet, bool writeBytesToConsole = true)
+    public static List<ObjectPacket> GetObjectsFromPacket(byte[] packet)
     {
         byte[] trimmedPacket;
         if (packet[2] == 0x2C && packet[3] == 0x01 && packet[4] == 0x00)
@@ -531,17 +537,49 @@ public static class ObjectPacketTools
         {
             var packetStream = new BitStream(objectPacket);
             var obj = ObjectPacket.FromStream(packetStream);
+            obj.Packet = objectPacket;
             result.Add(obj);
-
-            if (writeBytesToConsole)
-            {
-                Console.WriteLine(Convert.ToHexString(objectPacket));
-            }
         }
         
         containerStream.GetStream().Dispose();
         
         return result;
+    }
+
+    public static string GetTextOutput(List<ObjectPacket> objectPackets, bool writePacketsToConsole = false)
+    {
+        if (objectPackets.Count == 0)
+        {
+            return string.Empty;
+        }
+        objectPackets.Sort((a, b) => a.BagId.CompareTo(b.BagId));
+
+        var currentBagId = -1;
+        var sb = new StringBuilder();
+        
+        foreach (var objectPacket in objectPackets)
+        {
+            if (objectPacket.BagId != currentBagId)
+            {
+                currentBagId = objectPacket.BagId;
+
+                if (writePacketsToConsole)
+                {
+                    Console.WriteLine($"[{currentBagId:X4}]");
+                }
+
+                sb.AppendLine($"[{currentBagId:X4}]");
+            }
+
+            if (writePacketsToConsole)
+            {
+                Console.WriteLine(Convert.ToHexString(objectPacket.Packet));
+            }
+
+            sb.AppendLine(objectPacket.ToDebugString());
+        }
+
+        return sb.ToString();
     }
     public static void SeekBack(this BitStream bitStream, int countBits)
     {

@@ -896,6 +896,16 @@ public class SphGameObject
         return Array.Empty<byte>();
     }
 
+    public bool IsTierVisible()
+    {
+        return ObjectKind is GameObjectKind.Armor or GameObjectKind.Axe or GameObjectKind.Guild
+            or GameObjectKind.Magical or GameObjectKind.Powder or GameObjectKind.Quest or GameObjectKind.Sword
+            or GameObjectKind.Unique or GameObjectKind.Armor_New or GameObjectKind.Armor_Old or GameObjectKind.Axe_New
+            or GameObjectKind.Crossbow_New or GameObjectKind.Magical_New or GameObjectKind.MantraBlack
+            or GameObjectKind.MantraWhite or GameObjectKind.Sword_New
+            && ObjectType is not GameObjectType.Ear;
+    }
+
     public static byte MinorByte(ushort input)
     {
         return (byte)(input & 0xFF);
