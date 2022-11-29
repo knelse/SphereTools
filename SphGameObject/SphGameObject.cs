@@ -82,7 +82,7 @@ public class SphGameObject
     {
         GameObjectType.Crossbow, GameObjectType.Axe, GameObjectType.Sword, GameObjectType.Amulet, GameObjectType.Armor,
         GameObjectType.Belt, GameObjectType.Bracelet, GameObjectType.Gloves, GameObjectType.Helmet,
-        GameObjectType.Pants, GameObjectType.Shield, GameObjectType.Shoes, GameObjectType.Robe
+        GameObjectType.Pants, GameObjectType.Shield, GameObjectType.Boots, GameObjectType.Robe
     };
 
     public string ToDebugString()
@@ -236,7 +236,7 @@ public class SphGameObject
                     typeid_1 = 0xD0;
                     typeid_2 = 0x8B;
                     break;
-                case GameObjectType.Shoes:
+                case GameObjectType.Boots:
                     typeid_1 = 0xC0;
                     typeid_2 = 0x8B;
                     break;
@@ -582,7 +582,7 @@ public class SphGameObject
                 }
             }
             if (ObjectType is GameObjectType.Helmet or GameObjectType.Gloves or GameObjectType.Belt 
-                or GameObjectType.Pants or GameObjectType.Shoes)
+                or GameObjectType.Pants or GameObjectType.Boots)
             {
                 switch (Suffix)
                 {

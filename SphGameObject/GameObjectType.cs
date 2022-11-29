@@ -42,7 +42,7 @@ public enum GameObjectType
     Shield,
     Shield_Quest,
     Shield_Unique, // Castle?
-    Shoes,
+    Boots,
     Shoes_Quest,
     Shoes_Unique, // Castle?
     Castle_Crystal,

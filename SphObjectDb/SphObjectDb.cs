@@ -242,8 +242,6 @@ public static class SphObjectDb
 
     private static void GenerateGameObjectLocale()
     {
-        
-
         foreach ((var name, var localeEntry) in LocalisationContent)
         {
             if (!ObjectNameToLocalizationMap.ContainsKey(name))

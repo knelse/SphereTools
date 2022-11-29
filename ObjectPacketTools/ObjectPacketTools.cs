@@ -24,6 +24,7 @@ public struct ObjectPacket
     public string FriendlyName;
     public SphGameObject? GameObject;
     public byte[] Packet;
+    public long BitsRead;
 
     public bool FourBitShiftedSuffix;
     public bool IsStrangeSuffix;
@@ -192,6 +193,13 @@ public struct ObjectPacket
         {
             result.FriendlyName = SphObjectDb.GameObjectDataDb[result.GameId].Localisation[localeForFriendlyName];
             result.GameObject = SphObjectDb.GameObjectDataDb[result.GameId];
+            var type = result.GameObject.ObjectType;
+
+            if (GameObjectDataHelper.ObjectTypeToSuffixLocaleMap.ContainsKey(type))
+            {
+                result.GameObject.Suffix = GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[type]
+                    .GetSuffixById(result.SuffixMod);
+            }
         }
         else
         {
@@ -243,6 +251,7 @@ public struct ObjectPacket
             })!;
         }
 
+        result.BitsRead = stream.Offset * 8 + stream.Bit;
         return result;
     }
 
@@ -460,8 +469,12 @@ public struct ObjectPacket
     {
         var typeName = $"({Enum.GetName(ObjectType)!})";
         var tier = GameObject?.ToRomanTierLiteral() ?? string.Empty;
+        var suffix = (GameObject?.Suffix ?? ItemSuffix.None) == ItemSuffix.None
+            ? string.Empty
+            : @$" {GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.ObjectType][GameObject!.Suffix]
+                .localization[Locale.Russian]}";  
         var count = Count > 1 ? $" ({Count})" : string.Empty;
-        var name = $"{FriendlyName}" + (string.IsNullOrEmpty(tier) ? tier : $" {tier}") + count;
+        var name = $"{FriendlyName}" + suffix + (string.IsNullOrEmpty(tier) ? tier : $" {tier}") + count;
         return $"{name.PadRight(40)}ID: {Id:X4}  GMID: {GameId.ToString().PadLeft(5)}  " +
                $"Type: {Type.ToString().PadLeft(4)} {typeName.PadRight(24)} Suff: {SuffixMod.ToString().PadLeft(4)}  Bag: {BagId:X4}  " +
                $"X: {Convert.ToHexString(X)}  Y: {Convert.ToHexString(Y)}  Z: {Convert.ToHexString(Z)}  T: " +
@@ -573,7 +586,7 @@ public static class ObjectPacketTools
 
             if (writePacketsToConsole)
             {
-                Console.WriteLine(Convert.ToHexString(objectPacket.Packet));
+                Console.WriteLine(objectPacket.BitsRead + " " +  Convert.ToHexString(objectPacket.Packet));
             }
 
             sb.AppendLine(objectPacket.ToDebugString());

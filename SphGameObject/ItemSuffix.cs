@@ -98,7 +98,7 @@ public enum ItemSuffix
     // Deflection,
     // Precision,
     // Damage,
-    //---- Helmets, Gloves, Belts, Pants, Shoes ----//
+    //---- Helmets, Gloves, Belts, Pants, Boots ----//
     // Health,
     // Value,
     // Durability,
