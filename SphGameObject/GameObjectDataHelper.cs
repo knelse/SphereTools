@@ -332,8 +332,8 @@ public static class GameObjectDataHelper
             new SuffixValueWithLocale(1114, new Dictionary<Locale, string> { [Locale.Russian] = "ловкости" }),
         [ItemSuffix.Safety] =
             new SuffixValueWithLocale(96, new Dictionary<Locale, string> { [Locale.Russian] = "безопасности" }),
-        [ItemSuffix.Majesty] =
-            new SuffixValueWithLocale(1122, new Dictionary<Locale, string> { [Locale.Russian] = "величия" }),
+        // [ItemSuffix.Majesty] =
+        //     new SuffixValueWithLocale(1122, new Dictionary<Locale, string> { [Locale.Russian] = "величия" }),
         [ItemSuffix.Invincibility] =
             new SuffixValueWithLocale(104, new Dictionary<Locale, string> { [Locale.Russian] = "неуязвимости" }),
         [ItemSuffix.Concentration] =
@@ -372,8 +372,8 @@ public static class GameObjectDataHelper
         //     new SuffixValueWithLocale(1194, new Dictionary<Locale, string> { [Locale.Russian] = "ловкости" }),
         // [ItemSuffix.Health] =
         //     new SuffixValueWithLocale(176, new Dictionary<Locale, string> { [Locale.Russian] = "здоровья" }),
-        // [ItemSuffix.Majesty] =
-        //     new SuffixValueWithLocale(1202, new Dictionary<Locale, string> { [Locale.Russian] = "величия" }),
+        [ItemSuffix.Majesty] =
+            new SuffixValueWithLocale(1202, new Dictionary<Locale, string> { [Locale.Russian] = "величия" }),
         // [ItemSuffix.Life] =
         //     new SuffixValueWithLocale(184, new Dictionary<Locale, string> { [Locale.Russian] = "жизни" }),
         // [ItemSuffix.Concentration] =
@@ -382,8 +382,12 @@ public static class GameObjectDataHelper
         //     new SuffixValueWithLocale(192, new Dictionary<Locale, string> { [Locale.Russian] = "доблести" }),
         [ItemSuffix.Integrity] =
             new SuffixValueWithLocale(1218, new Dictionary<Locale, string> { [Locale.Russian] = "цельности" }),
+        [ItemSuffix.IntegrityOther] =
+            new SuffixValueWithLocale(1213, new Dictionary<Locale, string> { [Locale.Russian] = "цельности" }),
         // [ItemSuffix.Durability] =
         //     new SuffixValueWithLocale(200, new Dictionary<Locale, string> { [Locale.Russian] = "прочности" }),
+        [ItemSuffix.Elements_New] =
+            new SuffixValueWithLocale(1226, new Dictionary<Locale, string> { [Locale.Russian] = "цельности" }),
     };
 
     public static readonly Dictionary<ItemSuffix, SuffixValueWithLocale> SuffixesRobes = new()
@@ -452,6 +456,8 @@ public static class GameObjectDataHelper
         //     new SuffixValueWithLocale(184, new Dictionary<Locale, string> { [Locale.Russian] = "праны" }),
         [ItemSuffix.Dragon] =
             new SuffixValueWithLocale(1210, new Dictionary<Locale, string> { [Locale.Russian] = "дракона" }),
+        [ItemSuffix.DragonOther] =
+            new SuffixValueWithLocale(1214, new Dictionary<Locale, string> { [Locale.Russian] = "дракона" }),
     };
 
     public static readonly Dictionary<ItemSuffix, SuffixValueWithLocale> SuffixesRings = new()

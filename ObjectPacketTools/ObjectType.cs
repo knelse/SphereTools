@@ -80,6 +80,7 @@ public enum ObjectType : ushort
     QuestWeaponSword = 961,
     QuestWeaponAxe = 962,
     QuestWeaponCrossbow = 963,
+    SpecialGuild = 976, // sometimes different
     SpecialAbility = 977, // same type for specialization itself
     ArmorHelmetPremium = 990,
     MantraWhite = 1000,

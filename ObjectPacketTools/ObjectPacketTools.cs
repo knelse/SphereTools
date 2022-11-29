@@ -52,7 +52,7 @@ public struct ObjectPacket
             Z = stream.ReadBytes(4, true)
         };
         var longTailTest = stream.ReadBytes(4, true);
-        var hasLongTail = longTailTest[2] != 0x16; 
+        var hasLongTail = longTailTest[2] != 0x16;
         stream.SeekBack(32);
         result.T = stream.ReadBytes(4, true);
         result.GameId = stream.ReadUInt16(14);
@@ -231,6 +231,7 @@ public struct ObjectPacket
                 ObjectType.ScrollLegend => "Свиток (легенда)",
                 ObjectType.ScrollRecipe => "Свиток, рецепт",
                 ObjectType.SeedCastle => "Замковое семя",
+                ObjectType.SpecialGuild => "Гильдия",
                 ObjectType.SpecialAbility => "Спецспособность",
                 ObjectType.TokenIsland => "Жетон телепортации на ЛО",
                 ObjectType.TokenMultiuse => "Жетон телепортации",
@@ -321,7 +322,8 @@ public struct ObjectPacket
     private void GetStreamDataAsMantra(BitStream stream)
     {
         GetSuffixModSkip3BagId(stream);
-        _skip4 = stream.ReadBits(42);
+        _skip4 = stream.ReadBits(27);
+        Count = stream.ValidPosition ? stream.ReadUInt16() : (ushort) 1;
         EncodingGroup = ObjectPacketEncodingGroup.Mantra;
     }
 
@@ -468,14 +470,27 @@ public struct ObjectPacket
     public string ToDebugString()
     {
         var typeName = $"({Enum.GetName(ObjectType)!})";
-        var tier = GameObject?.ToRomanTierLiteral() ?? string.Empty;
+        string tier;
+
+        if (GameObject?.ObjectType == GameObjectType.Ring)
+        {
+            tier = GameObject.TitleMinusOne > 0
+                ? $"{GameObject.TitleMinusOne + 1}т"
+                : GameObject.DegreeMinusOne > 0
+                    ? $"{GameObject.DegreeMinusOne + 1}с"
+                    : GameObject.ToRomanTierLiteral();
+        }
+        else
+        {
+            tier = GameObject?.ToRomanTierLiteral() ?? string.Empty;
+        }
         var suffix = (GameObject?.Suffix ?? ItemSuffix.None) == ItemSuffix.None
             ? string.Empty
             : @$" {GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.ObjectType][GameObject!.Suffix]
-                .localization[Locale.Russian]}";  
+                .localization[Locale.Russian]}";
         var count = Count > 1 ? $" ({Count})" : string.Empty;
         var name = $"{FriendlyName}" + suffix + (string.IsNullOrEmpty(tier) ? tier : $" {tier}") + count;
-        return $"{name.PadRight(40)}ID: {Id:X4}  GMID: {GameId.ToString().PadLeft(5)}  " +
+        return $"{name.PadRight(44)}ID: {Id:X4}  GMID: {GameId.ToString().PadLeft(5)}  " +
                $"Type: {Type.ToString().PadLeft(4)} {typeName.PadRight(24)} Suff: {SuffixMod.ToString().PadLeft(4)}  Bag: {BagId:X4}  " +
                $"X: {Convert.ToHexString(X)}  Y: {Convert.ToHexString(Y)}  Z: {Convert.ToHexString(Z)}  T: " +
                $"{Convert.ToHexString(T)}  PA: {IsPremium.ToString().PadLeft(5)} {_skip1.ToByteString()}\t{_skip2.ToByteString()}\t" +
@@ -515,8 +530,23 @@ public static class ObjectPacketTools
                 if (IsObjectPacket(test))
                 {
                     var pos = (containerStream.Offset - 16) * 8 + containerStream.Bit;
+                    var currentOffset = containerStream.Offset;
+                    var currentBit = containerStream.Bit;
+                    
+                    containerStream.Seek(currentOffset - 14, currentBit);
+                    containerStream.ReadBits(2);
+                    var typeCheck = containerStream.ReadUInt16(10);
 
-                    offsets.Add(pos);
+                    if (Enum.IsDefined(typeof(ObjectType), typeCheck))
+                    {
+                        offsets.Add(pos);
+                    }
+                    else
+                    {
+                        Console.WriteLine($"Unknown: {typeCheck} at {currentOffset} {currentBit}");
+                    }
+                    
+                    containerStream.Seek(currentOffset, currentBit);
                 }
 
                 containerStream.ReadBit();

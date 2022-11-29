@@ -86,6 +86,7 @@ public enum ItemSuffix
     Archmage,
     // Health_Old,
     // Ether_Old,
+    DragonOther,
     //---- Bracelets, Amulets ----//
     // Safety,
     // Ether,
@@ -146,7 +147,7 @@ public enum ItemSuffix
     // Majesty_Old,
     // Air,
     // Strength,
-    // Integrity,
+    IntegrityOther,
     // Durability,
     // Invincibility,
     // Prana,
