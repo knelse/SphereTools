@@ -1,0 +1,3 @@
+[submodule "BitStream"]
+	path = BitStream
+	url = https://github.com/knelse/BitStream.git
