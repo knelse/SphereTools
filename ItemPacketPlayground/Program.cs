@@ -1,7 +1,12 @@
 ﻿
+using LiteDB;
 using static ObjectPacketTools;
 
 Console.WindowWidth = 600;
+
+using var db = new LiteDatabase(@"Filename=C:\_sphereStuff\sph_items.db;Connection=shared;");
+var itemCollection = db.GetCollection<ObjectPacket>("ObjectPackets");
+RegisterBsonMapperForBit();
 
 var fromCode = true;
 
@@ -15,6 +20,8 @@ if (fromCode)
     var objects = GetObjectsFromPacket(container);
 
     Console.WriteLine(GetTextOutput(objects, true));
+    
+    // objects.ForEach(x => itemCollection.Insert(x));
 }
 
 else

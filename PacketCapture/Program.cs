@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Text;
+using LiteDB;
 using SharpPcap;
 using static ObjectPacketTools;
 
@@ -10,13 +11,15 @@ const string serverCaptureFilePathUnfiltered = "C:\\_sphereDumps\\server_unfilte
 const string mixedCaptureFilePath = "C:\\_sphereDumps\\mixed";
 const string currentWorldCoordsFilePath = "C:\\_sphereDumps\\currentWorldCoords";
 const string objectPacketDecodeFilePath = "C:\\_sphereDumps\\objectPackets";
-WorldCoords oldCoords = new WorldCoords(9999, 9999, 9999, 9999);
+var oldCoords = new WorldCoords(9999, 9999, 9999, 9999);
 
 const string pingCaptureFilePathLocal = "C:\\_sphereDumps\\local_ping";
 const string clientCaptureFilePathLocal = "C:\\_sphereDumps\\local_client";
 const string serverCaptureFilePathLocal = "C:\\_sphereDumps\\local_server";
 const string mixedCaptureFilePathLocal = "C:\\_sphereDumps\\local_mixed";
-WorldCoords oldCoordsLocal = new WorldCoords(9999, 9999, 9999, 9999);
+var oldCoordsLocal = new WorldCoords(9999, 9999, 9999, 9999);
+using var itemDb = new LiteDatabase(@"Filename=C:\_sphereStuff\sph_items.db;Connection=shared;");
+var itemCollection = itemDb.GetCollection<ObjectPacket>("ObjectPackets");
 
 // 1200 - ping
 // 1300 - 6s ping
@@ -31,9 +34,8 @@ WorldCoords oldCoordsLocal = new WorldCoords(9999, 9999, 9999, 9999);
 // 1F00 - damage to client
 var serverPacketsToHide = new HashSet<byte>
     { 0x12, 0x13, 0x10, 0x14, 0x17, 0x22, 0x0F, 0x2D, 0x11, 0x1D, 0x19, 0x0B, 0x43, 0x38, 0x1F };//, "08", "0C"};// {"2D", "0E", "1D", "12"};
-var sessionDivider =
-    "================================================================================================================================================================================================================\n" +
-    "================================================================================================================================================================================================================\n";
+const string sessionDivider = "================================================================================================================================================================================================================\n" +
+                              "================================================================================================================================================================================================================\n";
 
 var endPacket = new byte[] { 0x04, 0x00, 0xF4, 0x01 };
 var packetOkMarker = new byte[] { 0x2C, 0x01 };
@@ -277,6 +279,7 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                 File.AppendAllText(objectPacketDecodeFilePath, $"{Convert.ToHexString(bytesForAnalysis)}\n");
                 File.AppendAllText(objectPacketDecodeFilePath, $"{GetTextOutput(objectList, true)}\n");
                 File.AppendAllText(objectPacketDecodeFilePath, $"({objectList.Count} total)\n");
+                objectList.ForEach(x => itemCollection.Insert(x));
 
                 File.AppendAllText(objectPacketDecodeFilePath, "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
             }
@@ -333,7 +336,8 @@ static int GetDestinationIdFromDamagePacket(byte[] rcvBuffer)
 }
 
 var devices = CaptureDeviceList.Instance;
-var ethernet = devices.FirstOrDefault(x => x.MacAddress?.ToString() == "00D861BEC926");
+var ethernet = devices.FirstOrDefault(x => x.MacAddress?.ToString() == "C87F54061FF1");
+RegisterBsonMapperForBit();
 ethernet.OnPacketArrival += OnPacketArrival;
 // to let it load before first object packet
 var time = DateTime.Now;

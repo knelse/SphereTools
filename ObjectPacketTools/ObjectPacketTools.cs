@@ -1,35 +1,38 @@
 ﻿
 using System.Text;
 using BitStreams;
+using LiteDB;
 
 public struct ObjectPacket
 {
-    public ushort Id;
-    public Bit[] _skip1;
-    public ushort Type;
-    public Bit[] _skip2;
-    public byte[] X;
-    public byte[] Y;
-    public byte[] Z;
-    public byte[] T;
-    public ushort GameId;
-    public ushort SuffixMod;
-    public Bit[] _skip3;
-    public ushort BagId;
-    public Bit[] _skip4;
-    public ushort Count;
-    public bool IsPremium;
-    public Bit[] _premiumSkip;
-    public Bit[] _strangeSkip;
-    public string FriendlyName;
-    public SphGameObject? GameObject;
-    public byte[] Packet;
-    public long BitsRead;
+    [BsonId]
+    public int DbId { get; set; }
+    public ushort Id { get; set; }
+    public Bit[] _skip1 { get; set; }
+    public ushort Type { get; set; }
+    public Bit[] _skip2 { get; set; }
+    public byte[] X { get; set; }
+    public byte[] Y { get; set; }
+    public byte[] Z { get; set; }
+    public byte[] T { get; set; }
+    public ushort GameId { get; set; }
+    public ushort SuffixMod { get; set; }
+    public Bit[] _skip3 { get; set; }
+    public ushort BagId { get; set; }
+    public Bit[] _skip4 { get; set; }
+    public ushort Count { get; set; }
+    public bool IsPremium { get; set; }
+    public Bit[] _premiumSkip { get; set; }
+    public Bit[] _strangeSkip { get; set; }
+    public string FriendlyName { get; set; }
+    public SphGameObject? GameObject { get; set; }
+    public byte[] Packet { get; set; }
+    public long BitsRead { get; set; }
 
-    public bool FourBitShiftedSuffix;
-    public bool IsStrangeSuffix;
-    public ObjectPacketEncodingGroup EncodingGroup;
-    public ObjectType ObjectType;
+    public bool FourBitShiftedSuffix { get; set; }
+    public bool IsStrangeSuffix { get; set; }
+    public ObjectPacketEncodingGroup EncodingGroup { get; set; }
+    public ObjectType ObjectType { get; set; }
     public byte ObjectSeparator => shorterObjectSeparator ? (byte) (0x7E >> 1) : (byte) 0x7E;
     public int ObjectSeparatorLength => shorterObjectSeparator ? 7 : noObjectSeparator ? 0 : 8;
 
@@ -281,17 +284,17 @@ public struct ObjectPacket
         stream.WriteUInt16(BagId);
         stream.WriteBits(_skip4);
 
-        // TODO: mantras (and prob other stuff) can have Count param too
-        if (EncodingGroup is ObjectPacketEncodingGroup.MatPowderEli)
+        if (Count > 1 )
         {
-            stream.WriteUInt16(Count, 13);
+            stream.WriteUInt16(Count);//, 13);
         }
 
-        if (IsPremium)
-        {
-            stream.WriteBytes(premiumByteMarker, premiumByteMarker.Length);
-            stream.WriteBits(_premiumSkip);
-        }
+        // ignore for now, ideally forever
+        // if (IsPremium)
+        // {
+        //     stream.WriteBytes(premiumByteMarker, premiumByteMarker.Length);
+        //     stream.WriteBits(_premiumSkip);
+        // }
     }
 
     private void GetSuffixModSkip3BagId(BitStream stream)
@@ -718,5 +721,15 @@ public static class ObjectPacketTools
                 && ((test[1] >> 4) is 0x4 or 0x5) //0 or 0x4F or 0x5F or 0x5E or 0x5C or 0x58 or 0x47 or 0x50)
                 && (test[2] & 0b1) is 0x1
                 && (test[3] is 0x44 or 0x45);
+    }
+
+    public static void RegisterBsonMapperForBit()
+    {
+        BsonMapper.Global.RegisterType
+        (
+            serialize: (bit) => (int) bit,
+            deserialize: (bson) => new Bit((int)bson)
+        );
+
     }
 }
