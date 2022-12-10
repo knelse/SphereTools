@@ -206,53 +206,7 @@ public struct ObjectPacket
         }
         else
         {
-            result.FriendlyName = (result.ObjectType switch
-            {
-                ObjectType.Arrows => "Стрелы",
-                ObjectType.Bead => "Бусинка",
-                ObjectType.Blueprint => "Формула",
-                ObjectType.Ear => "Ухо",
-                ObjectType.Firecracker => "Петарда",
-                ObjectType.Firework => "Фейерверк",
-                ObjectType.Inkpot => "Чернильница",
-                ObjectType.Key => "Ключ",
-                ObjectType.Sack => "Мешочек",
-                ObjectType.Token => "Жетон телепортации",
-                ObjectType.AlchemyBrushwood => "Хворост",
-                ObjectType.AlchemyPot => "Алхимический котелок",
-                ObjectType.BackpackLarge => "Большая торба",
-                ObjectType.BackpackSmall => "Малая торба",
-                ObjectType.EarString => "Нитка для ушей",
-                ObjectType.FoodApple => "Яблоко",
-                ObjectType.FoodBread => "Хлебная лепешка",
-                ObjectType.FoodFish => "Сушеная рыба",
-                ObjectType.FoodMeat => "Вяленое мясо",
-                ObjectType.FoodPear => "Груша",
-                ObjectType.KeyBarn => "Ключ от амбара",
-                ObjectType.MapBook => "Книга карт",
-                ObjectType.RecipeBook => "Книга рецептов",
-                ObjectType.ScrollLegend => "Свиток (легенда)",
-                ObjectType.ScrollRecipe => "Свиток, рецепт",
-                ObjectType.SeedCastle => "Замковое семя",
-                ObjectType.SpecialGuild => "Гильдия",
-                ObjectType.SpecialAbility => "Спецспособность",
-                ObjectType.TokenIsland => "Жетон телепортации на ЛО",
-                ObjectType.TokenMultiuse => "Жетон телепортации",
-                ObjectType.TradeLicense => "Торговая лицензия",
-                ObjectType.MantraBookGreat => "Великая книга мантр",
-                ObjectType.MantraBookLarge => "Большая книга мантр",
-                ObjectType.MantraBookSmall => "Малая книга мантр",
-                ObjectType.TokenIslandGuest => "Гостевой жетон на ЛО",
-                ObjectType.XpPillDegree => "Пилюля опыта (степень)",
-                ObjectType.RingDiamond => "Кольцо с алмазом",
-                ObjectType.RingGold => "Золотое кольцо",
-                ObjectType.RingRuby => "Кольцо с рубином",
-                ObjectType.Ruby => "Рубин",
-                ObjectType.Mutator => "Мутатор",
-                ObjectType.PowderAmilus => "Порошок Амилуса",
-                ObjectType.PowderFinale => "Порошок Файналя",
-                _ => Enum.GetName(result.ObjectType)
-            })!;
+            result.FriendlyName = ObjectPacketTools.GetFriendlyNameByObjectType(result.ObjectType);
         }
 
         result.BitsRead = stream.Offset * 8 + stream.Bit;
@@ -284,7 +238,13 @@ public struct ObjectPacket
         stream.WriteUInt16(BagId);
         stream.WriteBits(_skip4);
 
-        if (Count > 1 )
+        if (ObjectType is ObjectType.Arrows or ObjectType.Bead or ObjectType.Ruby or ObjectType.Token
+            or ObjectType.AlchemyBrushwood or ObjectType.AlchemyMetal or ObjectType.AlchemyMineral
+            or ObjectType.AlchemyPlant or ObjectType.ElixirCastle or ObjectType.ElixirTrap or ObjectType.FoodApple
+            or ObjectType.FoodBread or ObjectType.FoodFish or ObjectType.FoodMeat or ObjectType.FoodPear
+            or ObjectType.MantraBlack or ObjectType.MantraWhite or ObjectType.MonsterPart or ObjectType.PowderAmilus
+            or ObjectType.PowderFinale or ObjectType.PowderTarget or ObjectType.RingDiamond or ObjectType.RingRuby
+            or ObjectType.SeedCastle or ObjectType.TokenIsland or ObjectType.PowderAoE)
         {
             stream.WriteUInt16(Count);//, 13);
         }
@@ -731,5 +691,56 @@ public static class ObjectPacketTools
             deserialize: (bson) => new Bit((int)bson)
         );
 
+    }
+
+    public static string GetFriendlyNameByObjectType(ObjectType objectType)
+    {
+        return objectType switch
+        {
+            ObjectType.Arrows => "Стрелы",
+            ObjectType.Bead => "Бусинка",
+            ObjectType.Blueprint => "Формула",
+            ObjectType.Ear => "Ухо",
+            ObjectType.Firecracker => "Петарда",
+            ObjectType.Firework => "Фейерверк",
+            ObjectType.Inkpot => "Чернильница",
+            ObjectType.Key => "Ключ",
+            ObjectType.Sack => "Мешочек",
+            ObjectType.Token => "Жетон телепортации",
+            ObjectType.AlchemyBrushwood => "Хворост",
+            ObjectType.AlchemyPot => "Алхимический котелок",
+            ObjectType.BackpackLarge => "Большая торба",
+            ObjectType.BackpackSmall => "Малая торба",
+            ObjectType.EarString => "Нитка для ушей",
+            ObjectType.FoodApple => "Яблоко",
+            ObjectType.FoodBread => "Хлебная лепешка",
+            ObjectType.FoodFish => "Сушеная рыба",
+            ObjectType.FoodMeat => "Вяленое мясо",
+            ObjectType.FoodPear => "Груша",
+            ObjectType.KeyBarn => "Ключ от амбара",
+            ObjectType.MapBook => "Книга карт",
+            ObjectType.RecipeBook => "Книга рецептов",
+            ObjectType.ScrollLegend => "Свиток (легенда)",
+            ObjectType.ScrollRecipe => "Свиток, рецепт",
+            ObjectType.SeedCastle => "Замковое семя",
+            ObjectType.SpecialGuild => "Гильдия",
+            ObjectType.SpecialAbility => "Спецспособность",
+            ObjectType.TokenIsland => "Жетон телепортации на ЛО",
+            ObjectType.TokenMultiuse => "Жетон телепортации",
+            ObjectType.TradeLicense => "Торговая лицензия",
+            ObjectType.MantraBookGreat => "Великая книга мантр",
+            ObjectType.MantraBookLarge => "Большая книга мантр",
+            ObjectType.MantraBookSmall => "Малая книга мантр",
+            ObjectType.TokenIslandGuest => "Гостевой жетон на ЛО",
+            ObjectType.XpPillDegree => "Пилюля опыта (степень)",
+            ObjectType.RingDiamond => "Кольцо с алмазом",
+            ObjectType.RingGold => "Золотое кольцо",
+            ObjectType.RingRuby => "Кольцо с рубином",
+            ObjectType.Ruby => "Рубин",
+            ObjectType.Mutator => "Мутатор",
+            ObjectType.PowderAmilus => "Порошок Амилуса",
+            ObjectType.PowderFinale => "Порошок Файналя",
+            _ => Enum.GetName(objectType)
+        };
     }
 }
