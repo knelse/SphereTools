@@ -480,8 +480,8 @@ public static class GameObjectDataHelper
         //     new SuffixValueWithLocale(128, new Dictionary<Locale, string> { [Locale.Russian] = "ценности" }),
         // [ItemSuffix.Deflection] =
         //     new SuffixValueWithLocale(1154, new Dictionary<Locale, string> { [Locale.Russian] = "отклонения" }),
-        // [ItemSuffix.Durability] =
-        //     new SuffixValueWithLocale(136, new Dictionary<Locale, string> { [Locale.Russian] = "прочности" }),
+        [ItemSuffix.Durability] =
+            new SuffixValueWithLocale(136, new Dictionary<Locale, string> { [Locale.Russian] = "прочности" }),
         // [ItemSuffix.Safety] =
         //     new SuffixValueWithLocale(1162, new Dictionary<Locale, string> { [Locale.Russian] = "безопасности" }),
         // [ItemSuffix.Deflection] =
