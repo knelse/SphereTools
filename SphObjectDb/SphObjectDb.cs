@@ -235,14 +235,14 @@ public static class SphObjectDb
 
     private static void GenerateGameObjectLocale()
     {
-        foreach ((var name, var localeEntry) in LocalisationContent)
+        foreach (var (name, localeEntry) in LocalisationContent)
         {
             if (!ObjectNameToLocalizationMap.ContainsKey(name))
             {
                 ObjectNameToLocalizationMap.Add(name, new Dictionary<int, LocalizationEntryString>());
             }
 
-            foreach ((var locale, var localeContent) in localeEntry)
+            foreach (var (locale, localeContent) in localeEntry)
             {
                 // has specific name for specific gameIds
                 var gameIdsFound = false;
@@ -330,7 +330,7 @@ public static class SphObjectDb
 
     private static void LoadGameObjectLocalization()
     {
-        foreach ((var gameId, var gameObject) in GameObjectDataDb)
+        foreach (var (gameId, gameObject) in GameObjectDataDb)
         {
             // this shouldn't happen
             if (!ObjectNameToLocalizationMap.ContainsKey(gameObject.SphereType))

@@ -695,7 +695,7 @@ public static class ObjectPacketTools
 
     public static string GetFriendlyNameByObjectType(ObjectType objectType)
     {
-        return objectType switch
+        return (objectType switch
         {
             ObjectType.Arrows => "Стрелы",
             ObjectType.Bead => "Бусинка",
@@ -741,6 +741,6 @@ public static class ObjectPacketTools
             ObjectType.PowderAmilus => "Порошок Амилуса",
             ObjectType.PowderFinale => "Порошок Файналя",
             _ => Enum.GetName(objectType)
-        };
+        })!;
     }
 }

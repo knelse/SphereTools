@@ -2,7 +2,7 @@ using SuffixToLocaleMap = System.Collections.Generic.Dictionary<ItemSuffix, Suff
 
 public static class GameObjectDataHelper
 {
-    public static HashSet<GameObjectType> WeaponsAndArmor = new()
+    public static readonly HashSet<GameObjectType> WeaponsAndArmor = new()
     {
         GameObjectType.Amulet,
         GameObjectType.Armor,
@@ -31,20 +31,20 @@ public static class GameObjectDataHelper
         GameObjectType.Sword_Unique
     };
 
-    public static HashSet<GameObjectType> Mantras = new()
+    public static readonly HashSet<GameObjectType> Mantras = new()
     {
         GameObjectType.MantraBlack,
         GameObjectType.MantraWhite
     };
 
-    public static HashSet<GameObjectType> AlchemyMaterials = new()
+    public static readonly HashSet<GameObjectType> AlchemyMaterials = new()
     {
         GameObjectType.Metal,
         GameObjectType.Flower,
         GameObjectType.Mineral
     };
 
-    public static HashSet<GameObjectType> Powders = new()
+    public static readonly HashSet<GameObjectType> Powders = new()
     {
         GameObjectType.Powder,
         GameObjectType.Powder_Area,
