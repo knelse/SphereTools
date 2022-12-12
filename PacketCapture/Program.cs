@@ -34,6 +34,8 @@ var itemCollection = itemDb.GetCollection<ObjectPacket>("ObjectPackets");
 // 1F00 - damage to client
 var serverPacketsToHide = new HashSet<byte>
     { 0x12, 0x13, 0x10, 0x14, 0x17, 0x22, 0x0F, 0x2D, 0x11, 0x1D, 0x19, 0x0B, 0x43, 0x38, 0x1F };//, "08", "0C"};// {"2D", "0E", "1D", "12"};
+var clientPacketsToHide = new HashSet<byte>
+{0x08, 0x0C, };
 const string sessionDivider = "================================================================================================================================================================================================================\n" +
                               "================================================================================================================================================================================================================\n";
 
@@ -43,15 +45,17 @@ var newSessionFirstPacket = new byte[] { 0x0A, 0x00, 0xC8, 0x00 };
 
 var lastSplitPacket = new List<byte>();
 
-bool ShouldHidePacket(byte[] packet)
+bool ShouldHidePacket(byte[] packet, bool isClient = false)
 {
     if (ByteArrayCompare(packet, endPacket))
     {
         return true;
     }
 
-    return packet.Length is 8 or 12 || 
-           serverPacketsToHide.Contains(packet[0]) && ByteArrayCompare(packet, packetOkMarker, 2);
+    return isClient 
+        ? clientPacketsToHide.Contains(packet[0])
+        : packet.Length is 8 or 12 || 
+          serverPacketsToHide.Contains(packet[0]) && ByteArrayCompare(packet, packetOkMarker, 2);
 }
 
 void OnPacketArrival(object sender, PacketCapture c)
@@ -166,6 +170,10 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                     }
                 }
             }
+            else
+            {
+                bytePacketSplit.Add(data);
+            }
         }
         catch (ArgumentOutOfRangeException)
         {
@@ -181,7 +189,7 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
             var currentPacketPaddedHex = prefix + Convert.ToHexString(currentPacket) + "\n";
             var currentPacketPaddedHexForMixed = prefixForMixed + Convert.ToHexString(currentPacket) + "\n";
 
-            if (isClient)
+            if (isClient && !ShouldHidePacket(currentPacket))
             {
                 var actionSource = "";
                 var actionDestination = "";
