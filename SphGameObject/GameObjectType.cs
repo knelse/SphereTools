@@ -99,5 +99,7 @@ public enum GameObjectType
     Ear,
     Bead,
     Packet,
-    Unknown
+    Unknown,
+    Client,
+    LootBag
 }

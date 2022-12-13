@@ -21,5 +21,7 @@ public enum GameObjectKind
     Sword_New,
     Unique,
     Pref,
-    Unknown
+    Client,
+    Unknown,
+    LootBag
 }

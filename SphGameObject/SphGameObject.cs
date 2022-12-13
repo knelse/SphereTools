@@ -1,70 +1,77 @@
 // ReSharper disable UnassignedField.Global
 // ReSharper disable FieldCanBeMadeReadOnly.Global
 
+using System.Reflection;
+using LiteDB;
+using Newtonsoft.Json;
+
 public class SphGameObject
 {
-    public GameObjectKind ObjectKind;
-    public int GameId;
-    public string SphereType = null!;
-    public GameObjectType ObjectType;
-    public string ModelNameGround = null!;
-    public string ModelNameInventory = null!;
-    public int HpCost;
-    public int MpCost;
-    public int TitleMinusOne;
-    public int DegreeMinusOne;
-    public KarmaTypes MinKarmaLevel;
-    public KarmaTypes MaxKarmaLevel;
-    public int StrengthReq;
-    public int AgilityReq;
-    public int AccuracyReq;
-    public int EnduranceReq;
-    public int EarthReq;
-    public int AirReq;
-    public int WaterReq;
-    public int FireReq;
-    public int PAtkNegative;
-    public int MAtkNegativeOrHeal;
-    public int MPHeal;
-    public int t1;
-    public int MaxHpUp;
-    public int MaxMpUp;
-    public int PAtkUpNegative;
-    public int PDefUp;
-    public int MDefUp;
-    public int StrengthUp;
-    public int AgilityUp;
-    public int AccuracyUp;
-    public int EnduranceUp;
-    public int EarthUp;
-    public int AirUp;
-    public int WaterUp;
-    public int FireUp;
-    public int MAtkUpNegative;
-    public int Weight;
-    public int Durability;
-    public int _range;
-    public int UseTime;
-    public int VendorCost;
-    public int MutatorId;
-    public int _duration;
-    public int ReuseDelayHours;
-    public int t2;
-    public int t3;
-    public int t4;
-    public int t5;
-    public string t6 = null!;
-    public string t7 = null!;
-    public int Tier;
-    public int Range;
-    public int Radius;
+    [BsonId]
+    public int Id { get; set; }
+    public GameObjectKind ObjectKind { get; set; }
+    public int GameId { get; set; }
+    public string SphereType { get; set; } = null!;
+    public GameObjectType ObjectType { get; set; }
+    public string ModelNameGround { get; set; } = null!;
+    public string ModelNameInventory { get; set; } = null!;
+    public int HpCost { get; set; }
+    public int MpCost { get; set; }
+    public int TitleMinusOne { get; set; }
+    public int DegreeMinusOne { get; set; }
+    public KarmaTypes MinKarmaLevel { get; set; }
+    public KarmaTypes MaxKarmaLevel { get; set; }
+    public int StrengthReq { get; set; }
+    public int AgilityReq { get; set; }
+    public int AccuracyReq { get; set; }
+    public int EnduranceReq { get; set; }
+    public int EarthReq { get; set; }
+    public int AirReq { get; set; }
+    public int WaterReq { get; set; }
+    public int FireReq { get; set; }
+    public int PAtkNegative { get; set; }
+    public int MAtkNegativeOrHeal { get; set; }
+    public int MPHeal { get; set; }
+    public int t1 { get; set; }
+    public int MaxHpUp { get; set; }
+    public int MaxMpUp { get; set; }
+    public int PAtkUpNegative { get; set; }
+    public int PDefUp { get; set; }
+    public int MDefUp { get; set; }
+    public int StrengthUp { get; set; }
+    public int AgilityUp { get; set; }
+    public int AccuracyUp { get; set; }
+    public int EnduranceUp { get; set; }
+    public int EarthUp { get; set; }
+    public int AirUp { get; set; }
+    public int WaterUp { get; set; }
+    public int FireUp { get; set; }
+    public int MAtkUpNegative { get; set; }
+    public int Weight { get; set; }
+    public int Durability { get; set; }
+    public int _range { get; set; }
+    public int UseTime { get; set; }
+    public int VendorCost { get; set; }
+    public int MutatorId { get; set; }
+    public int _duration { get; set; }
+    public int ReuseDelayHours { get; set; }
+    public int t2 { get; set; }
+    public int t3 { get; set; }
+    public int t4 { get; set; }
+    public int t5 { get; set; }
+    public string t6 { get; set; } = null!;
+    public string t7 { get; set; } = null!;
+    public int Tier { get; set; }
+    public int Range { get; set; }
+    public int Radius { get; set; }
     /// <summary>
     /// Seconds
     /// </summary>
-    public int Duration;
-    public ItemSuffix Suffix = ItemSuffix.None;
-    public int ItemCount = 1;
-    public Dictionary<Locale, string> Localisation = new();
+    public int Duration { get; set; }
+    public ItemSuffix Suffix { get; set; } = ItemSuffix.None;
+    public int ItemCount { get; set; } = 1;
+    public Dictionary<Locale, string> Localisation { get; set; } = new();
+    [BsonIgnore] public SphGameObject? Parent { get; set; }
 
     public static readonly HashSet<GameObjectType> Mantras = new ()
     {
@@ -84,6 +91,17 @@ public class SphGameObject
         GameObjectType.Belt, GameObjectType.Bracelet, GameObjectType.Gloves, GameObjectType.Helmet,
         GameObjectType.Pants, GameObjectType.Shield, GameObjectType.Boots, GameObjectType.Robe
     };
+
+    public SphGameObject Clone()
+    {
+        var serialized = JsonConvert.SerializeObject(this);
+        return JsonConvert.DeserializeObject<SphGameObject>(serialized);
+    }
+
+    public SphGameObject()
+    {
+        
+    }
 
     public string ToDebugString()
     {
