@@ -2,6 +2,23 @@ using SuffixToLocaleMap = System.Collections.Generic.Dictionary<ItemSuffix, Suff
 
 public static class GameObjectDataHelper
 {
+    public static readonly HashSet<GameObjectType> MaterialsPowdersElixirs = new()
+    {
+        GameObjectType.Flower, 
+        GameObjectType.Metal, 
+        GameObjectType.Mineral, 
+        GameObjectType.Powder,
+        GameObjectType.Powder_Area, 
+        GameObjectType.Elixir_Castle, 
+        GameObjectType.Elixir_Trap
+    };
+
+    public static readonly HashSet<GameObjectType> RegularWeaponsAndArmor = new()
+    {
+        GameObjectType.Crossbow, GameObjectType.Axe, GameObjectType.Sword, GameObjectType.Amulet, GameObjectType.Armor,
+        GameObjectType.Belt, GameObjectType.Bracelet, GameObjectType.Gloves, GameObjectType.Helmet,
+        GameObjectType.Pants, GameObjectType.Shield, GameObjectType.Boots, GameObjectType.Robe
+    };
     public static readonly HashSet<GameObjectType> WeaponsAndArmor = new()
     {
         GameObjectType.Amulet,
