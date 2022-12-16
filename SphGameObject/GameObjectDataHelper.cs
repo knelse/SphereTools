@@ -128,7 +128,7 @@ public static class GameObjectDataHelper
     {
         switch (sphName)
         {
-            case "A": return GameObjectType.Pref_A;
+            case "A": return GameObjectType.Pref_AxeSword;
             case "al_flower": return GameObjectType.Flower; 
             case "al_metal": return GameObjectType.Metal;
             case "al_mineral": return GameObjectType.Mineral;
@@ -164,19 +164,19 @@ public static class GameObjectDataHelper
             case "ar_shoes": return GameObjectType.Boots;
             case "ar_shoesf": return GameObjectType.Boots_Quest;
             case "ar_shoesu": return GameObjectType.Boots_Unique;
-            case "B": return GameObjectType.Pref_B;
-            case "C": return GameObjectType.Pref_C;
+            case "B": return GameObjectType.Pref_Crossbow;
+            case "C": return GameObjectType.Pref_Chestplate;
             case "crystal": return GameObjectType.Castle_Crystal;
             case "cs_guard": return GameObjectType.Castle_Stone;
             case "ct_bagd": return GameObjectType.Guild_Bag;
-            case "D": return GameObjectType.Pref_D;
-            case "E": return GameObjectType.Pref_E;
-            case "F": return GameObjectType.Pref_F;
+            case "D": return GameObjectType.Pref_BeltBootsGlovesHelmetPants;
+            case "E": return GameObjectType.Pref_AmuletBracelet;
+            case "F": return GameObjectType.Pref_Ring;
             case "flag": return GameObjectType.Flag;
-            case "G": return GameObjectType.Pref_G;
+            case "G": return GameObjectType.Pref_Robe;
             case "guild": return GameObjectType.Guild;
-            case "H": return GameObjectType.Pref_H;
-            case "I": return GameObjectType.Pref_I;
+            case "H": return GameObjectType.Pref_Castle;
+            case "I": return GameObjectType.Pref_Shield;
             case "item_letter": return GameObjectType.Letter;
             case "lottery": return GameObjectType.Lottery;
             case "mg_mantrab": return GameObjectType.MantraBlack;
@@ -196,19 +196,19 @@ public static class GameObjectDataHelper
             case "pw_fb05": return GameObjectType.Powder_Guild;
             case "scroll": return GameObjectType.Scroll;
             case "specab": return GameObjectType.Special;
-            case "specab_ba": return GameObjectType.Special_BA;
-            case "specab_ca": return GameObjectType.Special_CA;
-            case "specab_ea": return GameObjectType.Special_EA;
-            case "specab_ga": return GameObjectType.Special_GA;
-            case "specab_gb": return GameObjectType.Special_GB;
-            case "specab_ha": return GameObjectType.Special_HA;
-            case "specab_ic": return GameObjectType.Special_IC;
-            case "specab_ma": return GameObjectType.Special_MA;
-            case "specab_mb": return GameObjectType.Special_MB;
-            case "specab_mc": return GameObjectType.Special_MC;
-            case "specab_na": return GameObjectType.Special_NA;
-            case "specab_nb": return GameObjectType.Special_NB;
-            case "specab_nc": return GameObjectType.Special_NC;
+            case "specab_ba": return GameObjectType.Special_Crusader_Gapclose;
+            case "specab_ca": return GameObjectType.Special_Inquisitor_Teleport;
+            case "specab_ea": return GameObjectType.Special_Archmage_Teleport;
+            case "specab_ga": return GameObjectType.Special_MasterOfSteel_Whirlwind;
+            case "specab_gb": return GameObjectType.Special_Druid_Wolf;
+            case "specab_ha": return GameObjectType.Special_Thief_Steal;
+            case "specab_ic": return GameObjectType.Special_MasterOfSteel_Suicide;
+            case "specab_ma": return GameObjectType.Special_Necromancer_Flyer;
+            case "specab_mb": return GameObjectType.Special_Necromancer_Resurrection;
+            case "specab_mc": return GameObjectType.Special_Necromancer_Zombie;
+            case "specab_na": return GameObjectType.Special_Bandier_Flag;
+            case "specab_nb": return GameObjectType.Special_Bandier_DispelControl;
+            case "specab_nc": return GameObjectType.Special_Bandier_Fortify;
             case "st_key2": return GameObjectType.Key;
             case "st_map": return GameObjectType.Map;
             case "st_string": return GameObjectType.Ear_String;
@@ -223,7 +223,7 @@ public static class GameObjectDataHelper
             case "x2_degree": return GameObjectType.X2_Degree;
             case "x2_tit_degr": return GameObjectType.X2_Both;
             case "x2_titul": return GameObjectType.X2_Title;
-            case "Z": return GameObjectType.Pref_Z;
+            case "Z": return GameObjectType.Pref_Quest;
             case "st_loot": return GameObjectType.Ear;
             case "item_bead": return GameObjectType.Bead;
             case "packet": return GameObjectType.Packet;
@@ -489,8 +489,8 @@ public static class GameObjectDataHelper
             new SuffixValueWithLocale(112, new Dictionary<Locale, string> { [Locale.Russian] = "медитации" }),
         [ItemSuffix.Archmage] =
             new SuffixValueWithLocale(1138, new Dictionary<Locale, string> { [Locale.Russian] = "архимага" }),
-        [ItemSuffix.Prana] =
-            new SuffixValueWithLocale(120, new Dictionary<Locale, string> { [Locale.Russian] = "праны" }),
+        // [ItemSuffix.Prana] =
+        //     new SuffixValueWithLocale(120, new Dictionary<Locale, string> { [Locale.Russian] = "праны" }),
         // [ItemSuffix.Durability] =
         //     new SuffixValueWithLocale(1146, new Dictionary<Locale, string> { [Locale.Russian] = "прочности" }),
         // [ItemSuffix.Value] =
@@ -515,8 +515,8 @@ public static class GameObjectDataHelper
         //     new SuffixValueWithLocale(1186, new Dictionary<Locale, string> { [Locale.Russian] = "медитации" }),
         // [ItemSuffix.Life] =
         //     new SuffixValueWithLocale(168, new Dictionary<Locale, string> { [Locale.Russian] = "жизни" }),
-        // [ItemSuffix.Prana] =
-        //     new SuffixValueWithLocale(1194, new Dictionary<Locale, string> { [Locale.Russian] = "праны" }),
+        [ItemSuffix.Prana] =
+            new SuffixValueWithLocale(1194, new Dictionary<Locale, string> { [Locale.Russian] = "праны" }),
         // [ItemSuffix.Meditation] =
         //     new SuffixValueWithLocale(176, new Dictionary<Locale, string> { [Locale.Russian] = "медитации" }),
         // [ItemSuffix.Ether] =

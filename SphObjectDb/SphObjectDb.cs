@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using Newtonsoft.Json;
+using static GameObjectType;
 using LocalizationEntryArray = System.Collections.Generic.Dictionary<Locale, string[]>;
 using LocalizationEntryString = System.Collections.Generic.Dictionary<Locale, string>;
 
@@ -9,23 +10,41 @@ public static class SphObjectDb
     private const string gameDataPath = "c:\\source\\_sphFilesDecode\\params\\";
     private const string localeDataPath = "c:\\source\\_sphFilesDecode\\language\\";
     private const string gameDataJsonPath = "C:\\source\\objectData.json";
+    private const string suffixDataJsonPath = "C:\\source\\suffixData.json";
     private const string localizationContentJsonPath = "C:\\source\\localizationContent.json";
     private const string objectLocalizationJsonPath = "C:\\source\\objectLocalization.json";
     public static readonly Dictionary<int, SphGameObject> GameObjectDataDb = new();
+    public static readonly Dictionary<GameObjectType, Dictionary<ItemSuffix, SphGameObject>> SuffixDataDb = new();
     private const string langSuffixEnglish = "_e";
     private const string langSuffixItalian = "_i";
     private const string langSuffixPortuguese = "_p";
     public static readonly Dictionary<string, LocalizationEntryArray> LocalisationContent = new();
     public static readonly Dictionary<string, Dictionary<int, LocalizationEntryString>> ObjectNameToLocalizationMap =
         new();
+    
+    private static readonly Dictionary<string, GameObjectType> prefFiles = new()
+    {
+        ["ar_armoru"] = Pref_Castle,
+        ["ar_armor"] = Pref_Chestplate,
+        ["wp_arbalest1"] = Pref_Crossbow,
+        ["ar_armorf"] = Pref_Quest,
+        ["ar_ring"] = Pref_Ring,
+        ["ar_armor2"] = Pref_Robe,
+        ["ar_shield"] = Pref_Shield,
+        ["ar_amulet"] = Pref_AmuletBracelet,
+        ["wp_axe1"] = Pref_AxeSword,
+        ["ar_belt"] = Pref_BeltBootsGlovesHelmetPants
+    };
 
     static SphObjectDb()
     {
         if (!File.Exists(gameDataJsonPath) 
             || !File.Exists(localizationContentJsonPath)
             || !File.Exists(objectLocalizationJsonPath)
+            || !File.Exists(suffixDataJsonPath)
             || File.GetLastWriteTimeUtc(gameDataJsonPath) < DateTime.UtcNow.AddHours(-72)
             || File.GetLastWriteTimeUtc(localizationContentJsonPath) < DateTime.UtcNow.AddHours(-72)
+            || File.GetLastWriteTimeUtc(suffixDataJsonPath) < DateTime.UtcNow.AddHours(-72)
             || File.GetLastWriteTimeUtc(objectLocalizationJsonPath) < DateTime.UtcNow.AddHours(-72))
         {
             // regenerate json every 3 days to be safe
@@ -50,6 +69,11 @@ public static class SphObjectDb
             using var objectLocaleWriter = new StreamWriter(objectLocaleFile);
             var objectLocaleJson = JsonConvert.SerializeObject(ObjectNameToLocalizationMap, Formatting.Indented);
             objectLocaleWriter.Write(objectLocaleJson);
+            
+            using var suffixFile = File.OpenWrite(suffixDataJsonPath);
+            using var suffixWriter = new StreamWriter(suffixFile);
+            var suffixJson = JsonConvert.SerializeObject(SuffixDataDb, Formatting.Indented);
+            suffixWriter.Write(suffixJson);
         }
 
         else
@@ -66,13 +90,16 @@ public static class SphObjectDb
             using var objectLocaleFile = File.OpenRead(objectLocalizationJsonPath);
             using var objectLocaleReader = new StreamReader(objectLocaleFile);
             ObjectNameToLocalizationMap = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<int, LocalizationEntryString>>>(objectLocaleReader.ReadToEnd()) ?? throw new InvalidOperationException();
+            
+            using var suffixFile = File.OpenRead(suffixDataJsonPath);
+            using var suffixReader = new StreamReader(suffixFile);
+            SuffixDataDb = JsonConvert.DeserializeObject<Dictionary<GameObjectType, Dictionary<ItemSuffix, SphGameObject>>>(suffixReader.ReadToEnd()) ?? throw new InvalidOperationException();
         }
     }
 
     private static void LoadGameObjects()
     {
-        var objectFiles = Directory.EnumerateFiles(gameDataPath, "group_*").ToList();
-
+        var objectFiles = Directory.EnumerateFiles(gameDataPath, "group*").ToList();
         foreach (var objFile in objectFiles)
         {
             var fileName = Path.GetFileNameWithoutExtension(objFile);
@@ -96,11 +123,12 @@ public static class SphObjectDb
                     continue;
                 }
 
-                var gameId = int.Parse(entrySplit[0]);
+                var isPref = fileName.EndsWith("pref");
 
+                var gameId = int.Parse(entrySplit[0]);
                 var range = int.Parse(entrySplit[38]);
                 var duration = int.Parse(entrySplit[42]);
-                var objKind = GameObjectDataHelper.GetKindBySphereName(objKindName);
+                var objKind = isPref ? GameObjectKind.Pref : GameObjectDataHelper.GetKindBySphereName(objKindName);
                 var tier = objKind == GameObjectKind.Monster || string.IsNullOrWhiteSpace(entrySplit[49]) ||
                            entrySplit[49].Length < 4
                     ? -1
@@ -180,7 +208,21 @@ public static class SphObjectDb
                     }
                 }
 
-                GameObjectDataDb.Add(gameId, gameObj);
+                if (isPref)
+                {
+                    if (!SuffixDataDb.ContainsKey(gameObj.ObjectType))
+                    {
+                        SuffixDataDb.Add(gameObj.ObjectType, new Dictionary<ItemSuffix, SphGameObject>());
+                    }
+
+                    var suffix = SphObjectDbHelper.TypeToSuffixIdMap[gameObj.ObjectType][gameObj.GameId];
+                    gameObj.Suffix = suffix;
+                    SuffixDataDb[gameObj.ObjectType][gameObj.Suffix] = gameObj;
+                }
+                else
+                {
+                    GameObjectDataDb.Add(gameId, gameObj);
+                }
             }
         }
     }
@@ -249,7 +291,37 @@ public static class SphObjectDb
 
                 for (var i = 0; i < localeContent.Length; i++)
                 {
-                    if (!localeContent[i].StartsWith('#')) continue;
+                    if (!localeContent[i].StartsWith('#'))
+                    {
+                        if (!prefFiles.ContainsKey(name))
+                        {
+                            continue;
+                        }
+                        var split = localeContent[i].Split(" ", StringSplitOptions.RemoveEmptyEntries);
+                        if (split.Length == 0 || !int.TryParse(split[0], out var strId) || strId < 200)
+                        {
+                            continue;
+                        }
+                        
+                        // prefs
+
+                        var pref = prefFiles[name];
+                        var prefName = Enum.GetName(pref);
+
+                        if (!ObjectNameToLocalizationMap.ContainsKey(prefName))
+                        {
+                            ObjectNameToLocalizationMap.Add(prefName, new Dictionary<int, LocalizationEntryString>());
+                        }
+
+                        if (!ObjectNameToLocalizationMap[prefName].ContainsKey(strId - 200))
+                        {
+                            ObjectNameToLocalizationMap[prefName].Add(strId - 200, new LocalizationEntryString());
+                        }
+
+                        ObjectNameToLocalizationMap[prefName][strId - 200][locale] = localeContent[i][4..];
+                        
+                        continue;
+                    }
 
                     gameIdsFound = true;
                     var mantraPrefix = locale switch
@@ -352,6 +424,19 @@ public static class SphObjectDb
             {
                 // this shouldn't happen
                 Console.WriteLine($"ERROR: Missing localization for {gameObject.SphereType} GID: {gameId}");
+            }
+            
+        }
+
+        foreach (var (objectType, suffixData) in SuffixDataDb)
+        {
+            foreach (var (_, gameObject) in suffixData)
+            {
+                var localeEntries = ObjectNameToLocalizationMap[Enum.GetName(objectType)][gameObject.GameId];
+                foreach (var (locale, text) in localeEntries)
+                {
+                    gameObject.Localisation[locale] = text;
+                }
             }
         }
     }

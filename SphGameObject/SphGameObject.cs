@@ -73,21 +73,21 @@ public class SphGameObject
 
     public string ToDebugString()
     {
-        var itemCountStr = ItemCount > 1 ? $"Count: {ItemCount}" : "";
-        return $"Kind: {Enum.GetName(typeof(GameObjectKind), ObjectKind)} " +
-               $"ID: {GameId} Type: {Enum.GetName(typeof(GameObjectType), ObjectType)} Ground: {ModelNameGround} " +
-               $"Inv: {ModelNameInventory} HpCost: {HpCost} MpCost: {MpCost} TitleReq: {TitleMinusOne} " +
-               $"DegreeReq: {DegreeMinusOne} KarmaMin: {Enum.GetName(typeof(KarmaTypes), MinKarmaLevel)} " +
-               $"KarmaMax: {Enum.GetName(typeof(KarmaTypes), MaxKarmaLevel)} StrengthReq: {StrengthReq} " +
-               $"AgilityReq: {AgilityReq} AccuracyReq: {AccuracyReq} EnduranceReq: {EnduranceReq} EarthReq: {EarthReq} " +
-               $"AirReq: {AirReq} WaterReq: {WaterReq} FireReq: {FireReq} PA: {PAtkNegative} MA: {MAtkNegativeOrHeal} " +
-               $"MPHeal: {MPHeal} T1: {t1} MaxHPUp: {MaxHpUp} MaxMpUp: {MaxMpUp} PAUp: {PAtkUpNegative} PDUp: {PDefUp} " +
-               $"MDUp: {MDefUp} StrengthUp: {StrengthUp} AgilityUp: {AgilityUp} AccuracyUp: {AccuracyUp} " +
-               $"EnduranceUp: {EnduranceUp} EarthUp: {EarthUp} AirUp: {AirUp} WaterUp: {WaterUp} FireUp: {FireUp} " +
-               $"MAUp: {MAtkUpNegative} Weight: {Weight} Durability: {Durability} Range: {Range} Radius: {Radius} " +
-               $"UseTime: {UseTime} VendorCost: {VendorCost} MutatorId: {MutatorId} Duration: {Duration} " +
-               $"ReuseDelayHours: {ReuseDelayHours} T2: {t2} T3: {t3} T4: {t4} T5: {t5} T6: {t6} T7: {t7} Tier: {Tier} " +
-               $"Suffix: {Enum.GetName(typeof(ItemSuffix), Suffix)} {itemCountStr}";
+        var itemCountStr = ItemCount > 1 ? $" ({ItemCount})" : "";
+        return $"GO: {Enum.GetName(typeof(GameObjectType), ObjectType)} [{GameId}] T{Tier}" + itemCountStr + " Tit: {TitleMinusOne} Deg: {DegreeMinusOne} $HP: {HpCost} $MP: {MpCost}\n" +
+               $"Str: {StrengthReq} Agi: {AgilityReq} Acc: {AccuracyReq} End: {EnduranceReq} Ear: {EarthReq} Air: {AirReq} Wat: {WaterReq} Fir: {FireReq}\n" +
+               $"Str+: {StrengthUp} Agi+: {AgilityUp} Acc+: {AccuracyUp} End+: {EnduranceUp} Ear+: {EarthUp} Air+: {AirUp} Wat+: {WaterUp} Fir+: {FireUp}\n" +
+               $"MaxHP+: {MaxHpUp} MaxMP+: {MaxMpUp} PD+: {PDefUp} MD+: {MDefUp} PA: {PAtkNegative} PA+: {PAtkUpNegative} MA: {MAtkNegativeOrHeal} MA+: {MAtkUpNegative} MP+: {MPHeal}";
+               // $" T1: {t1} " +
+               // $" Weight: {Weight} Durability: {Durability} Range: {Range} Radius: {Radius} " +
+               // $"UseTime: {UseTime} VendorCost: {VendorCost} MutatorId: {MutatorId} Duration: {Duration} " +
+               // $"ReuseDelayHours: {ReuseDelayHours} T2: {t2} T3: {t3} T4: {t4} T5: {t5} T6: {t6} T7: {t7}" +
+               // $"Suffix: {Enum.GetName(typeof(ItemSuffix), Suffix)} {itemCountStr}";
+        // Kind: {Enum.GetName(typeof(GameObjectKind), ObjectKind)} 
+        //Ground: {ModelNameGround} 
+        //Inv: {ModelNameInventory} 
+        //KarmaMin: {Enum.GetName(typeof(KarmaTypes), MinKarmaLevel)} 
+        //KarmaMax: {Enum.GetName(typeof(KarmaTypes), MaxKarmaLevel)} 
     }
 
     public bool IsTierVisible()
@@ -98,5 +98,23 @@ public class SphGameObject
             or GameObjectKind.Crossbow_New or GameObjectKind.Magical_New or GameObjectKind.MantraBlack
             or GameObjectKind.MantraWhite or GameObjectKind.Sword_New
             && ObjectType is not GameObjectType.Ear;
+    }
+
+    public static SphGameObject CreateFromGameObject (SphGameObject old)
+    {
+        var newObj = new SphGameObject();
+        foreach (var prop in old.GetType().GetFields())
+        {
+            newObj.GetType().GetField(prop.Name)?.SetValue(newObj, prop.GetValue(old));
+        }
+
+        foreach (var prop in old.GetType().GetProperties())
+        {
+            newObj.GetType().GetProperty(prop.Name)?.SetValue(newObj, prop.GetValue(old));
+        }
+
+        newObj.GameObjectDbId = old.GameObjectDbId;
+
+        return newObj;
     }
 }
