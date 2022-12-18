@@ -15,14 +15,14 @@ public static class GameObjectDataHelper
 
     public static readonly HashSet<GameObjectType> RegularWeaponsAndArmor = new()
     {
-        GameObjectType.Crossbow, GameObjectType.Axe, GameObjectType.Sword, GameObjectType.Amulet, GameObjectType.Armor,
+        GameObjectType.Crossbow, GameObjectType.Axe, GameObjectType.Sword, GameObjectType.Amulet, GameObjectType.Chestplate,
         GameObjectType.Belt, GameObjectType.Bracelet, GameObjectType.Gloves, GameObjectType.Helmet,
         GameObjectType.Pants, GameObjectType.Shield, GameObjectType.Boots, GameObjectType.Robe
     };
     public static readonly HashSet<GameObjectType> WeaponsAndArmor = new()
     {
         GameObjectType.Amulet,
-        GameObjectType.Armor,
+        GameObjectType.Chestplate,
         GameObjectType.Axe,
         GameObjectType.Belt,
         GameObjectType.Boots,
@@ -35,7 +35,7 @@ public static class GameObjectDataHelper
         GameObjectType.Shield,
         GameObjectType.Sword,
         GameObjectType.Amulet_Unique,
-        GameObjectType.Armor_Unique,
+        GameObjectType.Chestplate_Unique,
         GameObjectType.Belt_Unique,
         GameObjectType.Boots_Unique,
         GameObjectType.Bracelet_Unique,
@@ -134,12 +134,12 @@ public static class GameObjectDataHelper
             case "al_mineral": return GameObjectType.Mineral;
             case "ar_amulet": return GameObjectType.Amulet;
             case "ar_amuletu": return GameObjectType.Amulet_Unique;
-            case "ar_armor": return GameObjectType.Armor;
+            case "ar_armor": return GameObjectType.Chestplate;
             case "ar_armor2": return GameObjectType.Robe;
             case "ar_armor2f": return GameObjectType.Robe_Quest;
             case "ar_armor2u": return GameObjectType.Robe_Unique;
-            case "ar_armorf": return GameObjectType.Armor_Quest;
-            case "ar_armoru": return GameObjectType.Armor_Unique;
+            case "ar_armorf": return GameObjectType.Chestplate_Quest;
+            case "ar_armoru": return GameObjectType.Chestplate_Unique;
             case "ar_belt": return GameObjectType.Belt;
             case "ar_beltf": return GameObjectType.Belt_Quest;
             case "ar_beltu": return GameObjectType.Belt_Unique;
@@ -585,7 +585,7 @@ public static class GameObjectDataHelper
         [GameObjectType.Belt] = SuffixesBootsGlovesBeltsHelmetsPants,
         [GameObjectType.Helmet] = SuffixesBootsGlovesBeltsHelmetsPants,
         [GameObjectType.Pants] = SuffixesBootsGlovesBeltsHelmetsPants,
-        [GameObjectType.Armor] = SuffixesChestplatesShields,
+        [GameObjectType.Chestplate] = SuffixesChestplatesShields,
         [GameObjectType.Shield] = SuffixesChestplatesShields,
         [GameObjectType.Robe] = SuffixesRobes,
         [GameObjectType.Ring] = SuffixesRings,

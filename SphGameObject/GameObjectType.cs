@@ -15,12 +15,12 @@ public enum GameObjectType
     Mineral,
     Amulet,
     Amulet_Unique, // Castle?
-    Armor,
+    Chestplate,
     Robe, // armor2 is always robe
     Robe_Quest,
     Robe_Unique, // Castle?
-    Armor_Quest,
-    Armor_Unique, // Castle?
+    Chestplate_Quest,
+    Chestplate_Unique, // Castle?
     Belt,
     Belt_Quest,
     Belt_Unique, // Castle?
