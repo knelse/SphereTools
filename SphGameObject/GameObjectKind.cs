@@ -23,5 +23,7 @@ public enum GameObjectKind
     Pref,
     Client,
     Unknown,
-    LootBag
+    LootBag,
+    Food,
+    Brushwood
 }

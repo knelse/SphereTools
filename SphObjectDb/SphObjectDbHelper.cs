@@ -108,7 +108,7 @@ public static class SphObjectDbHelper
         Adventure, Silence, Prophecy, Secret, Myth, Being, Hike, Existence, Legend, Peace
     };
 
-    public static int[] BaseItemStatScale = { 0, 1, 2, 3, 5, 7, 9, 12, 15, 18, 23, 28, 34, 37, 42, 48 };
+    public static readonly int[] BaseItemStatScale = { 0, 1, 2, 3, 5, 7, 9, 12, 15, 18, 23, 28, 34, 37, 42, 48 };
 
     public static readonly Dictionary<GameObjectType, ItemSuffix[]> TypeToSuffixIdMap = new()
     {

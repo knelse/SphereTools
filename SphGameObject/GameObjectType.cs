@@ -101,5 +101,11 @@ public enum GameObjectType
     Packet,
     Unknown,
     Client,
-    LootBag
+    LootBag,
+    FoodApple,
+    FoodPear,
+    FoodMeat,
+    FoodBread,
+    FoodFish,
+    AlchemyBrushwood,
 }
