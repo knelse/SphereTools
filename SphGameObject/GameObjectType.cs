@@ -108,4 +108,5 @@ public enum GameObjectType
     FoodBread,
     FoodFish,
     AlchemyBrushwood,
+    Fists
 }

@@ -25,5 +25,6 @@ public enum GameObjectKind
     Unknown,
     LootBag,
     Food,
-    Brushwood
+    Brushwood,
+    Fists
 }
