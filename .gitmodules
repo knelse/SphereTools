@@ -1,3 +1,12 @@
 [submodule "BitStream"]
 	path = BitStream
 	url = https://github.com/knelse/BitStream.git
+[submodule "kaitai_struct"]
+	path = kaitai_struct
+	url = https://github.com/kaitai-io/kaitai_struct.git
+[submodule "LiteDB.Studio"]
+	path = LiteDB.Studio
+	url = https://github.com/mbdavid/LiteDB.Studio.git
+[submodule "LiteDB"]
+	path = LiteDB
+	url = https://github.com/mbdavid/LiteDB.git
