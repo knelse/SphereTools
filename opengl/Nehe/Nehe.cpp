@@ -51,27 +51,27 @@ GLvoid kill_gl_window() {
 		ShowCursor(true);
 	}
 	if (h_rc) {
-		if (!wglMakeCurrent(nullptr, nullptr)) MessageBox(nullptr, (LPCWSTR)L"DC/RC release failed", (LPCWSTR)L"SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
+		if (!wglMakeCurrent(nullptr, nullptr)) MessageBox(nullptr, (LPCSTR)"DC/RC release failed", (LPCSTR)"SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
 		if (!wglDeleteContext(h_rc)) {
-			MessageBox(nullptr, (LPCWSTR)L"Rendering context release failed", (LPCWSTR)L"SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
+			MessageBox(nullptr, (LPCSTR)"Rendering context release failed", (LPCSTR)"SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
 			h_rc = nullptr;
 		}
 		if (h_dc && !ReleaseDC(h_wnd, h_dc)) {
-			MessageBox(nullptr, (LPCWSTR)L"Device context release failed", (LPCWSTR)L"SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
+			MessageBox(nullptr, (LPCSTR)"Device context release failed", (LPCSTR)"SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
 			h_dc = nullptr;
 		}
 		if (h_wnd && !DestroyWindow(h_wnd)) {
-			MessageBox(nullptr, (LPCWSTR)L"hWnd release failed", (LPCWSTR)L"SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
+			MessageBox(nullptr, (LPCSTR)"hWnd release failed", (LPCSTR)"SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
 			h_wnd = nullptr;
 		}
-		if (!UnregisterClass((LPCWSTR)L"OpenGL", h_instance)) {
-			MessageBox(nullptr, (LPCWSTR)L"Class unregister failed", (LPCWSTR)L"SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
+		if (!UnregisterClass((LPCSTR)"OpenGL", h_instance)) {
+			MessageBox(nullptr, (LPCSTR)"Class unregister failed", (LPCSTR)"SHUTDOWN ERROR", MB_OK | MB_ICONINFORMATION);
 			h_instance = nullptr;
 		}
 	}
 }
 
-bool create_gl_window(const wchar_t* title, const int width, const int height, const int bits, const bool fullscreen_flag) {
+bool create_gl_window(const char* title, const int width, const int height, const int bits, const bool fullscreen_flag) {
 	GLuint pixel_format;
 	WNDCLASS wc;
 	DWORD dw_ex_style;
@@ -94,10 +94,10 @@ bool create_gl_window(const wchar_t* title, const int width, const int height, c
 	wc.hCursor = LoadCursor(nullptr, IDC_ARROW);
 	wc.hbrBackground = nullptr;
 	wc.lpszMenuName = nullptr;
-	wc.lpszClassName = static_cast<LPCWSTR>(L"OpenGL");
+	wc.lpszClassName = (LPCSTR)"OpenGL";
 
 	if (!RegisterClass(&wc)) {
-		MessageBox(nullptr, (LPCWSTR)L"Class register failed", (LPCWSTR)L"SHUTDOWN ERROR", MB_OK | MB_ICONEXCLAMATION);
+		MessageBox(nullptr, (LPCSTR)"Class register failed", (LPCSTR)"SHUTDOWN ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return false;
 	}
 
@@ -111,9 +111,9 @@ bool create_gl_window(const wchar_t* title, const int width, const int height, c
 
 		if (ChangeDisplaySettings(&dm_screen_settings, CDS_FULLSCREEN) != DISP_CHANGE_SUCCESSFUL)
 		{
-			if (MessageBox(nullptr, (LPCWSTR)L"Requested fullscreen is not supported by your video card, use window mode instead?", (LPCWSTR)L"OpenGL", MB_YESNO | MB_ICONEXCLAMATION) != IDYES)
+			if (MessageBox(nullptr, (LPCSTR)"Requested fullscreen is not supported by your video card, use window mode instead?", (LPCSTR)"OpenGL", MB_YESNO | MB_ICONEXCLAMATION) != IDYES)
 			{
-				MessageBox(nullptr, (LPCWSTR)L"Program will now close", (LPCWSTR)L"ERROR", MB_OK | MB_ICONSTOP);
+				MessageBox(nullptr, (LPCSTR)"Program will now close", (LPCSTR)"ERROR", MB_OK | MB_ICONSTOP);
 				return false;
 			}
 			g_is_fullscreen = false;
@@ -129,10 +129,10 @@ bool create_gl_window(const wchar_t* title, const int width, const int height, c
 		dw_style = WS_OVERLAPPEDWINDOW;
 	}
 	AdjustWindowRectEx(&window_rect, dw_style, false, dw_ex_style);
-	if (!((h_wnd = CreateWindowEx(dw_ex_style, (LPCWSTR)L"OpenGL", (LPCWSTR)title, dw_style | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
+	if (!((h_wnd = CreateWindowEx(dw_ex_style, (LPCSTR)"OpenGL", (LPCSTR)title, dw_style | WS_CLIPSIBLINGS | WS_CLIPCHILDREN,
 	                             0, 0, window_rect.right - window_rect.left, window_rect.bottom - window_rect.top, nullptr, nullptr, h_instance, nullptr)))) {
 		kill_gl_window();
-		MessageBox(nullptr, (LPCWSTR)L"Window creation failed", (LPCWSTR)L"ERROR", MB_OK | MB_ICONEXCLAMATION);
+		MessageBox(nullptr, (LPCSTR)"Window creation failed", (LPCSTR)"ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return false;
 	}
 
@@ -145,29 +145,29 @@ bool create_gl_window(const wchar_t* title, const int width, const int height, c
 
 	if (!((h_dc = GetDC(h_wnd)))) {
 		kill_gl_window();
-		MessageBox(nullptr, (LPCWSTR)L"GL device context creation failed", (LPCWSTR)L"ERROR", MB_OK | MB_ICONEXCLAMATION);
+		MessageBox(nullptr, (LPCSTR)"GL device context creation failed", (LPCSTR)"ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return false;
 	}
 
 	if (!((pixel_format = ChoosePixelFormat(h_dc, &pfd)))) {
 		kill_gl_window();
-		MessageBox(nullptr, (LPCWSTR)L"Pixel format not found", (LPCWSTR)L"ERROR", MB_OK | MB_ICONEXCLAMATION);
+		MessageBox(nullptr, (LPCSTR)"Pixel format not found", (LPCSTR)"ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return false;
 	}
 	if (!SetPixelFormat(h_dc, pixel_format, &pfd)) {
 		kill_gl_window();
-		MessageBox(nullptr, (LPCWSTR)L"Pixel format setting failed", (LPCWSTR)L"ERROR", MB_OK | MB_ICONEXCLAMATION);
+		MessageBox(nullptr, (LPCSTR)"Pixel format setting failed", (LPCSTR)"ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return false;
 	}
 
 	if (!((h_rc = wglCreateContext(h_dc)))) {
 		kill_gl_window();
-		MessageBox(nullptr, (LPCWSTR)L"Rendering context creation failed", (LPCWSTR)L"ERROR", MB_OK | MB_ICONEXCLAMATION);
+		MessageBox(nullptr, (LPCSTR)"Rendering context creation failed", (LPCSTR)"ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return false;
 	}
 	if (!wglMakeCurrent(h_dc, h_rc)) {
 		kill_gl_window();
-		MessageBox(nullptr, (LPCWSTR)L"Rendering context activation failed", (LPCWSTR)L"ERROR", MB_OK | MB_ICONEXCLAMATION);
+		MessageBox(nullptr, (LPCSTR)"Rendering context activation failed", (LPCSTR)"ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return false;
 	}
 
@@ -178,7 +178,7 @@ bool create_gl_window(const wchar_t* title, const int width, const int height, c
 
 	if (!init_gl()) {
 		kill_gl_window();
-		MessageBox(nullptr, (LPCWSTR)L"Init failed", (LPCWSTR)L"ERROR", MB_OK | MB_ICONEXCLAMATION);
+		MessageBox(nullptr, (LPCSTR)"Init failed", (LPCSTR)"ERROR", MB_OK | MB_ICONEXCLAMATION);
 		return false;
 	}
 
@@ -238,7 +238,7 @@ int WINAPI WinMain(
 	MSG msg;
 	bool done = false;
 
-	if (MessageBox(nullptr, (LPCWSTR)L"Launch in full screen?", (LPCWSTR)L"Startup fullscreen", MB_YESNO | MB_ICONQUESTION) == IDNO) {
+	if (MessageBox(nullptr, (LPCSTR)"Launch in full screen?", (LPCSTR)"Startup fullscreen", MB_YESNO | MB_ICONQUESTION) == IDNO) {
 		g_is_fullscreen = false;
 	}
 
