@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SphDbPlayground", "SphDbPlayground.csproj", "{374D7ECC-CE93-43B6-A4A9-CC5B7881074F}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SphGameObject", "..\SphGameObject\SphGameObject.csproj", "{98BC939A-9429-42E7-9BFE-6632279FE8E5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{374D7ECC-CE93-43B6-A4A9-CC5B7881074F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{374D7ECC-CE93-43B6-A4A9-CC5B7881074F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{374D7ECC-CE93-43B6-A4A9-CC5B7881074F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{374D7ECC-CE93-43B6-A4A9-CC5B7881074F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{98BC939A-9429-42E7-9BFE-6632279FE8E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{98BC939A-9429-42E7-9BFE-6632279FE8E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{98BC939A-9429-42E7-9BFE-6632279FE8E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{98BC939A-9429-42E7-9BFE-6632279FE8E5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal

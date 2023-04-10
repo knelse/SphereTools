@@ -13,10 +13,4 @@
       <ProjectReference Include="..\SphObjectDb\SphObjectDb.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <Reference Include="SphGameObject">
-        <HintPath>..\SphGameObject\bin\Debug\net6.0\SphGameObject.dll</HintPath>
-      </Reference>
-    </ItemGroup>
-
 </Project>

@@ -28,7 +28,6 @@ public struct ObjectPacket
     public SphGameObject? GameObject { get; set; }
     public byte[] Packet { get; set; }
     public long BitsRead { get; set; }
-
     public bool FourBitShiftedSuffix { get; set; }
     public bool IsStrangeSuffix { get; set; }
     public ObjectPacketEncodingGroup EncodingGroup { get; set; }
@@ -246,7 +245,7 @@ public struct ObjectPacket
             or ObjectType.PowderFinale or ObjectType.PowderTarget or ObjectType.RingDiamond or ObjectType.RingRuby
             or ObjectType.SeedCastle or ObjectType.TokenIsland or ObjectType.PowderAoE)
         {
-            stream.WriteUInt16(Count);//, 13);
+            stream.WriteUInt16(Count);
         }
 
         // ignore for now, ideally forever
