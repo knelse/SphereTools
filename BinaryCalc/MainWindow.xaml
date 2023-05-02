@@ -102,24 +102,18 @@
                 <ColumnDefinition Width="*"/>
                 <ColumnDefinition Width="10*"/>
             </Grid.ColumnDefinitions>
+            <Border Grid.Row="0" Name="SelectedBasis_BIN" Background="#333333" Opacity="0.7" Grid.ColumnSpan="2" Visibility="Hidden"/>
             <Label Grid.Row="0" Style="{StaticResource ValueBasis}">BIN</Label>
-            <TextBlock Name="BinDisplay" Grid.Row="0" Grid.Column="1" Style="{StaticResource ValueDisplay}">
-                01
-            </TextBlock>
+            <TextBlock Name="BinDisplay" Grid.Row="0" Grid.Column="1" Style="{StaticResource ValueDisplay}" Text="{Binding currentValueBin}"/>
+            <Border Grid.Row="1" Name="SelectedBasis_OCT" Background="#333333" Opacity="0.7" Grid.ColumnSpan="2" Visibility="Hidden"/>
             <Label Grid.Row="1" Style="{StaticResource ValueBasis}">OCT</Label>
-            <TextBlock Name="OctDisplay" Grid.Row="1" Grid.Column="1" Style="{StaticResource ValueDisplay}">
-                01234567
-            </TextBlock>
+            <TextBlock Name="OctDisplay" Grid.Row="1" Grid.Column="1" Style="{StaticResource ValueDisplay}" Text="{Binding currentValueOct}"/>
+            <Border Grid.Row="2" Name="SelectedBasis_DEC" Background="#333333" Opacity="0.7" Grid.ColumnSpan="2" Visibility="Hidden"/>
             <Label Grid.Row="2" Style="{StaticResource ValueBasis}">DEC</Label>
-            <TextBlock Name="DecDisplay" Grid.Row="2" Grid.Column="1" Style="{StaticResource ValueDisplay}">
-                0123456789
-            </TextBlock>
-            <Border Grid.Row="3" Name="HexValueSelected" Background="#333333" Opacity="0.7" Grid.ColumnSpan="2"/>
+            <TextBlock Name="DecDisplay" Grid.Row="2" Grid.Column="1" Style="{StaticResource ValueDisplay}" Text="{Binding currentValueDec}"/>
+            <Border Grid.Row="3" Name="SelectedBasis_HEX" Background="#333333" Opacity="0.7" Grid.ColumnSpan="2" Visibility="Hidden"/>
             <Label Grid.Row="3" Style="{StaticResource ValueBasis}">HEX</Label>
-            <TextBlock Name="HexDisplay" Grid.Row="3" Grid.Column="1" Style="{StaticResource ValueDisplay}">
-                0123456789ABCDEF
-            </TextBlock>
-
+            <TextBlock Name="HexDisplay" Grid.Row="3" Grid.Column="1" Style="{StaticResource ValueDisplay}" Text="{Binding currentValueHex}"/>
         </Grid>
         <Border Grid.Row="1" BorderBrush="#666666" BorderThickness="0 1 0 1" Margin="0 4 0 4">
             <Grid Margin="4 2 4 2">
@@ -129,10 +123,10 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Button Name="Binary" Style="{StaticResource BasisButton}" Grid.Column="0">BIN</Button>
-                <Button Name="Octal" Style="{StaticResource BasisButton}" Grid.Column="1">OCT</Button>
-                <Button Name="Decimal" Style="{StaticResource BasisButton}" Grid.Column="2">DEC</Button>
-                <Button Name="Hex" Style="{StaticResource BasisButton}" Grid.Column="3">HEX</Button>
+                <Button Name="EditingMode_BIN" Style="{StaticResource BasisButton}" Grid.Column="0" Click="EditMode_OnClick">BIN</Button>
+                <Button Name="EditingMode_OCT" Style="{StaticResource BasisButton}" Grid.Column="1" Click="EditMode_OnClick">OCT</Button>
+                <Button Name="EditingMode_DEC" Style="{StaticResource BasisButton}" Grid.Column="2" Click="EditMode_OnClick">DEC</Button>
+                <Button Name="EditingMode_HEX" Style="{StaticResource BasisButton}" Grid.Column="3" Click="EditMode_OnClick">HEX</Button>
             </Grid>
         </Border>
         <Grid Grid.Row="2">
@@ -151,34 +145,34 @@
                 <RowDefinition Height="*" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <Button Name="Number_D" Style="{StaticResource HexButton}" Grid.Column="0" Grid.Row="0">D</Button>
-            <Button Name="Number_E" Style="{StaticResource HexButton}" Grid.Column="1" Grid.Row="0">E</Button>
-            <Button Name="Number_F" Style="{StaticResource HexButton}" Grid.Column="2" Grid.Row="0">F</Button>
+            <Button Name="Number_D" Style="{StaticResource HexButton}" Grid.Column="0" Grid.Row="0" Click="Number_OnClick">D</Button>
+            <Button Name="Number_E" Style="{StaticResource HexButton}" Grid.Column="1" Grid.Row="0" Click="Number_OnClick">E</Button>
+            <Button Name="Number_F" Style="{StaticResource HexButton}" Grid.Column="2" Grid.Row="0" Click="Number_OnClick">F</Button>
             <Button Name="Clear" Style="{StaticResource EraseButton}" Grid.Column="3" Grid.Row="0" Grid.ColumnSpan="2">CLEAR</Button>
-            <Button Name="Number_A" Style="{StaticResource HexButton}" Grid.Column="0" Grid.Row="1">A</Button>
-            <Button Name="Number_B" Style="{StaticResource HexButton}" Grid.Column="1" Grid.Row="1">B</Button>
-            <Button Name="Number_C" Style="{StaticResource HexButton}" Grid.Column="2" Grid.Row="1">C</Button>
+            <Button Name="Number_A" Style="{StaticResource HexButton}" Grid.Column="0" Grid.Row="1" Click="Number_OnClick">A</Button>
+            <Button Name="Number_B" Style="{StaticResource HexButton}" Grid.Column="1" Grid.Row="1" Click="Number_OnClick">B</Button>
+            <Button Name="Number_C" Style="{StaticResource HexButton}" Grid.Column="2" Grid.Row="1" Click="Number_OnClick">C</Button>
             <Button Name="Plus" Style="{StaticResource OperatorButton}" Grid.Column="3" Grid.Row="1">+</Button>
             <Button Name="Minus" Style="{StaticResource OperatorButtonLast}" Grid.Column="4" Grid.Row="1">-</Button>
-            <Button Name="Number_7" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="2">7</Button>
-            <Button Name="Number_8" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="2">8</Button>
-            <Button Name="Number_9" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="2">9</Button>
+            <Button Name="Number_7" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="2" Click="Number_OnClick">7</Button>
+            <Button Name="Number_8" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="2" Click="Number_OnClick">8</Button>
+            <Button Name="Number_9" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="2" Click="Number_OnClick">9</Button>
             <Button Name="Multiply" Style="{StaticResource OperatorButton}" Grid.Column="3" Grid.Row="2">*</Button>
             <Button Name="Divide" Style="{StaticResource OperatorButtonLast}" Grid.Column="4" Grid.Row="2">/</Button>
-            <Button Name="Number_4" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="3">4</Button>
-            <Button Name="Number_5" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="3">5</Button>
-            <Button Name="Number_6" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="3">6</Button>
+            <Button Name="Number_4" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="3" Click="Number_OnClick">4</Button>
+            <Button Name="Number_5" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="3" Click="Number_OnClick">5</Button>
+            <Button Name="Number_6" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="3" Click="Number_OnClick">6</Button>
             <Button Name="Negate" Style="{StaticResource OperatorButton}" Grid.Column="3" Grid.Row="3">+/-</Button>
             <Button Name="Endianness" Style="{StaticResource OperatorButtonLast}" Grid.Column="4" Grid.Row="3">BE/LE</Button>
-            <Button Name="Number_1" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="4">1</Button>
-            <Button Name="Number_2" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="4">2</Button>
-            <Button Name="Number_3" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="4">3</Button>
+            <Button Name="Number_1" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="4" Click="Number_OnClick">1</Button>
+            <Button Name="Number_2" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="4" Click="Number_OnClick">2</Button>
+            <Button Name="Number_3" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="4" Click="Number_OnClick">3</Button>
             <Button Name="Equals" Style="{StaticResource EqualsButtonLast}" Grid.Column="3" Grid.Row="4"
                     Grid.RowSpan="2" Grid.ColumnSpan="2">
                 =
             </Button>
             <Button Name="LeftShift" Style="{StaticResource OperatorButton}" Grid.Column="0" Grid.Row="5">&lt;&lt;</Button>
-            <Button Name="Number_0" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="5">0</Button>
+            <Button Name="Number_0" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="5" Click="Number_OnClick">0</Button>
             <Button Name="RightShift" Style="{StaticResource OperatorButton}" Grid.Column="2" Grid.Row="5">&gt;&gt;</Button>
         </Grid>
     </Grid>
