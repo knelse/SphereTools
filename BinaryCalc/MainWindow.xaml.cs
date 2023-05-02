@@ -1,34 +1,41 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Globalization;
+using System.Linq;
+using System.Numerics;
+using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+// ReSharper disable SwitchStatementMissingSomeEnumCasesNoDefault
+// ReSharper disable SwitchStatementHandlesSomeKnownEnumValuesWithDefault
 
 namespace BinaryCalc
 {
     public enum EditingMode
     {
-        BIN,
-        OCT,
-        DEC,
-        HEX
+        BIN = 2,
+        OCT = 8,
+        DEC = 10,
+        HEX = 16
     }
 
     /// <summary>
+    /// This should be MVVM but I'm lazy
     /// Interaction logic for MainWindow.xaml
     /// </summary>
     /// 
     public sealed partial class MainWindow : INotifyPropertyChanged
     {
-        public List<int> currentValueListBin { get; set; } = new();
-        public List<int> currentValueListOct { get; set; } = new();
-        public List<int> currentValueListDec { get; set; } = new();
-        public List<int> currentValueListHex { get; set; } = new();
-        public string currentValueBin { get; set; } = "";
-        public string currentValueOct { get; set; } = "";
-        public string currentValueDec { get; set; } = "";
-        public string currentValueHex { get; set; } = "";
+        public string currentValueBinStr { get; set; } = "0";
+        public string currentValueOctStr { get; set; } = "0";
+        public string currentValueDecStr { get; set; } = "0";
+        public string currentValueHexStr { get; set; } = "0";
+
+        public BigInteger currentValue;
+        
+        public BigInteger operandValue;
 
         public readonly SolidColorBrush basisButtonDisabledColor = new(new Color {R = 255, G = 255, B = 255, A = 50});
         public readonly SolidColorBrush basisButtonEnabledColor = new(new Color {R = 255, G = 255, B = 255, A = 100});
@@ -37,7 +44,7 @@ namespace BinaryCalc
         public readonly SolidColorBrush hexNumberButtonDisabledColor = new(new Color {R = 30, G = 50, B = 50, A = 255});
         public readonly SolidColorBrush hexNumberButtonEnabledColor = new(new Color {R = 48, G = 80, B = 80, A = 255});
 
-        public EditingMode EditingMode { get; set; } = EditingMode.HEX;
+        public EditingMode EditingMode { get; set; } = EditingMode.BIN;
 
         public MainWindow()
         {
@@ -63,8 +70,8 @@ namespace BinaryCalc
         private void Number_OnClick(object sender, RoutedEventArgs e)
         {
             var button = e.Source as Button;
-            var numValue = button?.Name[7..8]; // 01234567890ABCDEF
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(currentValueBin)));
+            var numValue = button?.Name[7] ?? char.MaxValue; // 01234567890ABCDEF
+            OnNumberPress(numValue);
         }
 
         public event PropertyChangedEventHandler? PropertyChanged;
@@ -80,6 +87,102 @@ namespace BinaryCalc
 
             EditingMode = editModeValue;
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(EditingMode)));
+        }
+
+        private static BigInteger ConvertBasis(string input, EditingMode from)
+        {
+            return input.Aggregate(new BigInteger(), (temp, c) => temp * (int) from + (c < 'A' ? (c - '0') : (c - 'A' +
+                10)));
+        }
+
+        private static string ToBinaryString(BigInteger bigInt)
+        {
+            var bytes = bigInt.ToByteArray();
+            var idx = bytes.Length - 1;
+            var base2 = new StringBuilder(bytes.Length * 8);
+            var binary = Convert.ToString(bytes[idx], 2);
+            base2.Append(binary);
+            for (idx--; idx >= 0; idx--)
+            {
+                base2.Append(Convert.ToString(bytes[idx], 2).PadLeft(8, '0'));
+            }
+
+            return base2.ToString();
+        }
+        
+        public static string ToOctalString(BigInteger bigInt)
+        {
+            var bytes = bigInt.ToByteArray();
+            var idx = bytes.Length - 1;
+            var base8 = new StringBuilder(((bytes.Length / 3) + 1) * 8);
+            var extra = bytes.Length % 3;
+
+            if (extra == 0)
+            {
+                extra = 3;
+            }
+
+            var int24 = 0;
+            for (; extra != 0; extra--)
+            {
+                int24 <<= 8;
+                int24 += bytes[idx--];
+            }
+
+            var octal = Convert.ToString(int24, 8);
+
+            base8.Append(octal);
+
+            for (; idx >= 0; idx -= 3)
+            {
+                int24 = (bytes[idx] << 16) + (bytes[idx - 1] << 8) + bytes[idx - 2];
+                base8.Append(Convert.ToString(int24, 8).PadLeft(8, '0'));
+            }
+
+            return base8.ToString();
+        }
+
+        private void OnNumberPress(char number)
+        {
+            if (number == char.MaxValue)
+            {
+                return;
+            }
+
+            switch (EditingMode)
+            {
+                case EditingMode.BIN:
+                    currentValueBinStr += number;
+                    currentValue = ConvertBasis(currentValueBinStr, EditingMode.BIN);
+                    break;
+                case EditingMode.OCT:
+                    currentValueOctStr += number;
+                    currentValue = ConvertBasis(currentValueOctStr, EditingMode.OCT);
+                    break;
+                case EditingMode.DEC:
+                    currentValueDecStr += number;
+                    currentValue = BigInteger.Parse(currentValueDecStr, NumberStyles.Number);
+                    break;
+                case EditingMode.HEX:
+                    currentValueHexStr += number;
+                    currentValue = BigInteger.Parse(currentValueHexStr, NumberStyles.HexNumber);
+                    break;
+            }
+            UpdateValueDisplay();
+        }
+
+        private void UpdateValueDisplay()
+        {
+            currentValueBinStr = ToBinaryString(currentValue);
+            currentValueOctStr = ToOctalString(currentValue);
+            currentValueDecStr = currentValue.ToString("D");
+            currentValueHexStr = currentValue.ToString("X");
+
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(currentValueBinStr)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(currentValueOctStr)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(currentValueDecStr)));
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(nameof(currentValueHexStr)));
+            
         }
 
         private void UpdateNumberButtons()
@@ -219,6 +322,13 @@ namespace BinaryCalc
             }
             
             UpdateNumberButtons();
+        }
+
+        private void Operator_Clear_OnClick(object sender, RoutedEventArgs e)
+        {
+            currentValue = BigInteger.Zero;
+            operandValue = BigInteger.Zero;
+            UpdateValueDisplay();
         }
     }
 }
