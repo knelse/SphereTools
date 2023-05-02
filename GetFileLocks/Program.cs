@@ -1,6 +1,4 @@
-﻿// See https://aka.ms/new-console-template for more information
-
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Runtime.InteropServices;
 
 public static class FileUtil
@@ -12,20 +10,9 @@ public static class FileUtil
         private readonly System.Runtime.InteropServices.ComTypes.FILETIME ProcessStartTime;
     }
 
-    const int RmRebootReasonNone = 0;
-    const int CCH_RM_MAX_APP_NAME = 255;
-    const int CCH_RM_MAX_SVC_NAME = 63;
-
-    private enum RM_APP_TYPE
-    {
-        RmUnknownApp = 0,
-        RmMainWindow = 1,
-        RmOtherWindow = 2,
-        RmService = 3,
-        RmExplorer = 4,
-        RmConsole = 5,
-        RmCritical = 1000
-    }
+    private const int RmRebootReasonNone = 0;
+    private const int CCH_RM_MAX_APP_NAME = 255;
+    private const int CCH_RM_MAX_SVC_NAME = 63;
 
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Unicode)]
     private struct RM_PROCESS_INFO
@@ -38,44 +25,33 @@ public static class FileUtil
         [MarshalAs(UnmanagedType.ByValTStr, SizeConst = CCH_RM_MAX_SVC_NAME + 1)]
         private readonly string strServiceShortName;
 
-        private readonly RM_APP_TYPE ApplicationType;
         private readonly uint AppStatus;
         private readonly uint TSSessionId;
         [MarshalAs(UnmanagedType.Bool)] private readonly bool bRestartable;
     }
 
     [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)]
-    static extern int RmRegisterResources(uint pSessionHandle,
-        UInt32 nFiles,
+    private static extern int RmRegisterResources(uint pSessionHandle,
+        uint nFiles,
         string[] rgsFilenames,
-        UInt32 nApplications,
+        uint nApplications,
         [In] RM_UNIQUE_PROCESS[] rgApplications,
-        UInt32 nServices,
+        uint nServices,
         string[] rgsServiceNames);
 
     [DllImport("rstrtmgr.dll", CharSet = CharSet.Unicode)]
-    static extern int RmStartSession(out uint pSessionHandle, int dwSessionFlags, string strSessionKey);
+    private static extern int RmStartSession(out uint pSessionHandle, int dwSessionFlags, string strSessionKey);
 
     [DllImport("rstrtmgr.dll")]
-    static extern int RmEndSession(uint pSessionHandle);
+    private static extern int RmEndSession(uint pSessionHandle);
 
     [DllImport("rstrtmgr.dll")]
-    static extern int RmGetList(uint dwSessionHandle,
+    private static extern int RmGetList(uint dwSessionHandle,
         out uint pnProcInfoNeeded,
         ref uint pnProcInfo,
         [In, Out] RM_PROCESS_INFO[] rgAffectedApps,
         ref uint lpdwRebootReasons);
 
-    /// <summary>
-    /// Find out what process(es) have a lock on the specified file.
-    /// </summary>
-    /// <param name="path">Path of the file.</param>
-    /// <returns>Processes locking the file</returns>
-    /// <remarks>See also:
-    /// http://msdn.microsoft.com/en-us/library/windows/desktop/aa373661(v=vs.85).aspx
-    /// http://wyupdate.googlecode.com/svn-history/r401/trunk/frmFilesInUse.cs (no copyright in code at time of viewing)
-    /// 
-    /// </remarks>
     public static List<Process> WhoIsLocking(string path)
     {
         var key = Guid.NewGuid().ToString();
