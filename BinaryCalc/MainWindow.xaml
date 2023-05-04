@@ -3,14 +3,14 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:BinaryCalc"
         mc:Ignorable="d"
         Title="BinaryCalc"
         Height="600"
         Width="400"
         MinHeight="600"
         MinWidth="400"
-        Background="#222222">
+        Background="#222222"
+        d:DataContext="{d:DesignInstance}">
     <Window.Resources>
         <Style x:Key="NumberButton" TargetType="Button">
             <Setter Property="Background" Value="#444444" />
@@ -73,17 +73,31 @@
             <Setter Property="TextWrapping" Value="Wrap" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="HorizontalAlignment" Value="Right" />
-            <Setter Property="FontFamily" Value="Hack"/>
-            <Setter Property="FontSize" Value="14"/>
-            <Setter Property="Margin" Value="8"/>
+            <Setter Property="FontFamily" Value="Hack" />
+            <Setter Property="FontSize" Value="14" />
+            <Setter Property="Margin" Value="8" />
         </Style>
         <Style x:Key="ValueBasis" TargetType="Label">
             <Setter Property="Foreground" Value="#999999" />
             <Setter Property="Background" Value="Transparent" />
             <Setter Property="VerticalAlignment" Value="Center" />
             <Setter Property="HorizontalAlignment" Value="Left" />
-            <Setter Property="Margin" Value="2"/>
+            <Setter Property="Margin" Value="2" />
         </Style>
+        <ContextMenu x:Key="BinaryValueContextMenu">
+            <MenuItem Header="Copy With Line Breaks" Click="CopyValue_BIN_WithBreaks_OnClick" />
+            <MenuItem Header="Copy With Line Breaks And Hex Value" Click="CopyValue_BIN_WithBreaksAndHex_OnClick" />
+            <MenuItem Header="Copy" Click="CopyValue_BIN_OnClick" />
+        </ContextMenu>
+        <ContextMenu x:Key="OctValueContextMenu">
+            <MenuItem Header="Copy" Click="CopyValue_OCT_OnClick" />
+        </ContextMenu>
+        <ContextMenu x:Key="DecValueContextMenu">
+            <MenuItem Header="Copy" Click="CopyValue_DEC_OnClick" />
+        </ContextMenu>
+        <ContextMenu x:Key="HexValueContextMenu">
+            <MenuItem Header="Copy" Click="CopyValue_HEX_OnClick" />
+        </ContextMenu>
     </Window.Resources>
     <Grid>
         <Grid.RowDefinitions>
@@ -99,21 +113,45 @@
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="*"/>
-                <ColumnDefinition Width="10*"/>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="10*" />
             </Grid.ColumnDefinitions>
-            <Border Grid.Row="0" Name="SelectedBasis_BIN" Background="#333333" Opacity="0.7" Grid.ColumnSpan="2" Visibility="Hidden"/>
-            <Label Grid.Row="0" Style="{StaticResource ValueBasis}">BIN</Label>
-            <TextBlock Name="BinDisplay" Grid.Row="0" Grid.Column="1" Style="{StaticResource ValueDisplay}" Text="{Binding currentValueBinStr}"/>
-            <Border Grid.Row="1" Name="SelectedBasis_OCT" Background="#333333" Opacity="0.7" Grid.ColumnSpan="2" Visibility="Hidden"/>
-            <Label Grid.Row="1" Style="{StaticResource ValueBasis}">OCT</Label>
-            <TextBlock Name="OctDisplay" Grid.Row="1" Grid.Column="1" Style="{StaticResource ValueDisplay}" Text="{Binding currentValueOctStr}"/>
-            <Border Grid.Row="2" Name="SelectedBasis_DEC" Background="#333333" Opacity="0.7" Grid.ColumnSpan="2" Visibility="Hidden"/>
-            <Label Grid.Row="2" Style="{StaticResource ValueBasis}">DEC</Label>
-            <TextBlock Name="DecDisplay" Grid.Row="2" Grid.Column="1" Style="{StaticResource ValueDisplay}" Text="{Binding currentValueDecStr}"/>
-            <Border Grid.Row="3" Name="SelectedBasis_HEX" Background="#333333" Opacity="0.7" Grid.ColumnSpan="2" Visibility="Hidden"/>
-            <Label Grid.Row="3" Style="{StaticResource ValueBasis}">HEX</Label>
-            <TextBlock Name="HexDisplay" Grid.Row="3" Grid.Column="1" Style="{StaticResource ValueDisplay}" Text="{Binding currentValueHexStr}"/>
+            <Border Grid.Row="0" Name="SelectedBasis_BIN" Grid.ColumnSpan="2"
+                    ContextMenu="{StaticResource BinaryValueContextMenu}" MouseLeftButtonDown="EditingMode_BIN_OnClick" />
+            <Label Grid.Row="0" Grid.Column="0" Style="{StaticResource ValueBasis}"
+                   ContextMenu="{StaticResource BinaryValueContextMenu}" MouseLeftButtonDown="EditingMode_BIN_OnClick">
+                BIN
+            </Label>
+            <TextBlock Grid.Row="0" Grid.Column="1" Style="{StaticResource ValueDisplay}"
+                       Text="{Binding CurrentValueBinStr}" ContextMenu="{StaticResource BinaryValueContextMenu}"
+                       MouseLeftButtonDown="EditingMode_BIN_OnClick" />
+            <Border Grid.Row="1" Name="SelectedBasis_OCT" Grid.ColumnSpan="2" Grid.Column="0"
+                    ContextMenu="{StaticResource OctValueContextMenu}" MouseLeftButtonDown="EditingMode_OCT_OnClick" />
+            <Label Grid.Row="1" Grid.Column="0" Style="{StaticResource ValueBasis}"
+                   ContextMenu="{StaticResource OctValueContextMenu}" MouseLeftButtonDown="EditingMode_OCT_OnClick">
+                OCT
+            </Label>
+            <TextBlock Grid.Row="1" Grid.Column="1" Style="{StaticResource ValueDisplay}"
+                       Text="{Binding CurrentValueOctStr}" ContextMenu="{StaticResource OctValueContextMenu}"
+                       MouseLeftButtonDown="EditingMode_OCT_OnClick" />
+            <Border Grid.Row="2" Name="SelectedBasis_DEC" Grid.ColumnSpan="2" Grid.Column="0"
+                    ContextMenu="{StaticResource DecValueContextMenu}" MouseLeftButtonDown="EditingMode_DEC_OnClick" />
+            <Label Grid.Row="2" Grid.Column="0" Style="{StaticResource ValueBasis}"
+                   ContextMenu="{StaticResource DecValueContextMenu}" MouseLeftButtonDown="EditingMode_DEC_OnClick">
+                DEC
+            </Label>
+            <TextBlock Grid.Row="2" Grid.Column="1" Style="{StaticResource ValueDisplay}"
+                       Text="{Binding CurrentValueDecStr}" ContextMenu="{StaticResource DecValueContextMenu}"
+                       MouseLeftButtonDown="EditingMode_DEC_OnClick" />
+            <Border Grid.Row="3" Name="SelectedBasis_HEX" Grid.ColumnSpan="2" Grid.Column="0"
+                    ContextMenu="{StaticResource HexValueContextMenu}" MouseLeftButtonDown="EditingMode_HEX_OnClick" />
+            <Label Grid.Row="3" Grid.Column="0" Style="{StaticResource ValueBasis}"
+                   ContextMenu="{StaticResource HexValueContextMenu}" MouseLeftButtonDown="EditingMode_HEX_OnClick">
+                HEX
+            </Label>
+            <TextBlock Grid.Row="3" Grid.Column="1" Style="{StaticResource ValueDisplay}"
+                       Text="{Binding CurrentValueHexStr}" ContextMenu="{StaticResource HexValueContextMenu}"
+                       MouseLeftButtonDown="EditingMode_HEX_OnClick" />
         </Grid>
         <Border Grid.Row="1" BorderBrush="#666666" BorderThickness="0 1 0 1" Margin="0 4 0 4">
             <Grid Margin="4 2 4 2">
@@ -123,10 +161,22 @@
                     <ColumnDefinition Width="*" />
                     <ColumnDefinition Width="*" />
                 </Grid.ColumnDefinitions>
-                <Button Name="EditingMode_BIN" Style="{StaticResource BasisButton}" Grid.Column="0" Click="EditMode_OnClick">BIN</Button>
-                <Button Name="EditingMode_OCT" Style="{StaticResource BasisButton}" Grid.Column="1" Click="EditMode_OnClick">OCT</Button>
-                <Button Name="EditingMode_DEC" Style="{StaticResource BasisButton}" Grid.Column="2" Click="EditMode_OnClick">DEC</Button>
-                <Button Name="EditingMode_HEX" Style="{StaticResource BasisButton}" Grid.Column="3" Click="EditMode_OnClick">HEX</Button>
+                <Button Name="EditingMode_BIN" Style="{StaticResource BasisButton}" Grid.Column="0"
+                        Click="EditingMode_BIN_OnClick">
+                    BIN
+                </Button>
+                <Button Name="EditingMode_OCT" Style="{StaticResource BasisButton}" Grid.Column="1"
+                        Click="EditingMode_OCT_OnClick">
+                    OCT
+                </Button>
+                <Button Name="EditingMode_DEC" Style="{StaticResource BasisButton}" Grid.Column="2"
+                        Click="EditingMode_DEC_OnClick">
+                    DEC
+                </Button>
+                <Button Name="EditingMode_HEX" Style="{StaticResource BasisButton}" Grid.Column="3"
+                        Click="EditingMode_HEX_OnClick">
+                    HEX
+                </Button>
             </Grid>
         </Border>
         <Grid Grid.Row="2">
@@ -145,35 +195,92 @@
                 <RowDefinition Height="*" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <Button Name="Number_D" Style="{StaticResource HexButton}" Grid.Column="0" Grid.Row="0" Click="Number_OnClick">D</Button>
-            <Button Name="Number_E" Style="{StaticResource HexButton}" Grid.Column="1" Grid.Row="0" Click="Number_OnClick">E</Button>
-            <Button Name="Number_F" Style="{StaticResource HexButton}" Grid.Column="2" Grid.Row="0" Click="Number_OnClick">F</Button>
-            <Button Name="Operator_Clear" Style="{StaticResource EraseButton}" Grid.Column="3" Grid.Row="0" Grid.ColumnSpan="2" Click="Operator_Clear_OnClick">CLEAR</Button>
-            <Button Name="Number_A" Style="{StaticResource HexButton}" Grid.Column="0" Grid.Row="1" Click="Number_OnClick">A</Button>
-            <Button Name="Number_B" Style="{StaticResource HexButton}" Grid.Column="1" Grid.Row="1" Click="Number_OnClick">B</Button>
-            <Button Name="Number_C" Style="{StaticResource HexButton}" Grid.Column="2" Grid.Row="1" Click="Number_OnClick">C</Button>
+            <Button Name="Number_D" Style="{StaticResource HexButton}" Grid.Column="0" Grid.Row="0"
+                    Click="Number_OnClick">
+                D
+            </Button>
+            <Button Name="Number_E" Style="{StaticResource HexButton}" Grid.Column="1" Grid.Row="0"
+                    Click="Number_OnClick">
+                E
+            </Button>
+            <Button Name="Number_F" Style="{StaticResource HexButton}" Grid.Column="2" Grid.Row="0"
+                    Click="Number_OnClick">
+                F
+            </Button>
+            <Button Name="Operator_Clear" Style="{StaticResource EraseButton}" Grid.Column="3" Grid.Row="0"
+                    Grid.ColumnSpan="2" Click="Operator_Clear_OnClick">
+                CLEAR
+            </Button>
+            <Button Name="Number_A" Style="{StaticResource HexButton}" Grid.Column="0" Grid.Row="1"
+                    Click="Number_OnClick">
+                A
+            </Button>
+            <Button Name="Number_B" Style="{StaticResource HexButton}" Grid.Column="1" Grid.Row="1"
+                    Click="Number_OnClick">
+                B
+            </Button>
+            <Button Name="Number_C" Style="{StaticResource HexButton}" Grid.Column="2" Grid.Row="1"
+                    Click="Number_OnClick">
+                C
+            </Button>
             <Button Name="Operator_Plus" Style="{StaticResource OperatorButton}" Grid.Column="3" Grid.Row="1">+</Button>
             <Button Name="Operator_Minus" Style="{StaticResource OperatorButtonLast}" Grid.Column="4" Grid.Row="1">-</Button>
-            <Button Name="Number_7" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="2" Click="Number_OnClick">7</Button>
-            <Button Name="Number_8" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="2" Click="Number_OnClick">8</Button>
-            <Button Name="Number_9" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="2" Click="Number_OnClick">9</Button>
+            <Button Name="Number_7" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="2"
+                    Click="Number_OnClick">
+                7
+            </Button>
+            <Button Name="Number_8" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="2"
+                    Click="Number_OnClick">
+                8
+            </Button>
+            <Button Name="Number_9" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="2"
+                    Click="Number_OnClick">
+                9
+            </Button>
             <Button Name="Operator_Multiply" Style="{StaticResource OperatorButton}" Grid.Column="3" Grid.Row="2">*</Button>
             <Button Name="Operator_Divide" Style="{StaticResource OperatorButtonLast}" Grid.Column="4" Grid.Row="2">/</Button>
-            <Button Name="Number_4" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="3" Click="Number_OnClick">4</Button>
-            <Button Name="Number_5" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="3" Click="Number_OnClick">5</Button>
-            <Button Name="Number_6" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="3" Click="Number_OnClick">6</Button>
+            <Button Name="Number_4" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="3"
+                    Click="Number_OnClick">
+                4
+            </Button>
+            <Button Name="Number_5" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="3"
+                    Click="Number_OnClick">
+                5
+            </Button>
+            <Button Name="Number_6" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="3"
+                    Click="Number_OnClick">
+                6
+            </Button>
             <Button Name="Operator_Negate" Style="{StaticResource OperatorButton}" Grid.Column="3" Grid.Row="3">+/-</Button>
             <Button Name="Endianness" Style="{StaticResource OperatorButtonLast}" Grid.Column="4" Grid.Row="3">BE/LE</Button>
-            <Button Name="Number_1" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="4" Click="Number_OnClick">1</Button>
-            <Button Name="Number_2" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="4" Click="Number_OnClick">2</Button>
-            <Button Name="Number_3" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="4" Click="Number_OnClick">3</Button>
+            <Button Name="Number_1" Style="{StaticResource NumberButton}" Grid.Column="0" Grid.Row="4"
+                    Click="Number_OnClick">
+                1
+            </Button>
+            <Button Name="Number_2" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="4"
+                    Click="Number_OnClick">
+                2
+            </Button>
+            <Button Name="Number_3" Style="{StaticResource NumberButton}" Grid.Column="2" Grid.Row="4"
+                    Click="Number_OnClick">
+                3
+            </Button>
             <Button Name="Operator_Equals" Style="{StaticResource EqualsButtonLast}" Grid.Column="3" Grid.Row="4"
                     Grid.RowSpan="2" Grid.ColumnSpan="2">
                 =
             </Button>
-            <Button Name="Operator_LeftShift" Style="{StaticResource OperatorButton}" Grid.Column="0" Grid.Row="5">&lt;&lt;</Button>
-            <Button Name="Number_0" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="5" Click="Number_OnClick">0</Button>
-            <Button Name="Operator_RightShift" Style="{StaticResource OperatorButton}" Grid.Column="2" Grid.Row="5">&gt;&gt;</Button>
+            <Button Name="Operator_LeftShift" Style="{StaticResource OperatorButton}" Grid.Column="0" Grid.Row="5"
+                    Click="Operator_LeftShift_OnClick">
+                &lt;&lt;
+            </Button>
+            <Button Name="Number_0" Style="{StaticResource NumberButton}" Grid.Column="1" Grid.Row="5"
+                    Click="Number_OnClick">
+                0
+            </Button>
+            <Button Name="Operator_RightShift" Style="{StaticResource OperatorButton}" Grid.Column="2" Grid.Row="5"
+                    Click="Operator_RightShift_OnClick">
+                &gt;&gt;
+            </Button>
         </Grid>
     </Grid>
 </Window>
