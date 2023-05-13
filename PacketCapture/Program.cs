@@ -4,19 +4,21 @@ using LiteDB;
 using SharpPcap;
 using static ObjectPacketTools;
 
-const string pingCaptureFilePath = "C:\\_sphereDumps\\ping";
-const string clientCaptureFilePath = "C:\\_sphereDumps\\client";
-const string serverCaptureFilePath = "C:\\_sphereDumps\\server";
-const string serverCaptureFilePathUnfiltered = "C:\\_sphereDumps\\server_unfiltered";
-const string mixedCaptureFilePath = "C:\\_sphereDumps\\mixed";
-const string currentWorldCoordsFilePath = "C:\\_sphereDumps\\currentWorldCoords";
-const string objectPacketDecodeFilePath = "C:\\_sphereDumps\\objectPackets";
+
+var pingCaptureFile = "C:\\_sphereDumps\\ping";
+var clientCaptureFile = "C:\\_sphereDumps\\client";
+var serverCaptureFile = "C:\\_sphereDumps\\server";
+var serverCaptureFileUnfiltered = "C:\\_sphereDumps\\server_unfiltered";
+var mixedCaptureFile = "C:\\_sphereDumps\\mixed";
+var currentWorldCoordsFile = "C:\\_sphereDumps\\currentWorldCoords";
+var objectPacketDecodeFile = "C:\\_sphereDumps\\objectPackets";
+var itemMove = "C:\\_sphereDumps\\itemMove";
 var oldCoords = new WorldCoords(9999, 9999, 9999, 9999);
 
-const string pingCaptureFilePathLocal = "C:\\_sphereDumps\\local_ping";
-const string clientCaptureFilePathLocal = "C:\\_sphereDumps\\local_client";
-const string serverCaptureFilePathLocal = "C:\\_sphereDumps\\local_server";
-const string mixedCaptureFilePathLocal = "C:\\_sphereDumps\\local_mixed";
+var pingCaptureFileLocal = "C:\\_sphereDumps\\local_ping";
+var clientCaptureFileLocal = "C:\\_sphereDumps\\local_client";
+var serverCaptureFileLocal = "C:\\_sphereDumps\\local_server";
+var mixedCaptureFileLocal = "C:\\_sphereDumps\\local_mixed";
 var oldCoordsLocal = new WorldCoords(9999, 9999, 9999, 9999);
 using var itemDb = new LiteDatabase(@"Filename=C:\_sphereStuff\sph_items.db;Connection=shared;");
 var itemCollection = itemDb.GetCollection<ObjectPacket>("ObjectPackets");
@@ -44,6 +46,31 @@ var packetOkMarker = new byte[] { 0x2C, 0x01 };
 var newSessionFirstPacket = new byte[] { 0x0A, 0x00, 0xC8, 0x00 };
 
 var lastSplitPacket = new List<byte>();
+
+void WriteWithRetry(string filepath, string content)
+{
+    Task.Run(() =>
+    {
+        var retryCount = 0;
+        while (retryCount < 10)
+        {
+            try
+            {
+                File.AppendAllText(filepath, content);
+                break;
+            }
+            catch (IOException ex)
+            {
+                retryCount++;
+                if (retryCount >= 10)
+                {
+                    Console.WriteLine(ex.ToString());
+                }
+                Thread.Sleep(50);
+            }
+        }
+    });
+}
 
 bool ShouldHidePacket(byte[] packet, bool isClient = false)
 {
@@ -107,10 +134,10 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
         }
 
         data = isClient && isRemote ? DecodeClientPacket(data) : data;
-        var pingPath = !isRemote ? pingCaptureFilePathLocal : pingCaptureFilePath;
-        var clientPath = !isRemote ? clientCaptureFilePathLocal : clientCaptureFilePath;
-        var serverPath = !isRemote ? serverCaptureFilePathLocal : serverCaptureFilePath;
-        var mixedPath = !isRemote ? mixedCaptureFilePathLocal : mixedCaptureFilePath;
+        var ping = !isRemote ? pingCaptureFileLocal : pingCaptureFile;
+        var client = !isRemote ? clientCaptureFileLocal : clientCaptureFile;
+        var server = !isRemote ? serverCaptureFileLocal : serverCaptureFile;
+        var mixed = !isRemote ? mixedCaptureFileLocal : mixedCaptureFile;
 
         if (lastSplitPacket.Count > 0 && len >=4 && !isClient)
         {
@@ -128,8 +155,8 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
 
             if (!coords.Equals(oldCoords))
             {
-                File.AppendAllText(pingPath, coords.ToFileDumpString());
-                File.WriteAllText(currentWorldCoordsFilePath, coords.x + "\n" + coords.y + "\n" + coords.z + "\n" + coords.turn);
+                WriteWithRetry(ping, coords.ToFileDumpString());
+                WriteWithRetry(currentWorldCoordsFile, coords.x + "\n" + coords.y + "\n" + coords.z + "\n" + coords.turn);
                 oldCoords = coords;
             }
 
@@ -201,16 +228,15 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                                         "\t\t\t";
                 }
 
-                File.AppendAllText(clientPath,
+                WriteWithRetry(client,
                     $"{newSessionDivider}{DateTime.Now}\t\t\t{actionSource}{actionDestination}{currentPacketPaddedHex}");
-                File.AppendAllText(mixedPath,
+                WriteWithRetry(mixed,
                     $"{newSessionDivider}CLI\t\t\t{DateTime.Now}\t\t\t{actionSource}{actionDestination}{currentPacketPaddedHexForMixed}");
 
                 if (data[0] == 0x1A)
                 {
                     // item move
-                    File.AppendAllText("C:\\_sphereDumps\\itemMove",
-                        $"CLI\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
+                    WriteWithRetry(itemMove, $"CLI\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
                 }
             }
 
@@ -220,22 +246,21 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                 {
                     if (data[0] != 0x17)
                     {
-                        File.AppendAllText(serverPath,
+                        WriteWithRetry(server,
                             $"{newSessionDivider}{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
-                        File.AppendAllText(mixedPath,
-                            $"{newSessionDivider}SRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHexForMixed}");
+                        WriteWithRetry(mixed, $"{newSessionDivider}SRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHexForMixed}");
 
                         if (data[0] == 0x2E)
                         {
                             // item move
-                            File.AppendAllText("C:\\_sphereDumps\\itemMove",
+                            WriteWithRetry(itemMove,
                                 $"SRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
                         }
 
                         if (data.Length > 25 && data[25] == 0x91 && data[26] == 0x45)
                         {
                             // object packet?
-                            File.AppendAllText(objectPacketDecodeFilePath,
+                            WriteWithRetry(objectPacketDecodeFile,
                                 $"SRV\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
                         }
                     }
@@ -262,15 +287,15 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
 
                         var idStr = Convert.ToString(id, 16).PadLeft(4, '0');
 
-                        File.AppendAllText(serverPath,
+                        WriteWithRetry(server,
                             $"{newSessionDivider}{DateTime.Now}\t\t\t{idStr}\t{x + xDecFloat:F6}\t{y + yDecFloat:F6}\t{z + zDecFloat:F6}\t{t}\t\t\t{currentPacketPaddedHex}");
-                        File.AppendAllText(mixedPath,
+                        WriteWithRetry(mixed,
                             $"{newSessionDivider}SRV\t\t\t{DateTime.Now}\t\t\t{idStr}\t{x + xDecFloat:F6}\t{y + yDecFloat:F6}\t{z + zDecFloat:F6}\t{t}\t\t\t{currentPacketPaddedHex}");
                     }
                 }
                 else
                 {
-                    File.AppendAllText(serverCaptureFilePathUnfiltered,
+                    WriteWithRetry(serverCaptureFileUnfiltered,
                         $"{newSessionDivider}{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
                 }
             }
@@ -284,12 +309,11 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
 
             if (objectList.Count > 0)
             {
-                File.AppendAllText(objectPacketDecodeFilePath, $"{Convert.ToHexString(bytesForAnalysis)}\n");
-                File.AppendAllText(objectPacketDecodeFilePath, $"{GetTextOutput(objectList, true)}\n");
-                File.AppendAllText(objectPacketDecodeFilePath, $"({objectList.Count} total)\n");
                 objectList.ForEach(x => itemCollection.Insert(x));
-
-                File.AppendAllText(objectPacketDecodeFilePath, "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
+                WriteWithRetry(objectPacketDecodeFile, $"{Convert.ToHexString(bytesForAnalysis)}\n" +
+                                                       $"{GetTextOutput(objectList, true)}\n" +
+                                                       $"({objectList.Count} total)\n" +
+                                                       "----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------\n");
             }
         }
 }

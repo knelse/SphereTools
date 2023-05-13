@@ -1,10 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
+using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using PacketLogViewer.Models;
@@ -14,60 +16,88 @@ namespace PacketLogViewer
     public partial class MainWindow
     {
         public static Encoding Win1251 = null!;
-        
+        public BigInteger CurrentContent { get; set; }
+        public int StartByteLine { get; set; }
+        public int CurrentShift { get; set; }
+        public ObservableCollection<LogRecord> LogRecords { get; } = new();
+        public readonly FileSystemWatcher FileSystemWatcher;
+        public int CurrentStreamPosition { get; set; }
+
         public MainWindow()
         {
             InitializeComponent();
             var defaultContent = new List<LogRecord>
             {
                 new("SRV", DateTime.Now,
-                    "72002C010018E4CAE6084063830C2E4C2EAC6D8E8B6BAEAC8C6C8E8B0B0000206C0E0485C646A6A626E62B2645014006C645E6460120E60424C88908640C2D4CC565CCEC0C40C5A54D8C0C40C5850E8F0E802DADCC8DCEA50CAF0C80C70724068429A929890A2406008429A929890A240600"),
+                    "72002C010018E4CAE6084063830C2E4C2EAC6D8E8B6BAEAC8C6C8E8B0B0000206C0E0485C646A6A626E62B2645" +
+                    "014006C645E6460120E60424C88908640C2D4CC565CCEC0C40C5A54D8C0C40C5850E8F0E802DADCC8DCEA50CAF0C80C7" +
+                    "0724068429A929890A2406008429A929890A240600")
             };
-
-            var temp = "abc";
-            for (var i = 0; i < 100; i++)
-            {
-                temp += "di23q4ujednklxwsanrfik23u459pjhndfwrq3k2l;jr43o2p4jro32\n";
-            }
-
-            LogRecordTextDisplay.Text = temp;
+            
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             Win1251 = Encoding.GetEncoding(1251);
+            
+            LoadContent();
 
-            var loadedContent = LoadContent();
-
-            LogList.ItemsSource = loadedContent.Any() ? loadedContent : defaultContent;
+            LogList.ItemsSource = LogRecords.Any() ? LogRecords : defaultContent;
             LogList.SelectionChanged += OnLogListOnSelectionChanged;
-            LogList.SelectedItem = LogList.Items[0];
+            LogList.SelectedItem = LogList.Items[^1];
+            LogList.ScrollIntoView(LogList.Items[^1]);
+            
+            FileSystemWatcher = new FileSystemWatcher(@"c:\_sphereDumps\", "mixed");
+            FileSystemWatcher.Changed += (_, _) =>
+            {
+                Dispatcher.BeginInvoke(LoadContent);
+            };
+            FileSystemWatcher.EnableRaisingEvents = true;
         }
 
-        public static List<LogRecord> LoadContent()
+        public void LoadContent()
         {
-            var filePath = @"c:\_sphereDumps\mixed";
-            var textContent = File.ReadAllLines(filePath);
-            var content = new List<LogRecord>();
-            foreach (var logEntry in textContent)
+            var retryCount = 0;
+            while (retryCount < 10)
             {
-                var cleanedUpText = logEntry.Replace("=", "").Replace("-", "");
-                if (string.IsNullOrWhiteSpace(cleanedUpText))
-                {
-                    continue;
-                }
-
-                var split = cleanedUpText.Split('\t',
-                    StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
                 try
                 {
-                    content.Add(new LogRecord( split.Length > 2 ? split[0] : "---", split.Length > 1 ? DateTime.Parse(split[1]) : DateTime.MinValue, split[^1]));
+                    var textContent = File.ReadAllLines(@"c:\_sphereDumps\mixed");
+                    for (var i = CurrentStreamPosition; i < textContent.Length; i++)
+                    {
+                        var logEntry = textContent[i];
+                        var cleanedUpText = logEntry.Replace("=", "").Replace("-", "");
+                        if (string.IsNullOrWhiteSpace(cleanedUpText))
+                        {
+                            continue;
+                        }
+
+                        var split = cleanedUpText.Split('\t',
+                            StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+
+                        try
+                        {
+                            LogRecords.Add(new LogRecord(split.Length > 2 ? split[0] : "---",
+                                split.Length > 1 ? DateTime.Parse(split[1]) : DateTime.MinValue, split[^1]));
+                        }
+                        catch (Exception ex)
+                        {
+                            MessageBox.Show(logEntry + "\n" + ex);
+                        }
+                    }
+
+                    CurrentStreamPosition = textContent.Length;
+                    break;
                 }
-                catch (Exception ex)
+                catch (IOException ex)
                 {
-                    MessageBox.Show(logEntry + "\n" + ex);
+                    retryCount++;
+                    Thread.Sleep(10);
+                    if (retryCount >= 10)
+                    {
+                        MessageBox.Show(ex.ToString());
+                    }
                 }
             }
 
-            return content;
+            LogList.UpdateLayout();
         }
 
         private void OnLogListOnSelectionChanged(object sender, SelectionChangedEventArgs args)
@@ -76,9 +106,24 @@ namespace PacketLogViewer
             try
             {
                 var positiveValue = "0" + selected?.Content ?? throw new InvalidOperationException();
-                var actualValue = BigInteger.Parse(positiveValue, NumberStyles.HexNumber);
+                CurrentContent =
+                    new BigInteger(BigInteger.Parse(positiveValue, NumberStyles.HexNumber).ToByteArray().AsSpan(), true,
+                        true);
+                CurrentShift = 0;
 
-                LogRecordTextDisplay.Text = ToReadableBinaryString(actualValue);
+                TrySetCurrentTextContent();
+            }
+            catch
+            {
+                LogRecordTextDisplay.Text = "Selected value is not a hex string!";
+            }
+        }
+
+        private void TrySetCurrentTextContent()
+        {
+            try
+            {
+                LogRecordTextDisplay.Text = ToReadableBinaryString();
             }
             catch
             {
@@ -105,42 +150,84 @@ namespace PacketLogViewer
 
         public static string GetFormattedBinaryOutput(byte b)
         {
-            return $"{GetBinaryPaddedString(b)}{b.ToString(),5}{b,4:X}h" +
-                   $"{GetEncoded1251Char(b).ToString(),3}{GetEncodedLoginChar(b).ToString(),3}";
+            return $"{GetBinaryPaddedString(b),9}{b.ToString(),7}{b,7:X}h" +
+                   $"{GetEncoded1251Char(b).ToString(),7}{GetEncodedLoginChar(b).ToString(),7}";
         }
 
-        public static string ToReadableBinaryString(BigInteger bigInt)
+        public string ToReadableBinaryString()
         {
-            var shiftedValues = new List<byte[]>
+            var shiftedBigInt = CurrentShift switch
             {
-                bigInt.ToByteArray(),
-                (bigInt << 1).ToByteArray(),
-                (bigInt << 2).ToByteArray(),
-                (bigInt << 3).ToByteArray(),
-                (bigInt << 4).ToByteArray(),
-                (bigInt << 5).ToByteArray(),
-                (bigInt << 6).ToByteArray(),
-                (bigInt << 7).ToByteArray()
+                0 => CurrentContent,
+                < 0 => CurrentContent << -CurrentShift,
+                _ => CurrentContent >> CurrentShift
             };
+            var shiftedValue = shiftedBigInt.ToByteArray();
+            
             var sb = new StringBuilder();
-            sb.AppendLine();
+            var sbText = new StringBuilder();
+            var sb1251 = new StringBuilder();
+            var sbLogin = new StringBuilder();
+            sbText.AppendLine("-------------------------------------------------");
+            sbText.AppendLine("  #   Binary      Dec\tHex\t1251\tLogin");
+            sbText.AppendLine("-------------------------------------------------");
 
-            var length = shiftedValues[7].Length;
-
-            for (var i = length - 1; i >= 0; i--)
+            for (var i = StartByteLine; i < shiftedValue.Length; i++)
             {
-                sb.Append($"{length - i,3:D}: ");
-                foreach (var shiftedValue in shiftedValues)
-                {
-                    var current = shiftedValue.Length > i ? shiftedValue[i] : (byte) 0;
-                    sb.Append(GetFormattedBinaryOutput(current));
-                    sb.Append("  ||  ");
-                }
-
-                sb.AppendLine();
+                sb1251.Append(GetEncoded1251Char(shiftedValue[i]));
+                sbLogin.Append(GetEncodedLoginChar(shiftedValue[i]));
+                sbText.Append($"{i + 1,3:D}: ");
+                sbText.AppendLine(GetFormattedBinaryOutput(shiftedValue[i]));
             }
 
+            sb.AppendLine(sb1251.ToString());
+            sb.AppendLine(sbLogin.ToString());
+            sb.Append(sbText);
             return sb.ToString();
+        }
+
+        private void Shift_OnClick(object sender, RoutedEventArgs e)
+        {
+            var button = e.Source as Button;
+            var shift = 0;
+            switch (button!.Name)
+            {
+                case "ShiftLeft1":
+                case "ShiftLeft2":
+                case "ShiftLeft3":
+                case "ShiftLeft4":
+                case "ShiftLeft5":
+                case "ShiftLeft6":
+                case "ShiftLeft7":
+                    shift = - (button.Name[^1] - '0');
+                    break;
+                case "ShiftRight1":
+                case "ShiftRight2":
+                case "ShiftRight3":
+                case "ShiftRight4":
+                case "ShiftRight5":
+                case "ShiftRight6":
+                case "ShiftRight7":
+                    shift = (button.Name[^1] - '0');
+                    break;
+            }
+
+            CurrentShift = shift;
+            TrySetCurrentTextContent();
+        }
+
+        private void StartByte_OnTextChanged(object sender, TextChangedEventArgs e)
+        {
+            if (int.TryParse(StartByte.Text, out int startByte))
+            {
+                StartByteLine = startByte - 1;
+                TrySetCurrentTextContent();
+            }
+            else if (string.IsNullOrWhiteSpace(StartByte.Text))
+            {
+                StartByteLine = 0;
+                TrySetCurrentTextContent();
+            }
         }
     }
 }

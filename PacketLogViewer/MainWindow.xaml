@@ -6,8 +6,8 @@
         xmlns:local="clr-namespace:PacketLogViewer"
         mc:Ignorable="d"
         Title="PacketLogViewer"
-        Height="1440"
-        Width="2560">
+        Height="800"
+        Width="1100">
     <Window.Resources>
         <Style x:Key="LogRowHighlightStyle" TargetType="ListViewItem">
             <Style.Setters>
@@ -33,7 +33,7 @@
         <Style x:Key="LogRecordTextViewStyle" TargetType="TextBox">
             <Style.Setters>
                 <Setter Property="FontFamily" Value="Hack"/>
-                <Setter Property="FontSize" Value="12"/>
+                <Setter Property="FontSize" Value="16"/>
             </Style.Setters>
         </Style>
     </Window.Resources>
@@ -43,7 +43,7 @@
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="3*" />
+            <ColumnDefinition Width="2*" />
         </Grid.ColumnDefinitions>
         <GridSplitter Grid.Column="0" Width="8" ResizeBehavior="CurrentAndNext" Margin="10 4 0 4 "/>
     <ListView Margin="4" Name="LogList" Grid.Column="0" ItemContainerStyle="{StaticResource LogRowHighlightStyle}" SelectionMode="Single">
@@ -55,8 +55,50 @@
             </GridView>
         </ListView.View>
     </ListView>
-    <TextBox Name="LogRecordTextDisplay" Grid.Column="1" Margin="4" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Style="{StaticResource LogRecordTextViewStyle}">
-        aaabbbbbbbbbcccccccccccccc
-    </TextBox>
+        <Grid Grid.Column="1">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="75" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="40" />
+                <ColumnDefinition Width="*" />
+            </Grid.ColumnDefinitions>
+            <TextBox Name="StartByte" Grid.Row="0" Grid.Column="0" Margin="2 4 4 2" Height="24" TextAlignment="Center" VerticalContentAlignment="Center" TextChanged="StartByte_OnTextChanged"></TextBox>
+            <Button Name="ShiftLeft7" Grid.Row="0" Grid.Column="1" Margin="2 4 4 2" Click="Shift_OnClick" Background="#CCDDEE">&lt;&lt; 7</Button>
+            <Button Name="ShiftLeft6" Grid.Row="0" Grid.Column="2" Margin="2 4 4 2" Click="Shift_OnClick" Background="#CCDDEE">&lt;&lt; 6</Button>
+            <Button Name="ShiftLeft5" Grid.Row="0" Grid.Column="3" Margin="2 4 4 2" Click="Shift_OnClick" Background="#CCDDEE">&lt;&lt; 5</Button>
+            <Button Name="ShiftLeft4" Grid.Row="0" Grid.Column="4" Margin="2 4 4 2" Click="Shift_OnClick" Background="#CCDDEE">&lt;&lt; 4</Button>
+            <Button Name="ShiftLeft3" Grid.Row="0" Grid.Column="5" Margin="2 4 4 2" Click="Shift_OnClick" Background="#CCDDEE">&lt;&lt; 3</Button>
+            <Button Name="ShiftLeft2" Grid.Row="0" Grid.Column="6" Margin="2 4 4 2" Click="Shift_OnClick" Background="#CCDDEE">&lt;&lt; 2</Button>
+            <Button Name="ShiftLeft1" Grid.Row="0" Grid.Column="7" Margin="2 4 4 2" Click="Shift_OnClick" Background="#CCDDEE">&lt;&lt; 1</Button>
+            <Button Name="NoShift" Grid.Row="0" Grid.Column="8" Margin="2 4 4 2" Click="Shift_OnClick" Background="#EEEECC">0</Button>
+            <Button Name="ShiftRight1" Grid.Row="0" Grid.Column="9" Margin="2 4 4 2" Click="Shift_OnClick" Background="#EECCCC">&gt;&gt; 1</Button>
+            <Button Name="ShiftRight2" Grid.Row="0" Grid.Column="10" Margin="2 4 4 2" Click="Shift_OnClick" Background="#EECCCC">&gt;&gt; 2</Button>
+            <Button Name="ShiftRight3" Grid.Row="0" Grid.Column="11" Margin="2 4 4 2" Click="Shift_OnClick" Background="#EECCCC">&gt;&gt; 3</Button>
+            <Button Name="ShiftRight4" Grid.Row="0" Grid.Column="12" Margin="2 4 4 2" Click="Shift_OnClick" Background="#EECCCC">&gt;&gt; 4</Button>
+            <Button Name="ShiftRight5" Grid.Row="0" Grid.Column="13" Margin="2 4 4 2" Click="Shift_OnClick" Background="#EECCCC">&gt;&gt; 5</Button>
+            <Button Name="ShiftRight6" Grid.Row="0" Grid.Column="14" Margin="2 4 4 2" Click="Shift_OnClick" Background="#EECCCC">&gt;&gt; 6</Button>
+            <Button Name="ShiftRight7" Grid.Row="0" Grid.Column="15" Margin="2 4 4 2" Click="Shift_OnClick" Background="#EECCCC">&gt;&gt; 7</Button>
+            <TextBox Name="LogRecordTextDisplay" Grid.Column="0" Grid.ColumnSpan="18" Grid.Row="1" Margin="4 8 4 0" HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" Style="{StaticResource LogRecordTextViewStyle}">
+                aaabbbbbbbbbcccccccccccccc
+            </TextBox>
+        </Grid>
     </Grid>
 </Window>
