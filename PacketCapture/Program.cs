@@ -34,7 +34,7 @@ var itemCollection = itemDb.GetCollection<ObjectPacket>("ObjectPackets");
 // 2D00 - object position
 // 0F00 - idk
 // 1F00 - damage to client
-var serverPacketsToHide = new HashSet<byte>
+var serverPacketsToHide = new HashSet<byte> 
     { 0x12, 0x13, 0x10, 0x14, 0x17, 0x22, 0x0F, 0x2D, 0x11, 0x1D, 0x19, 0x0B, 0x43, 0x38, 0x1F };//, "08", "0C"};// {"2D", "0E", "1D", "12"};
 var clientPacketsToHide = new HashSet<byte>
 {0x08, 0x0C, };
@@ -62,9 +62,11 @@ void WriteWithRetry(string filepath, string content)
             catch (IOException ex)
             {
                 retryCount++;
-                if (retryCount >= 10)
+                if (retryCount >= 30)
                 {
                     Console.WriteLine(ex.ToString());
+                    Console.WriteLine("---");
+                    Console.WriteLine(content);
                 }
                 Thread.Sleep(50);
             }
@@ -79,10 +81,11 @@ bool ShouldHidePacket(byte[] packet, bool isClient = false)
         return true;
     }
 
-    return isClient 
-        ? clientPacketsToHide.Contains(packet[0])
-        : packet.Length is 8 or 12 || 
-          serverPacketsToHide.Contains(packet[0]) && ByteArrayCompare(packet, packetOkMarker, 2);
+    return packet.Length is 8 or 12;
+    // isClient 
+    //     ? clientPacketsToHide.Contains(packet[0])
+    //     : packet.Length is 8 or 12 || 
+    //       serverPacketsToHide.Contains(packet[0]);
 }
 
 void OnPacketArrival(object sender, PacketCapture c)
@@ -106,8 +109,8 @@ void OnPacketArrival(object sender, PacketCapture c)
                       || ipPacket.SourceAddress.Equals(IPAddress.Parse("77.223.107.68"))
                       || ipPacket.SourceAddress.Equals(IPAddress.Parse("77.223.107.69"));
 
-        if (!isRemote && !ipPacket.DestinationAddress.Equals(IPAddress.Parse("192.168.0.12")) &&
-            !ipPacket.SourceAddress.Equals(IPAddress.Parse("192.168.0.12")))
+        if (!isRemote && !ipPacket.DestinationAddress.Equals(IPAddress.Parse("192.168.1.65")) &&
+            !ipPacket.SourceAddress.Equals(IPAddress.Parse("192.168.1.65")))
         {
             return;
         }
@@ -131,6 +134,12 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
         if (len is 0 or 4)// or 8 or 11 or 12 or 13 or 16 or 17 or 18)
         {
             return;
+        }
+
+        var originalData = new byte[data.Length];
+        for (var index = 0; index < data.Length; index++)
+        {
+            originalData[index] = data[index];
         }
 
         data = isClient && isRemote ? DecodeClientPacket(data) : data;
@@ -168,55 +177,61 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
 
         try
         {
-            if (!isClient)
-            {
-                for (var i = 0; i < data.Length - 4; i++)
-                {
-                    if (data[i + 2] == 0x2C && data[i + 3] == 0x01 && data[i + 4] == 0x00)
-                    {
-                        var length = data[i + 1] * 16 + data[i];
-
-                        if (i + length - 1 > data.Length)
-                        {
-                            // packet got split in the middle
-                            lastSplitPacket.AddRange(data);
-                            bytePacketSplit.Clear();
-                            bytePacketForAnalysis.Clear();
-                        }
-                        else
-                        {
-                            var end = i + length > data.Length ? data.Length : i + length;
-                            var split =  data[i..end];
-
-                            bytePacketSplit.Add(split);
-                            // size_1 size_2 00 2C 01 sync_1 sync_2 id...
-                            var forAnalysis = data[(i + 7)..end];
-                            bytePacketForAnalysis.AddRange(forAnalysis);
-                            i += length - 4;
-                        }
-                    }
-                }
-            }
-            else
-            {
+            // if (!isClient)
+            // {
+            //     for (var i = 0; i < data.Length - 4; i++)
+            //     {
+            //         if (data[i + 2] == 0x2C && data[i + 3] == 0x01 && data[i + 4] == 0x00)
+            //         {
+            //             var length = data[i + 1] * 16 + data[i];
+            //
+            //             if (i + length - 1 > data.Length)
+            //             {
+            //                 // packet got split in the middle
+            //                 lastSplitPacket.AddRange(data);
+            //                 bytePacketSplit.Clear();
+            //                 bytePacketForAnalysis.Clear();
+            //             }
+            //             else
+            //             {
+            //                 var end = i + length > data.Length ? data.Length : i + length;
+            //                 var split =  data[i..end];
+            //
+            //                 bytePacketSplit.Add(split);
+            //                 // size_1 size_2 00 2C 01 sync_1 sync_2 id...
+            //                 var forAnalysis = data[(i + 7)..end];
+            //                 bytePacketForAnalysis.AddRange(forAnalysis);
+            //                 i += length - 4;
+            //             }
+            //         }
+            //     }
+            // }
+            // else
+            // {
                 bytePacketSplit.Add(data);
-            }
+            // }
         }
         catch (ArgumentOutOfRangeException)
         {
             Console.WriteLine("Broken: " + Convert.ToHexString(data));
         }
 
-        for (var i = 0; i < bytePacketSplit.Count; i++)
-        {
-            var prefix = i == 0 ? "" : "-------------------\t\t\t";
-            var prefixForMixed = i == 0 ? "" : "-------------------------------\t\t\t";
-            var currentPacket = bytePacketSplit[i];
-            var newSessionDivider = ByteArrayCompare(currentPacket, newSessionFirstPacket) ? sessionDivider : "";
-            var currentPacketPaddedHex = prefix + Convert.ToHexString(currentPacket) + "\n";
-            var currentPacketPaddedHexForMixed = prefixForMixed + Convert.ToHexString(currentPacket) + "\n";
+        // if (bytePacketSplit.Count > 1)
+        // {
+        //     Console.WriteLine();
+        //     Console.WriteLine(bytePacketSplit);
+        // }
 
-            if (isClient && !ShouldHidePacket(currentPacket))
+        // for (var i = 0; i < bytePacketSplit.Count; i++)
+        // {
+        var prefix = "";// i == 0 ? "" : "-------------------\t\t\t";
+        var prefixForMixed = "";// i == 0 ? "" : "-------------------------------\t\t\t";
+            // var currentPacket = bytePacketSplit[i];
+            var newSessionDivider = ByteArrayCompare(data, newSessionFirstPacket) ? sessionDivider : "";
+            var currentPacketPaddedHex = prefix + Convert.ToHexString(data) + "\n";
+            var currentPacketPaddedHexForMixed = prefixForMixed + Convert.ToHexString(data) + "\n";
+
+            if (isClient && !ShouldHidePacket(data))
             {
                 var actionSource = "";
                 var actionDestination = "";
@@ -228,21 +243,75 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                                         "\t\t\t";
                 }
 
-                WriteWithRetry(client,
-                    $"{newSessionDivider}{DateTime.Now}\t\t\t{actionSource}{actionDestination}{currentPacketPaddedHex}");
-                WriteWithRetry(mixed,
-                    $"{newSessionDivider}CLI\t\t\t{DateTime.Now}\t\t\t{actionSource}{actionDestination}{currentPacketPaddedHexForMixed}");
+                // sb.Append(
+                //     $"{newSessionDivider}CLI\t\t\t{DateTime.Now.AddSeconds(10)}\t\t\t{actionSource}{actionDestination}{Convert.ToHexString(originalData) + "\n"}");
 
-                if (data[0] == 0x1A)
+                if (data[0] == 0x1A && data.Length > 50 && data[13] == 0x08 && data[14] == 0x40 && data[15] == 0x43)
                 {
-                    // item move
-                    WriteWithRetry(itemMove, $"CLI\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
+                    var sb = new StringBuilder();
+                    var start = 0;
+                    var sb1 = new StringBuilder();
+                    var end = Math.Min (298, originalData.Length); // 256 max length + 9 bytes skipped + uhh
+                    var decodedPart = DecodeClientPacket(originalData[..end], 35);
+                    sb.Append(Convert.ToHexString(decodedPart));
+                    if (originalData.Length > 298)
+                    {
+                        end = Math.Min (545, originalData.Length);
+                        var dec = DecodeClientPacket(originalData[299..end])[21..];
+                        sb.Append(Convert.ToHexString(dec));
+                    }
+                    //
+                    // if (originalData.Length > 545)
+                    // {
+                    //     sb.Append(Convert.ToHexString(DecodeClientPacket(originalData[545..end])));
+                    // }
+
+                    // for (var i = 0; i < 30; i++)
+                    // {
+                    //     var sb2 = new StringBuilder();
+                    //     sb2.Append(sb);
+                    //     start = 271 + i;
+                    //     while (start < chatPart.Length)
+                    //     {
+                    //         end = Math.Min (start + 272, chatPart.Length); // 256 max length + 9 mask shift + uhh
+                    //         Console.WriteLine(start + "   " + end);
+                    //         if (end - start > 22)
+                    //         {
+                    //             var dec = DecodeClientPacket(chatPart[start..end], 9)[22..];
+                    //             sb2.Append(Convert.ToHexString(dec));
+                    //         }
+                    //
+                    //         start += 272;
+                    //     
+                    //     }
+                    //     
+                    //     Console.WriteLine("---");
+                    // }
+
+                    WriteWithRetry(client,
+                        $"{newSessionDivider}{DateTime.Now}\t\t\t{actionSource}{actionDestination}{sb}");
+                    WriteWithRetry(mixed, $"{newSessionDivider}CLI\t\t\t{DateTime.Now}\t\t\t{actionSource}{actionDestination}{sb}\n");
+                    // WriteWithRetry(mixed, $"{sb}");
                 }
+                else
+                {
+                    WriteWithRetry(client,
+                        $"{newSessionDivider}{DateTime.Now}\t\t\t{actionSource}{actionDestination}{currentPacketPaddedHex}");
+                    WriteWithRetry(mixed,
+                        $"{newSessionDivider}CLI\t\t\t{DateTime.Now}\t\t\t{actionSource}{actionDestination}{currentPacketPaddedHexForMixed}");
+                    
+                }
+
+                // if (data[0] == 0x1A)
+                // {
+                //     // item move
+                //     WriteWithRetry(itemMove, $"CLI\t\t\t{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
+                // }
             }
 
             else
             {
-                if (!ShouldHidePacket(currentPacket))
+                if (!ShouldHidePacket(data))
                 {
                     if (data[0] != 0x17)
                     {
@@ -298,7 +367,7 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                     WriteWithRetry(serverCaptureFileUnfiltered,
                         $"{newSessionDivider}{DateTime.Now}\t\t\t{currentPacketPaddedHex}");
                 }
-            }
+            // }
         }
 
         var bytesForAnalysis = bytePacketForAnalysis.ToArray();
@@ -318,25 +387,25 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
         }
 }
 
-static byte[] DecodeClientPacket(byte [] input)
+static byte[] DecodeClientPacket(byte [] input, int start = 9)
 {
     if (input.Length <= 9)
     {
         return input;
     }
-    var encoded = input[9..];
-    var result = new byte[encoded.Length + 9];
+    var encoded = input[start..];
+    var result = new byte[encoded.Length + start];
     byte mask3 = 0x0;
     var encodingMask = new byte[] { 0x4B, 0x0D, 0xEF, 0x60, 0xC9, 0x9A, 0x70, 0x0E, 0x03 };
 
     for (var i = 0; i < encoded.Length; i++)
     {
         var curr = (byte)(encoded[i] ^ encodingMask[i % 9] ^ mask3);
-        result[i + 9] = curr;
+        result[i + start] = curr;
         mask3 = (byte)(curr * i + 2 * mask3);
     }
     
-    Array.Copy(input, result, 9);
+    Array.Copy(input, result, start);
 
     return result;
 }
