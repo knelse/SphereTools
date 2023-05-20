@@ -12,6 +12,7 @@ var serverCaptureFileUnfiltered = "C:\\_sphereDumps\\server_unfiltered";
 var mixedCaptureFile = "C:\\_sphereDumps\\mixed";
 var currentWorldCoordsFile = "C:\\_sphereDumps\\currentWorldCoords";
 var objectPacketDecodeFile = "C:\\_sphereDumps\\objectPackets";
+var chatFile = "C:\\_sphereDumps\\chat";
 var itemMove = "C:\\_sphereDumps\\itemMove";
 var oldCoords = new WorldCoords(9999, 9999, 9999, 9999);
 
@@ -246,52 +247,56 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                 // sb.Append(
                 //     $"{newSessionDivider}CLI\t\t\t{DateTime.Now.AddSeconds(10)}\t\t\t{actionSource}{actionDestination}{Convert.ToHexString(originalData) + "\n"}");
 
+                // chat message
                 if (data[0] == 0x1A && data.Length > 50 && data[13] == 0x08 && data[14] == 0x40 && data[15] == 0x43)
                 {
                     var sb = new StringBuilder();
-                    var start = 0;
-                    var sb1 = new StringBuilder();
-                    var end = Math.Min (298, originalData.Length); // 256 max length + 9 bytes skipped + uhh
-                    var decodedPart = DecodeClientPacket(originalData[..end], 35);
-                    sb.Append(Convert.ToHexString(decodedPart));
+                    var win1251 = Encoding.GetEncoding(1251);
+
+                    var chatMessageData = new List<byte>();
+                    var decodedPart = DecodeClientPacket(originalData[..298], 35);
+                    for (var i = 47; i < 297; i++)
+                    {
+                        chatMessageData.Add((byte)((decodedPart[i] >> 5) + ((decodedPart[i + 1] & 0b11111) << 3)));
+                    }
                     if (originalData.Length > 298)
                     {
-                        end = Math.Min (545, originalData.Length);
-                        var dec = DecodeClientPacket(originalData[299..end])[21..];
-                        sb.Append(Convert.ToHexString(dec));
+                        var end = Math.Min (571, originalData.Length);
+                        var decodedPart2 = DecodeClientPacket(originalData[299..end]);
+                        
+                        for (var i = 21; i < decodedPart2.Length - 1; i++)
+                        {
+                            chatMessageData.Add((byte)((decodedPart2[i] >> 5) + ((decodedPart2[i + 1] & 0b11111) << 3)));
+                        }
                     }
-                    //
-                    // if (originalData.Length > 545)
-                    // {
-                    //     sb.Append(Convert.ToHexString(DecodeClientPacket(originalData[545..end])));
-                    // }
+                    if (originalData.Length > 571)
+                    {
+                        var end = Math.Min (844, originalData.Length); // should be 802 max
+                        var decodedPart3 = DecodeClientPacket(originalData[572..end]);
+                        
+                        for (var i = 21; i < end - 573; i++)
+                        {
+                            chatMessageData.Add((byte)((decodedPart3[i] >> 5) + ((decodedPart3[i + 1] & 0b11111) << 3)));
+                        }
+                    }
 
-                    // for (var i = 0; i < 30; i++)
-                    // {
-                    //     var sb2 = new StringBuilder();
-                    //     sb2.Append(sb);
-                    //     start = 271 + i;
-                    //     while (start < chatPart.Length)
-                    //     {
-                    //         end = Math.Min (start + 272, chatPart.Length); // 256 max length + 9 mask shift + uhh
-                    //         Console.WriteLine(start + "   " + end);
-                    //         if (end - start > 22)
-                    //         {
-                    //             var dec = DecodeClientPacket(chatPart[start..end], 9)[22..];
-                    //             sb2.Append(Convert.ToHexString(dec));
-                    //         }
-                    //
-                    //         start += 272;
-                    //     
-                    //     }
-                    //     
-                    //     Console.WriteLine("---");
-                    // }
+                    var chatData = chatMessageData.ToArray();
 
+                    sb.Append(Convert.ToHexString(originalData[..35]));
+                    sb.Append(Convert.ToHexString(chatData));
+
+                    var chatString = win1251.GetString(chatData);
+
+                    var nameClosingTagIndex = chatString.IndexOf("</l>: ", StringComparison.OrdinalIgnoreCase);
+                    var nameStart = chatString.IndexOf("\\]\"", nameClosingTagIndex - 30, StringComparison.OrdinalIgnoreCase);
+                    var name = chatString[(nameStart + 4)..nameClosingTagIndex];
+                    var message = chatString[(nameClosingTagIndex + 6)..].TrimEnd((char)0); // weird but necessary
+                    
                     WriteWithRetry(client,
                         $"{newSessionDivider}{DateTime.Now}\t\t\t{actionSource}{actionDestination}{sb}");
                     WriteWithRetry(mixed, $"{newSessionDivider}CLI\t\t\t{DateTime.Now}\t\t\t{actionSource}{actionDestination}{sb}\n");
-                    // WriteWithRetry(mixed, $"{sb}");
+                    WriteWithRetry(chatFile, $"CLI\t\t\t{DateTime.Now}\t\t\t{name}: {message} \n");
+                    Console.WriteLine(Convert.ToHexString(win1251.GetBytes(message)));
                 }
                 else
                 {
@@ -447,9 +452,11 @@ var timeAfterLoad = DateTime.Now;
 Console.WriteLine($"Ready for packets. Load time: {(timeAfterLoad - time).TotalMilliseconds} msec");
 
 // var test = Convert.FromHexString(
-//     "C8002C0100BC6A9A7EE48B0FF8B52F09402DFF18009AC018409145A69CA44B0106CAFA000A5900F0FFFFFF5FF08080DFA61FB8E303142E11DAE01E3AE69060339E576491F9B040051828EB03286401C0FFFFFFFF8FD38FCAF001A1C9250132A322038096160328B2C800508081B23E80C20404145E618CEE6B2E6CEC6B8E06E0D7E947BEF8800CF4924058AC9301C85E8E811553642A48BA1460A0AC0FA0900500FFFFFFFF050F08F879FA51193E60E3BA244078516400A0B36200451619000A3050D607509880C6002C0100BC6A9E7E5446E115C6E8BEE6C2C6BEE660007E9F7ED88B0FB8192F09E008071900B09D18409145A610031760A0AC0FA0900500FFFFFFFF3F503F2AC3071C48970478538C0C00484D04A0C82203400106CAFA000A131050788531BAAFB9B0B1AFB91A805FA81F9CE1039EBE4B0258614106000E2AC651649101A00003657D00850908F889FAE12E3E9456FBE391CAE864C0BEF26300851599DE8B30051828EB03286401C0FFFFFFFF6FD40F7AF101E0CB250108C3220300BC160128A8C8AC8B84C6002C0100BC6AA37ED04B0106CAFA000A5900F0FFFFFFFF23F583337C40837A49000F07C800E0F6C5008A2C32001460A0AC0FA0300101BF523F78C7074C409704C047740C003B630CA0C822F35D010A3050D60750C80280FFFFFFFF9FA91FF3E2036EC64B0238C24106006C2706506491F97B45051828EB03286401C0FFFFFFFFEFD40FDDF1017FF0250104812003003F140128B2C8F457B0020C94F50114B200E0FFFFFFFF87EA4765F800F3F1920008E29001801F8B011459640028C040591F40610202CC002C0100BC6AA87E5446E115C6E8BEE6C2C6BEE666007EA97EDC8B0F98802E09808FE8180076C6184091456674151560A0AC0FA0900500FFFFFFFFBF553FDEC507BC3E97042CAC910C80226D0CA0C822B3F591A20003657D00852C00F8FFFFFFFFB1FA512C3EE0F6BD2400A3FF6300180763004516999640548081B23E80421600FCFFFFFF1758C000E0D7EA87BBF88071DF9280C5869201109E8D01145664962FC21460A0AC0FA0900500FFFFFFFF050F08F8B9FA912F3E8025BD240020276400A0F362004516993292BD002C0100BC6AAE7EE44B0106CAFA000A5900F0FFFFFFFF7BF5434B7CC0B3744900E6AAC700702DC6008A2C32A187A80003657D00852C00F8FFFFFF2FB00002C00FD68FEBF00152D22501701E230300BC120128B2C81C15A2020C94F50114B200E0FFFFFFBFC0020D6EBF583F8AC30700A09704D003890C00D85E3CA0C8227344880A3050D60750C80280FFFFFFFF020BDC07FC64FD280E1F20385E1280C320320000000080228B4C08212AC040591F40210B00FEFFFFFF0B2C403BAF002C0100BC6AB37E14876FCB58AB58832AE4986A4BBD98409145A68B101560A0AC0FA0900500FFFFFFFF05162800F8D1FA511C3EA0A4B92400AA90630030F562704516997C58548081B23E80421600FCFFFFFF1758405EE057EB4771F8B0565D8BB9C8128F35E50A8D09145964D208510106CAFA000A5900F0FFFFFF5F600105809FAD1FC5E103DEC44B023C42440600212F06506491492344051828EB03286401C0FFFFFF7F8105F4010A1E10");
-//
-// ProcessPacket(test, false, true);
+//     "1a00125d151d2c01007f155f1e3bce5b6c46fb4d2db665a280ee1101db5f191d2c01007f155f1e3bce5b8c78cbcd6fe04eec1b8bcf942f204093a1ec41fa750983925a7849cdbb363e03bb0995652349c9c3e7d27472a93de82886c6cb3691752b3c8e772644b1588b32184d916a21a0f4b2fb165fc1247b4937e74f838fa1a0188eb3c2f741be76b6d40d6b7d778a70095847d3c8fdc2801d16e37b5baf4e459c4860a52e74c7b1d487ab8df7235c53173d20382f4a27af249d16c23a03acf5e62094564b8b855f5b1521f6997cce130a405580134e5489edca15b42cf2b3d20f594cefa9cf0bfb03277960c486a7beab25ea9a5e882113f1cbf23cb9b03b2f14959ea0e1d64f3bffef2a7da09c2851a25c7badcc572bad5743c065dc4062714ab6f750c2d72bb5a188b1110134591c1d2c01007f155f1e3bce5b8c78cbed2f40ee49fe82635bc5dc67dd4188f26a220b2ab7595fc706741ce0f3d4b1e8738a03ed3c0bb8a6b072e74d4c444ae915dd5ab58bd73e8c1ffad4214bc731ad4de2262754cac2d5de2f5bef615c9b030cf0be11b1660921fc1d51cf90e1c953843f4275c6a275844a6f0248b378596ee490ee5b0b253f7bc95d82d5581eafaebc19687b2a02d1efcafe60c365591289c1328d735f39be473c6899aa4f152e874fbaa78937e0f70cf0b12ca883ecd8dca3c6786576db75b14db5f7aed4df53ac4bb13ae593bcc329448f4e90763759091fbc418e3002f3c55dd91cc3cb01bf963d389e2bf23a125f5ae76f4e64173649e5d3e8a84246eda5f21b18bb61f7370088a0201d2c01007f155f1e3bce5bcca3635d4fe0841f46c8bedbc7db710ed18bec2ca0289d56b00c8abbae6f06cca01b06487ee38b");
+
+Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
+// ProcessPacket(test, true, true);
 
 ethernet.Open();
 ethernet.Capture();
