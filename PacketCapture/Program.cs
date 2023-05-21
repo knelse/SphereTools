@@ -166,7 +166,8 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
             if (!coords.Equals(oldCoords))
             {
                 WriteWithRetry(ping, coords.ToFileDumpString());
-                WriteWithRetry(currentWorldCoordsFile, coords.x + "\n" + coords.y + "\n" + coords.z + "\n" + coords.turn);
+                WriteWithRetry(currentWorldCoordsFile, coords.x + "\n" + coords.y + "\n" + coords.z + "\n" + coords.turn + "\n");
+                WriteWithRetry(currentWorldCoordsFile, "---------------\n");
                 oldCoords = coords;
             }
 
@@ -250,10 +251,52 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                 // chat message
                 if (data[0] == 0x1A && data.Length > 50 && data[13] == 0x08 && data[14] == 0x40 && data[15] == 0x43)
                 {
-                    var sb = new StringBuilder();
                     var win1251 = Encoding.GetEncoding(1251);
 
+                    var firstPacket = originalData[..26];
+                    var firstPacketDecoded = DecodeClientPacket(firstPacket);
+
+                    var packetCount = (firstPacketDecoded[23] >> 5) + ((firstPacketDecoded[24] & 0b11111) << 3);
+                    var packetStart = 26;
+                    var decodeList = new List<byte>();
+
+                    for (var i = 0; i < packetCount; i++)
+                    {
+                        var packetLength = originalData[packetStart + 1] * 256 + originalData[packetStart];
+                        var packetEnd = packetStart + packetLength;
+                        var packetDecode = DecodeClientPacket(originalData[packetStart..packetEnd]);
+                        packetStart = packetEnd;
+                        decodeList.AddRange(packetDecode);
+                    }
+
+                    var secondPacketLength = originalData[27] * 256 + originalData[26];
+                    var secondPacketStart = 26;
+                    var secondPacketEnd = secondPacketStart + secondPacketLength;
+                    var secondPacket = originalData[secondPacketStart..secondPacketEnd];
+                    var secondPacketDecoded = DecodeClientPacket(secondPacket);
+                    
+                    var thirdPacketDecoded = Array.Empty<byte>();
+                    var fourthPacketDecoded = Array.Empty<byte>();
+                    
+                    if (originalData.Length - secondPacketEnd > 0)
+                    {
+                    
+                        var thirdPacketLength = originalData[secondPacketEnd + 1] * 256 + originalData[secondPacketEnd];
+                        var thirdPacketEnd = secondPacketEnd + thirdPacketLength;
+                        var thirdPacket = originalData[secondPacketEnd..thirdPacketEnd];
+                        thirdPacketDecoded = DecodeClientPacket(thirdPacket);
+                    
+                        if (originalData.Length - thirdPacketEnd > 0)
+                        {
+                            var fourthPacketLength = originalData[thirdPacketEnd + 1] * 256 + originalData[thirdPacketEnd];
+                            var fourthPacketEnd = thirdPacketEnd + fourthPacketLength;
+                            var fourthPacket = originalData[thirdPacketEnd..fourthPacketEnd];
+                            fourthPacketDecoded = DecodeClientPacket(fourthPacket);
+                        }
+                    }
+
                     var chatMessageData = new List<byte>();
+                    // var fullPacketData = new List<byte>();
                     var decodedPart = DecodeClientPacket(originalData[..298], 35);
                     for (var i = 47; i < 297; i++)
                     {
@@ -276,27 +319,40 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                         
                         for (var i = 21; i < end - 573; i++)
                         {
+                            if (decodedPart3[i + 1] == 0)
+                            {
+                                break;
+                            }
                             chatMessageData.Add((byte)((decodedPart3[i] >> 5) + ((decodedPart3[i + 1] & 0b11111) << 3)));
                         }
                     }
 
                     var chatData = chatMessageData.ToArray();
-
-                    sb.Append(Convert.ToHexString(originalData[..35]));
-                    sb.Append(Convert.ToHexString(chatData));
-
                     var chatString = win1251.GetString(chatData);
 
                     var nameClosingTagIndex = chatString.IndexOf("</l>: ", StringComparison.OrdinalIgnoreCase);
-                    var nameStart = chatString.IndexOf("\\]\"", nameClosingTagIndex - 30, StringComparison.OrdinalIgnoreCase);
-                    var name = chatString[(nameStart + 4)..nameClosingTagIndex];
-                    var message = chatString[(nameClosingTagIndex + 6)..].TrimEnd((char)0); // weird but necessary
+                    var name = "?";
+                    var message = "?";
+                    if (nameClosingTagIndex > 0)
+                    {
+                        var nameStart = chatString.IndexOf("\\]\"", nameClosingTagIndex - 30,
+                            StringComparison.OrdinalIgnoreCase);
+                        name = chatString[(nameStart + 4)..nameClosingTagIndex];
+                        message = chatString[(nameClosingTagIndex + 6)..].TrimEnd((char)0); // weird but necessary
+                    }
                     
-                    WriteWithRetry(client,
-                        $"{newSessionDivider}{DateTime.Now}\t\t\t{actionSource}{actionDestination}{sb}");
-                    WriteWithRetry(mixed, $"{newSessionDivider}CLI\t\t\t{DateTime.Now}\t\t\t{actionSource}{actionDestination}{sb}\n");
-                    WriteWithRetry(chatFile, $"CLI\t\t\t{DateTime.Now}\t\t\t{name}: {message} \n");
-                    Console.WriteLine(Convert.ToHexString(win1251.GetBytes(message)));
+                    var chatTypeVal = ((firstPacketDecoded[18] & 0b11111) << 3) + (firstPacketDecoded[17] >> 5);
+                    var chatType = ChatType.Unknown;
+                    if (Enum.IsDefined(typeof(ChatType), chatTypeVal))
+                    {
+                        chatType = (ChatType)chatTypeVal;
+                    }
+                    
+                    var chatTypeStr = $"[{Enum.GetName(chatType)}]";
+
+                    WriteWithRetry(mixed, $"{newSessionDivider}CLI\t\t\t{DateTime.Now}\t\t\t{actionSource}{actionDestination}" +
+                                          $"{Convert.ToHexString(decodeList.ToArray())}\n");
+                    WriteWithRetry(chatFile, $"CLI\t\t{DateTime.Now}\t\t{chatTypeStr,-9} {name}: {message} \n");
                 }
                 else
                 {

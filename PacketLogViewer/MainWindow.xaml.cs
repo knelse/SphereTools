@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Input;
 using PacketLogViewer.Models;
 
 namespace PacketLogViewer
@@ -40,6 +41,14 @@ namespace PacketLogViewer
             LoadContent();
 
             LogList.ItemsSource = LogRecords.Any() ? LogRecords : defaultContent;
+            LogList.ContextMenu = new ContextMenu();
+            var menuItem = new MenuItem
+            {
+                Header = "Copy",
+            };
+            menuItem.Click += MenuItem_OnClick;
+            LogList.ContextMenu.Items.Add(menuItem);
+
             LogList.SelectionChanged += OnLogListOnSelectionChanged;
             LogList.SelectedItem = LogList.Items[^1];
             LogList.ScrollIntoView(LogList.Items[^1]);
@@ -50,6 +59,16 @@ namespace PacketLogViewer
                 Dispatcher.BeginInvoke(LoadContent);
             };
             FileSystemWatcher.EnableRaisingEvents = true;
+            LogList.KeyDown += (_, args) =>
+            {
+                if (args.KeyboardDevice.Modifiers != ModifierKeys.Control
+                    || args.Key != Key.C)
+                {
+                    return;
+                }
+                
+                CopySelectedRowContent();
+            };
         }
 
         public void LoadContent()
@@ -228,6 +247,18 @@ namespace PacketLogViewer
                 StartByteLine = 0;
                 TrySetCurrentTextContent();
             }
+        }
+
+        private void MenuItem_OnClick(object sender, RoutedEventArgs e)
+        {
+            CopySelectedRowContent();
+        }
+
+        private void CopySelectedRowContent()
+        {
+            var selectedRow = (LogRecord) LogList.SelectedItem;
+            var text = $"{selectedRow.Origin}\t\t\t{selectedRow.Date}\t\t\t{selectedRow.Content}\n";
+            Clipboard.SetText(text);
         }
     }
 }
