@@ -21,4 +21,5 @@ public enum PublicChatType
     Normal = 2,
     Trade = 3,
     GM = 5,
+    GM_Outgoing = 999,
 }
