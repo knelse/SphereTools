@@ -342,16 +342,23 @@ void ProcessPacket(byte[] data, bool isClient, bool isRemote)
                     }
                     
                     var chatTypeVal = ((firstPacketDecoded[18] & 0b11111) << 3) + (firstPacketDecoded[17] >> 5);
-                    var chatType = ChatType.Unknown;
-                    if (Enum.IsDefined(typeof(ChatType), chatTypeVal))
+                    string chatTypeStr;
+                    if (Enum.IsDefined(typeof(PrivateChatType), chatTypeVal))
                     {
-                        chatType = (ChatType)chatTypeVal;
+                        chatTypeStr = $"[{Enum.GetName(typeof (PrivateChatType), chatTypeVal)!}]";
                     }
-                    
-                    var chatTypeStr = $"[{Enum.GetName(chatType)}]";
+                    else if (Enum.IsDefined(typeof(PublicChatType), chatTypeVal))
+                    {
+                        chatTypeStr = $"[{Enum.GetName(typeof (PublicChatType), chatTypeVal)!}]";
+                    }
+
+                    else
+                    {
+                        chatTypeStr = "[Unknown]";
+                    }
 
                     WriteWithRetry(mixed, $"{newSessionDivider}CLI\t\t\t{DateTime.Now}\t\t\t{actionSource}{actionDestination}" +
-                                          $"{Convert.ToHexString(decodeList.ToArray())}\n");
+                                          $"{Convert.ToHexString(firstPacketDecoded)}{Convert.ToHexString(decodeList.ToArray())}\n");
                     WriteWithRetry(chatFile, $"CLI\t\t{DateTime.Now}\t\t{chatTypeStr,-9} {name}: {message} \n");
                 }
                 else
