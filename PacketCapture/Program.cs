@@ -82,7 +82,47 @@ bool ShouldHidePacket(byte[] packet, bool isClient = false)
         return true;
     }
 
-    return packet.Length is 8 or 12;
+    if (packet[0] == 0x08 && packet[6] == 0xF4 && packet[7] == 0x01)
+    {
+        return true;
+    }
+
+    if (packet[0] == 0x0C && packet[10] == 0x0D && packet[11] == 0xE2)
+    {
+        return true;
+    }
+
+    if (packet[0] == 0x12 && packet[14] == 0x1B && packet[15] == 0x01 && packet[16] == 0x60)
+    {
+        return true;
+    }
+
+    if (packet[0] == 0x10 && packet[14] == 0x52 && packet[15] == 0x09)
+    {
+        return true;
+    }
+
+    if (packet[0] == 0x17)
+    {
+        return true;
+    }
+
+    if (packet[0] == 0x1D)
+    {
+        return true;
+    }
+
+    if (packet[0] == 0x11 && packet[9] == 0x08 && packet[10] == 0x40 && packet[11] == 0x63)
+    {
+        return true;
+    }
+
+    if (packet[0] == 0x0F && packet[12] == 0x84 && packet[13] == 0x20)
+    {
+        return true;
+    }
+
+    return false; // packet.Length is 8 or 12 or 15 or 16 or 18;
     // isClient 
     //     ? clientPacketsToHide.Contains(packet[0])
     //     : packet.Length is 8 or 12 || 
