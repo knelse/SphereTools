@@ -9,6 +9,7 @@ using System.Text;
 using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
+using System.Windows.Data;
 using System.Windows.Input;
 using PacketLogViewer.Models;
 
@@ -23,6 +24,7 @@ namespace PacketLogViewer
         public ObservableCollection<LogRecord> LogRecords { get; } = new();
         public readonly FileSystemWatcher FileSystemWatcher;
         public int CurrentStreamPosition { get; set; }
+        public bool ShowFavoritesOnly { get; set; }
 
         public MainWindow()
         {
@@ -34,40 +36,44 @@ namespace PacketLogViewer
                     "014006C645E6460120E60424C88908640C2D4CC565CCEC0C40C5A54D8C0C40C5850E8F0E802DADCC8DCEA50CAF0C80C7" +
                     "0724068429A929890A2406008429A929890A240600")
             };
-            
+
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             Win1251 = Encoding.GetEncoding(1251);
-            
+
             LoadContent();
 
             LogList.ItemsSource = LogRecords.Any() ? LogRecords : defaultContent;
             LogList.ContextMenu = new ContextMenu();
-            var menuItem = new MenuItem
-            {
-                Header = "Copy",
-            };
+            var menuItem = new MenuItem { Header = "Copy", };
             menuItem.Click += MenuItem_OnClick;
             LogList.ContextMenu.Items.Add(menuItem);
 
             LogList.SelectionChanged += OnLogListOnSelectionChanged;
             LogList.SelectedItem = LogList.Items[^1];
             LogList.ScrollIntoView(LogList.Items[^1]);
-            
+
             FileSystemWatcher = new FileSystemWatcher(@"c:\_sphereDumps\", "mixed");
-            FileSystemWatcher.Changed += (_, _) =>
-            {
-                Dispatcher.BeginInvoke(LoadContent);
-            };
+            FileSystemWatcher.Changed += (_, _) => { Dispatcher.BeginInvoke(LoadContent); };
             FileSystemWatcher.EnableRaisingEvents = true;
             LogList.KeyDown += (_, args) =>
             {
-                if (args.KeyboardDevice.Modifiers != ModifierKeys.Control
-                    || args.Key != Key.C)
+                if (args.KeyboardDevice.Modifiers != ModifierKeys.Control || args.Key != Key.C)
                 {
                     return;
                 }
-                
+
                 CopySelectedRowContent();
+            };
+
+            var view = CollectionViewSource.GetDefaultView(LogList.ItemsSource);
+            view.Filter = o =>
+            {
+                if (!ShowFavoritesOnly)
+                {
+                    return true;
+                }
+
+                return (o as LogRecord)?.Favorite ?? true;
             };
         }
 
@@ -121,9 +127,9 @@ namespace PacketLogViewer
 
         private void OnLogListOnSelectionChanged(object sender, SelectionChangedEventArgs args)
         {
-            var selected = args.AddedItems[0] as LogRecord;
             try
             {
+                var selected = args.AddedItems[0] as LogRecord;
                 var positiveValue = "0" + selected?.Content ?? throw new InvalidOperationException();
                 CurrentContent =
                     new BigInteger(BigInteger.Parse(positiveValue, NumberStyles.HexNumber).ToByteArray().AsSpan(), true,
@@ -131,10 +137,13 @@ namespace PacketLogViewer
                 CurrentShift = 0;
 
                 TrySetCurrentTextContent();
+                IsFavorite.IsChecked = selected?.Favorite ?? false;
+                LogList.ScrollIntoView(selected);
             }
             catch
             {
                 LogRecordTextDisplay.Text = "Selected value is not a hex string!";
+                IsFavorite.IsChecked = false;
             }
         }
 
@@ -151,9 +160,10 @@ namespace PacketLogViewer
         }
 
         public static string GetBinaryPaddedString(byte b) => Convert.ToString(b, 2).PadLeft(8, '0');
-        
+
         // 0xAD is a soft hyphen and doesn't render, but it's not a control/whitespace/separator
-        public static char GetVisibleChar (char c) => char.IsControl(c) || char.IsWhiteSpace(c) || char.IsSeparator(c) || c == 0xAD ? '·' : c;
+        public static char GetVisibleChar(char c) =>
+            char.IsControl(c) || char.IsWhiteSpace(c) || char.IsSeparator(c) || c == 0xAD ? '·' : c;
 
         public static char GetEncoded1251Char(byte b)
         {
@@ -182,7 +192,13 @@ namespace PacketLogViewer
                 _ => CurrentContent >> CurrentShift
             };
             var shiftedValue = shiftedBigInt.ToByteArray();
-            
+
+            var shiftedValueBytes = new List<byte[]>();
+            for (var i = 0; i <= 7; i++)
+            {
+                shiftedValueBytes.Add((CurrentContent >> i).ToByteArray());
+            }
+
             var sb = new StringBuilder();
             var sbText = new StringBuilder();
             var sb1251 = new StringBuilder();
@@ -191,15 +207,26 @@ namespace PacketLogViewer
             sbText.AppendLine("  #   Binary      Dec\tHex\t1251\tLogin");
             sbText.AppendLine("-------------------------------------------------");
 
+            for (var i = 0; i <= 7; i++)
+            {
+                sb1251.Append($"[{i}] ");
+                for (var j = StartByteLine; j < shiftedValueBytes[i].Length; j++)
+                {
+                    sb1251.Append(GetEncoded1251Char(shiftedValueBytes[i][j]));
+                }
+
+                sb1251.AppendLine();
+            }
+
             for (var i = StartByteLine; i < shiftedValue.Length; i++)
             {
-                sb1251.Append(GetEncoded1251Char(shiftedValue[i]));
                 sbLogin.Append(GetEncodedLoginChar(shiftedValue[i]));
                 sbText.Append($"{i + 1,3:D}: ");
                 sbText.AppendLine(GetFormattedBinaryOutput(shiftedValue[i]));
             }
 
-            sb.AppendLine(sb1251.ToString());
+            sb.AppendLine(Convert.ToHexString(shiftedValue));
+            sb.Append(sb1251);
             sb.AppendLine(sbLogin.ToString());
             sb.Append(sbText);
             return sb.ToString();
@@ -218,7 +245,7 @@ namespace PacketLogViewer
                 case "ShiftLeft5":
                 case "ShiftLeft6":
                 case "ShiftLeft7":
-                    shift = - (button.Name[^1] - '0');
+                    shift = -(button.Name[^1] - '0');
                     break;
                 case "ShiftRight1":
                 case "ShiftRight2":
@@ -256,9 +283,47 @@ namespace PacketLogViewer
 
         private void CopySelectedRowContent()
         {
-            var selectedRow = (LogRecord) LogList.SelectedItem;
+            var selectedRow = (LogRecord)LogList.SelectedItem;
             var text = $"{selectedRow.Origin}\t\t\t{selectedRow.Date}\t\t\t{selectedRow.Content}\n";
             Clipboard.SetText(text);
+        }
+
+        private void FavoriteToggleButton_OnChecked(object sender, RoutedEventArgs e)
+        {
+            if (LogList.SelectedItem is null)
+            {
+                return;
+            }
+
+            var item = (LogRecord) LogList.SelectedItem;
+            item.Favorite = true;
+        }
+
+        private void FavoriteToggleButton_OnUnchecked(object sender, RoutedEventArgs e)
+        {
+            if (LogList.SelectedItem is null)
+            {
+                return;
+            }
+
+            var item = (LogRecord) LogList.SelectedItem;
+            item.Favorite = false;
+        }
+
+        private void ShowFavoritesOnlyToggleButton_OnChecked(object sender, RoutedEventArgs e)
+        {
+            ShowFavoritesOnly = true;
+            CollectionViewSource.GetDefaultView(LogList.ItemsSource).Refresh();
+            LogList.SelectedItem = LogList.Items[^1];
+            LogList.ScrollIntoView(LogList.Items[^1]);
+        }
+
+        private void ShowFavoritesOnlyToggleButton_OnUnchecked(object sender, RoutedEventArgs e)
+        {
+            ShowFavoritesOnly = false;
+            CollectionViewSource.GetDefaultView(LogList.ItemsSource).Refresh();
+            LogList.SelectedItem = LogList.Items[^1];
+            LogList.ScrollIntoView(LogList.Items[^1]);
         }
     }
 }
