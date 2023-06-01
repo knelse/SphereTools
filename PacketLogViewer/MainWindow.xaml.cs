@@ -162,8 +162,8 @@ namespace PacketLogViewer
         public static string GetBinaryPaddedString(byte b) => Convert.ToString(b, 2).PadLeft(8, '0');
 
         // 0xAD is a soft hyphen and doesn't render, but it's not a control/whitespace/separator
-        public static char GetVisibleChar(char c) =>
-            char.IsControl(c) || char.IsWhiteSpace(c) || char.IsSeparator(c) || c == 0xAD ? '·' : c;
+        public static char GetVisibleChar(char c) => (c >= 0x20 && c <= 0x7E) || (c >= 'А' && c <= 'я') ? c : '·';
+        // char.IsControl(c) || char.IsWhiteSpace(c) || char.IsSeparator(c) || c == 0xAD ? '·' : c;
 
         public static char GetEncoded1251Char(byte b)
         {
@@ -314,16 +314,22 @@ namespace PacketLogViewer
         {
             ShowFavoritesOnly = true;
             CollectionViewSource.GetDefaultView(LogList.ItemsSource).Refresh();
-            LogList.SelectedItem = LogList.Items[^1];
-            LogList.ScrollIntoView(LogList.Items[^1]);
+            if (LogList.Items.Count > 0)
+            {
+                LogList.SelectedItem = LogList.Items[^1];
+                LogList.ScrollIntoView(LogList.Items[^1]);
+            }
         }
 
         private void ShowFavoritesOnlyToggleButton_OnUnchecked(object sender, RoutedEventArgs e)
         {
             ShowFavoritesOnly = false;
             CollectionViewSource.GetDefaultView(LogList.ItemsSource).Refresh();
-            LogList.SelectedItem = LogList.Items[^1];
-            LogList.ScrollIntoView(LogList.Items[^1]);
+            if (LogList.Items.Count > 0)
+            {
+                LogList.SelectedItem = LogList.Items[^1];
+                LogList.ScrollIntoView(LogList.Items[^1]);
+            }
         }
     }
 }
