@@ -1,0 +1,31 @@
+[gd_scene load_steps=7 format=3 uid="uid://hjej1tjbxy47"]
+
+[ext_resource type="Script" path="res://ModelImport.cs" id="1_i6sfw"]
+[ext_resource type="ArrayMesh" path="res://tree953.tres" id="2_2k4kf"]
+[ext_resource type="ArrayMesh" path="res://table1.tres" id="3_3hkis"]
+[ext_resource type="ArrayMesh" path="res://sagew1.tres" id="4_vae7k"]
+[ext_resource type="ArrayMesh" path="res://pyrst_p1.tres" id="5_s3xnf"]
+
+[sub_resource type="ArrayMesh" id="ArrayMesh_t5jaq"]
+
+[node name="Node3D" type="Node3D"]
+
+[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
+mesh = SubResource("ArrayMesh_t5jaq")
+script = ExtResource("1_i6sfw")
+
+[node name="Tree953" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 487.345, 486.219, 717.587)
+mesh = ExtResource("2_2k4kf")
+
+[node name="Table1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 473.363, 501.188, 716.314)
+mesh = ExtResource("3_3hkis")
+
+[node name="Sagew1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 467.932, 507.392, 699.222)
+mesh = ExtResource("4_vae7k")
+
+[node name="PyrstP1" type="MeshInstance3D" parent="."]
+transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 465.054, 508.905, 703.705)
+mesh = ExtResource("5_s3xnf")

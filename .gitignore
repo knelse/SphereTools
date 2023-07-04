@@ -37,3 +37,8 @@ ClientCoordTest
 Sphere
 *.zip
 *.nupkg
+opengl/Nehe/.idea
+opengl/Nehe/cmake-build-debug
+sphModelInfo/sphModelInfo/.idea
+sphModelInfo/sphModelInfo/bin
+sphModelInfo/sphModelInfo/obj
