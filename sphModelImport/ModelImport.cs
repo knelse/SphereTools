@@ -24,34 +24,40 @@ public partial class ModelImport : MeshInstance3D
 				continue;
 			}
 
-			var surfaceArray = new Godot.Collections.Array();
-			surfaceArray.Resize((int) Mesh.ArrayType.Max);
-			var vertices = new List<Vector3>();
-			var uvs = new List<Vector2>();
-			var normals = new List<Vector3>();
-			var indices = new List<int>();
-
-			foreach (var vertex in modelInfo.Vertices)
-			{
-				vertices.Add(new Vector3(vertex.X, -vertex.Y, vertex.Z));
-				normals.Add(new Vector3(vertex.NormalX, -vertex.NormalY, vertex.NormalZ));
-				uvs.Add(new Vector2(vertex.TextureU, vertex.TextureV));
-			}
-
-			foreach (var triangle in modelInfo.Triangles)
-			{
-				indices.Add(triangle.Vertex1);
-				indices.Add(triangle.Vertex2);
-				indices.Add(triangle.Vertex3);
-			}
-
-			surfaceArray[(int) Mesh.ArrayType.Vertex] = vertices.ToArray();
-			surfaceArray[(int) Mesh.ArrayType.TexUv] = uvs.ToArray();
-			surfaceArray[(int) Mesh.ArrayType.Normal] = normals.ToArray();
-			surfaceArray[(int) Mesh.ArrayType.Index] = indices.ToArray();
-
 			var arrayMesh = new ArrayMesh();
-			arrayMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, surfaceArray);
+
+			foreach (var surface in modelInfo.Surfaces)
+			{
+				var surfaceArray = new Godot.Collections.Array();
+				surfaceArray.Resize((int) Mesh.ArrayType.Max);
+				var vertices = new List<Vector3>();
+				var uvs = new List<Vector2>();
+				var normals = new List<Vector3>();
+				var indices = new List<int>();
+
+				for (var i = surface.FirstVertexIndex; i < surface.FirstVertexIndex + surface.VertexCount; i++)
+				{
+					var vertex = modelInfo.Vertices[i];
+					vertices.Add(new Vector3(vertex.X, -vertex.Y, vertex.Z));
+					normals.Add(new Vector3(vertex.NormalX, -vertex.NormalY, vertex.NormalZ));
+					uvs.Add(new Vector2(vertex.TextureU, vertex.TextureV));
+				}
+
+				for (var i = surface.FirstTriangleIndex; i < surface.FirstTriangleIndex + surface.TriangleCount; i++)
+				{
+					var triangle = modelInfo.Triangles[i];
+					indices.Add(triangle.Vertex1);
+					indices.Add(triangle.Vertex2);
+					indices.Add(triangle.Vertex3);
+				}
+
+				surfaceArray[(int) Mesh.ArrayType.Vertex] = vertices.ToArray();
+				surfaceArray[(int) Mesh.ArrayType.TexUv] = uvs.ToArray();
+				surfaceArray[(int) Mesh.ArrayType.Normal] = normals.ToArray();
+				surfaceArray[(int) Mesh.ArrayType.Index] = indices.ToArray();
+
+				arrayMesh.AddSurfaceFromArrays(Mesh.PrimitiveType.Triangles, surfaceArray);
+			}
 
 			ResourceSaver.Save(arrayMesh, $"res://{Path.GetFileNameWithoutExtension(file)}.tres", ResourceSaver.SaverFlags.Compress);
 		}
