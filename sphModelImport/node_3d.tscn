@@ -1,19 +1,20 @@
-[gd_scene load_steps=16 format=3 uid="uid://hjej1tjbxy47"]
+[gd_scene load_steps=17 format=3 uid="uid://hjej1tjbxy47"]
 
 [ext_resource type="Script" path="res://ModelImport.cs" id="1_i6sfw"]
-[ext_resource type="ArrayMesh" path="res://tree953.tres" id="2_2k4kf"]
-[ext_resource type="ArrayMesh" path="res://table1.tres" id="3_3hkis"]
-[ext_resource type="ArrayMesh" path="res://sagew1.tres" id="4_vae7k"]
-[ext_resource type="ArrayMesh" path="res://pyrst_p1.tres" id="5_s3xnf"]
-[ext_resource type="ArrayMesh" path="res://brige1_2.tres" id="6_f3o2k"]
-[ext_resource type="ArrayMesh" path="res://brige1_3.tres" id="7_xnuj4"]
-[ext_resource type="ArrayMesh" path="res://br_tower1.tres" id="8_rj1c4"]
-[ext_resource type="ArrayMesh" path="res://Cart.tres" id="9_7f5pr"]
-[ext_resource type="ArrayMesh" path="res://CASTLE2.tres" id="10_buf7e"]
-[ext_resource type="ArrayMesh" path="res://cc19.tres" id="11_a4e5l"]
-[ext_resource type="ArrayMesh" path="res://cc59.tres" id="12_8vm3s"]
-[ext_resource type="ArrayMesh" path="res://char27.tres" id="13_mahio"]
-[ext_resource type="ArrayMesh" path="res://dragon01k.tres" id="14_4gsy7"]
+[ext_resource type="ArrayMesh" uid="uid://1yfigl7huaj6" path="res://tree953.tres" id="2_2k4kf"]
+[ext_resource type="ArrayMesh" uid="uid://1e38j4nai8jj" path="res://table1.tres" id="3_3hkis"]
+[ext_resource type="ArrayMesh" uid="uid://ife3s7nps7cg" path="res://sagew1.tres" id="4_vae7k"]
+[ext_resource type="ArrayMesh" uid="uid://5lk1xu3vfy6j" path="res://pyrst_p1.tres" id="5_s3xnf"]
+[ext_resource type="ArrayMesh" uid="uid://g50noksjskx0" path="res://brige1_2.tres" id="6_f3o2k"]
+[ext_resource type="ArrayMesh" uid="uid://lnc0er0mx3fx" path="res://brige1_3.tres" id="7_xnuj4"]
+[ext_resource type="ArrayMesh" uid="uid://ckpl2qd7g1v85" path="res://br_tower1.tres" id="8_rj1c4"]
+[ext_resource type="ArrayMesh" uid="uid://xxy2lghp2rx6" path="res://Cart.tres" id="9_7f5pr"]
+[ext_resource type="ArrayMesh" uid="uid://dflncogmnjgai" path="res://CASTLE2.tres" id="10_buf7e"]
+[ext_resource type="ArrayMesh" uid="uid://bnvufdrnibbap" path="res://cc19.tres" id="11_a4e5l"]
+[ext_resource type="ArrayMesh" uid="uid://0eo7spifabpc" path="res://cc59.tres" id="12_8vm3s"]
+[ext_resource type="ArrayMesh" uid="uid://d2didedkbkh5s" path="res://char27.tres" id="13_mahio"]
+[ext_resource type="ArrayMesh" uid="uid://c4qnwefbmhv8b" path="res://dragon01k.tres" id="14_4gsy7"]
+[ext_resource type="ArrayMesh" uid="uid://djyy34s3fxjx3" path="res://testlnd.tres" id="15_jf33v"]
 
 [sub_resource type="ArrayMesh" id="ArrayMesh_t5jaq"]
 
@@ -74,3 +75,7 @@ mesh = ExtResource("13_mahio")
 [node name="Dragon01k" type="MeshInstance3D" parent="."]
 transform = Transform3D(1, 0, 0, 0, 1, 0, 0, 0, 1, 412.644, 532.158, 658.623)
 mesh = ExtResource("14_4gsy7")
+
+[node name="Testlnd2" type="MeshInstance3D" parent="."]
+transform = Transform3D(0.982065, -0.0894092, -0.165997, 0.142862, -0.221683, 0.964597, -0.123042, -0.971011, -0.204934, 206.427, 609.766, 643.191)
+mesh = ExtResource("15_jf33v")
