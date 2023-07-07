@@ -56,13 +56,18 @@ static string ByteArrayToBinaryString(ref byte[] ba, int shift, bool noPadding =
 
     var hex = new StringBuilder(ba.Length * 2);
     
-    // foreach (var val in ba)
-    // {
-    //     var str = Convert.ToString(val, 2);
-    //     if (!noPadding) str = str.PadLeft(8, '0');
-    //     hex.AppendLine(str); // + "\t" + $"{val:X2}");
-    //     //hex.Append(' ');
-    // }
+    foreach (var val in ba)
+    {
+        var str = Convert.ToString(val, 2);
+        if (!noPadding) str = str.PadLeft(8, '0');
+        hex.AppendLine(str); // + "\t" + $"{val:X2}");
+        //hex.Append(' ');
+    }
+
+    foreach (var val in ba)
+    {
+        hex.AppendLine($"{val:X2}");
+    }
     
     return hex.ToString();
 }//989271689 987193993 974625417 975668361 977782152

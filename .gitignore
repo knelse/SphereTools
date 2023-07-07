@@ -37,6 +37,10 @@ ClientCoordTest
 Sphere
 *.zip
 *.nupkg
+SphDbPlayground/.mono
+opengl/Nehe/.vs
+opengl/Nehe/Debug
+opengl/Nehe/x64
 opengl/Nehe/.idea
 opengl/Nehe/cmake-build-debug
 sphModelInfo/sphModelInfo/.idea
