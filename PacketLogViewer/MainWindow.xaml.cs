@@ -11,6 +11,7 @@ using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
+using System.Windows.Threading;
 using PacketLogViewer.Models;
 
 namespace PacketLogViewer
@@ -22,9 +23,11 @@ namespace PacketLogViewer
         public int StartByteLine { get; set; }
         public int CurrentShift { get; set; }
         public ObservableCollection<LogRecord> LogRecords { get; } = new();
-        public readonly FileSystemWatcher FileSystemWatcher;
+        public readonly FileSystemWatcher ContentFileSystemWatcher;
         public int CurrentStreamPosition { get; set; }
         public bool ShowFavoritesOnly { get; set; }
+        public readonly FileSystemWatcher PingFileSystemWatcher;
+        public readonly DispatcherTimer SphereTimeUpdateTimer;
 
         public MainWindow()
         {
@@ -41,6 +44,8 @@ namespace PacketLogViewer
             Win1251 = Encoding.GetEncoding(1251);
 
             LoadContent();
+            UpdateClientCoords();
+            UpdateGameTime();
 
             LogList.ItemsSource = LogRecords.Any() ? LogRecords : defaultContent;
             LogList.ContextMenu = new ContextMenu();
@@ -52,9 +57,14 @@ namespace PacketLogViewer
             LogList.SelectedItem = LogList.Items[^1];
             LogList.ScrollIntoView(LogList.Items[^1]);
 
-            FileSystemWatcher = new FileSystemWatcher(@"c:\_sphereDumps\", "mixed");
-            FileSystemWatcher.Changed += (_, _) => { Dispatcher.BeginInvoke(LoadContent); };
-            FileSystemWatcher.EnableRaisingEvents = true;
+            ContentFileSystemWatcher = new FileSystemWatcher(@"c:\_sphereDumps\", "mixed");
+            ContentFileSystemWatcher.Changed += (_, _) => { Dispatcher.BeginInvoke(LoadContent); };
+            ContentFileSystemWatcher.EnableRaisingEvents = true;
+
+            PingFileSystemWatcher = new FileSystemWatcher(@"c:\_sphereDumps\", "ping");
+            PingFileSystemWatcher.Changed += (_, _) => { Dispatcher.BeginInvoke(UpdateClientCoords); };
+            PingFileSystemWatcher.EnableRaisingEvents = true;
+
             LogList.KeyDown += (_, args) =>
             {
                 if (args.KeyboardDevice.Modifiers != ModifierKeys.Control || args.Key != Key.C)
@@ -75,6 +85,70 @@ namespace PacketLogViewer
 
                 return (o as LogRecord)?.Favorite ?? true;
             };
+
+            SphereTimeUpdateTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1.0/24)
+            };
+            SphereTimeUpdateTimer.Tick += (_, _) => UpdateGameTime();
+            SphereTimeUpdateTimer.Start();
+        }
+
+        public void UpdateGameTime()
+        {
+            var time = TimeHelper.GetCurrentSphereDateTime();
+            GameTime.Text = time.ToString("dd/MM/yyyy hh:mm");
+            GameTimeBits.Text = ByteArrayToBinaryString(TimeHelper.EncodeCurrentSphereDateTime(), false, true);
+        }
+
+        public void UpdateClientCoords()
+        {
+
+            var retryCount = 0;
+            while (retryCount < 10)
+            {
+                try
+                {
+                    var textContent = File.ReadAllLines(@"c:\_sphereDumps\ping");
+                    var lastPing = textContent[^1].Split("\t", StringSplitOptions.RemoveEmptyEntries);
+                    if (lastPing.Length < 5)
+                    {
+                        MessageBox.Show("Too few coords in the last ping");
+                        return;
+                    }
+
+                    var x = double.Parse(lastPing[1]);
+                    var y = double.Parse(lastPing[2]);
+                    var z = double.Parse(lastPing[3]);
+                    var t = double.Parse(lastPing[4]);
+                    CoordsX.Text = $"{x:F4}";
+                    CoordsY.Text = $"{y:F4}";
+                    CoordsZ.Text = $"{z:F4}";
+                    CoordsT.Text = $"{t:F4}";
+
+                    var xBytes = EncodeServerCoordinate(x);
+                    var yBytes = EncodeServerCoordinate(y);
+                    var zBytes = EncodeServerCoordinate(z);
+                    var tBytes = EncodeServerCoordinate(t);
+
+                    CoordsXBits.Text = ByteArrayToBinaryString(xBytes, false, true);
+                    CoordsYBits.Text = ByteArrayToBinaryString(yBytes, false, true);
+                    CoordsZBits.Text = ByteArrayToBinaryString(zBytes, false, true);
+                    CoordsTBits.Text = ByteArrayToBinaryString(tBytes, false, true);
+                    break;
+                }
+                catch (IOException ex)
+                {
+                    retryCount++;
+                    Thread.Sleep(10);
+                    if (retryCount >= 10)
+                    {
+                        MessageBox.Show(ex.ToString());
+                    }
+                }
+            }
+
+            LogList.UpdateLayout();
         }
 
         public void LoadContent()
@@ -107,6 +181,23 @@ namespace PacketLogViewer
                             MessageBox.Show(logEntry + "\n" + ex);
                         }
                     }
+
+                    var data7600 = textContent.LastOrDefault(x => x[27..].StartsWith("76002C0100"));
+                    var data3200 = textContent.LastOrDefault(x => x[27..].StartsWith("32002C0100"));
+                    DateTime? time7600 = data7600 is null ? null : DateTime.Parse(data7600[6..24]);
+                    DateTime? time3200 = data3200 is null ? null : DateTime.Parse(data3200[6..24]);
+                    var lastClientIdRecord = data7600 ?? data3200;
+                    if (time3200 > time7600)
+                    {
+                        lastClientIdRecord = data3200;
+                    }
+
+                    var clientId = lastClientIdRecord is null
+                        ? "0000"
+                        : lastClientIdRecord[43..45] + lastClientIdRecord[41..43];
+                    ClientId.Text = clientId;
+                    var clientIdBytes = Convert.FromHexString(clientId);
+                    ClientIdBits.Text = ByteArrayToBinaryString(clientIdBytes, false, true);
 
                     CurrentStreamPosition = textContent.Length;
                     break;
@@ -295,7 +386,7 @@ namespace PacketLogViewer
                 return;
             }
 
-            var item = (LogRecord) LogList.SelectedItem;
+            var item = (LogRecord)LogList.SelectedItem;
             item.Favorite = true;
         }
 
@@ -306,7 +397,7 @@ namespace PacketLogViewer
                 return;
             }
 
-            var item = (LogRecord) LogList.SelectedItem;
+            var item = (LogRecord)LogList.SelectedItem;
             item.Favorite = false;
         }
 
@@ -330,6 +421,121 @@ namespace PacketLogViewer
                 LogList.SelectedItem = LogList.Items[^1];
                 LogList.ScrollIntoView(LogList.Items[^1]);
             }
+        }
+
+        // copypaste, remove it
+        public static byte[] EncodeServerCoordinate(double a)
+        {
+            var scale = 69;
+
+            var a_abs = Math.Abs(a);
+            var a_temp = a_abs;
+
+            var steps = 0;
+
+            if (((int)a_abs) == 0)
+            {
+                scale = 58;
+            }
+
+            else if (a_temp < 2048)
+            {
+                while (a_temp < 2048)
+                {
+                    a_temp *= 2;
+                    steps += 1;
+                }
+
+                scale -= (steps + 1) / 2;
+
+                if (scale < 0)
+                {
+                    scale = 58;
+                }
+            }
+            else
+            {
+                while (a_temp > 4096)
+                {
+                    a_temp /= 2;
+                    steps += 1;
+                }
+
+                scale += steps / 2;
+            }
+
+            var a_3 = (byte)(((a < 0 ? 1 : 0) << 7) + scale);
+            var mul = Math.Pow(2, ((int)Math.Log(a_abs, 2)));
+            var numToEncode = (int)(0b100000000000000000000000 * (a_abs / mul + 1));
+
+            var a_2 = (byte)(((numToEncode & 0b111111110000000000000000) >> 16) + (steps % 2 == 1 ? 0b10000000 : 0));
+            var a_1 = (byte)((numToEncode & 0b1111111100000000) >> 8);
+            var a_0 = (byte)(numToEncode & 0b11111111);
+
+            return new[] { a_0, a_1, a_2, a_3 };
+        }
+        // copypaste, remove
+        public static string ByteArrayToBinaryString(byte[] ba, bool noPadding = false, bool addSpaces = false)
+        {
+            var hex = new StringBuilder(ba.Length * 2);
+
+            foreach (var val in ba)
+            {
+                var str = Convert.ToString(val, 2);
+                if (!noPadding) str = str.PadLeft(8, '0');
+                hex.Append(str);
+
+                if (addSpaces)
+                {
+                    hex.Append(' ');
+                }
+            }
+
+            return hex.ToString();
+        }
+    }
+    public static class TimeHelper
+    {
+        public const int UnixTimeOrigin = 1691525655;
+        public static readonly DateTime SphereTimeOrigin = new (8100, 8, 3, 2, 49, 15);
+
+        public static DateTime GetCurrentSphereDateTime()
+        {
+            var now = new DateTimeOffset(DateTime.UtcNow);
+            var fromUnixTimeOrigin = now.ToUnixTimeSeconds() - UnixTimeOrigin;
+            var sphereTimeOffset = fromUnixTimeOrigin * 12;
+            var sphereDateTime = SphereTimeOrigin.AddSeconds(sphereTimeOffset);
+
+            return sphereDateTime;
+        }
+
+        // copypaste, remove
+        public static byte[] EncodeCurrentSphereDateTime()
+        {
+            var currentSphereTime = GetCurrentSphereDateTime();
+            // ingame time shows hours and minutes, we'll ignore seconds
+            var minutes_last4 = (byte)((currentSphereTime.Minute & 0b1111) << 4);
+            // 1-4 minutes 5-8 idk 
+            var firstDateByte = (byte)(minutes_last4 + 0b1000);
+            var minutes_first2 = (byte)((currentSphereTime.Minute & 0b110000) >> 4);
+            var hours = (byte)(currentSphereTime.Hour << 2);
+            var days_last1 = (byte)((currentSphereTime.Day % 2) << 7);
+            // 1 days 2-6 hours 7-8 minutes
+            var secondDateByte = (byte)(days_last1 + hours + minutes_first2);
+            var days_first4 = (byte)((currentSphereTime.Day & 0b11110) >> 1);
+            var month = (byte)(currentSphereTime.Month << 4);
+            // 1-4 months 5-8 days
+            var thirdDateByte = (byte)(month + days_first4);
+            var years_last8 = (byte)(currentSphereTime.Year & 0b11111111);
+            var years_first1 = (byte)((currentSphereTime.Year & 0b100000000) >> 8);
+            // quite likely it has more digits but 20+ irl years should be enough
+            var fourthDateByte = (byte)(0b00110100 + years_first1);
+
+            return new[]
+            {
+                firstDateByte, secondDateByte,
+                thirdDateByte, years_last8, fourthDateByte
+            };
         }
     }
 }

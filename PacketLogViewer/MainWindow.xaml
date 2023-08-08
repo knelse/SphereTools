@@ -40,7 +40,8 @@
     <Grid>
         <Grid.RowDefinitions>
             <RowDefinition Height="30" />
-            <RowDefinition Height="*" />
+            <RowDefinition Height="7*" />
+            <RowDefinition Height="3*" MaxHeight="220"/>
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="*" />
@@ -54,7 +55,8 @@
             </CheckBox.LayoutTransform>
             Show Favorites Only
         </CheckBox>
-        <GridSplitter Grid.Row="1" Grid.Column="0" Width="8" Background="White" ResizeBehavior="CurrentAndNext"
+        <GridSplitter Grid.Row="1" Grid.Column="0" Grid.RowSpan="2" Width="8" Background="White"
+                      ResizeBehavior="CurrentAndNext"
                       Margin="10 4 0 4 " />
         <ListView Grid.Row="1" Margin="4" Name="LogList" Grid.Column="0"
                   ItemContainerStyle="{StaticResource LogRowHighlightStyle}" SelectionMode="Single">
@@ -67,7 +69,83 @@
                 </GridView>
             </ListView.View>
         </ListView>
-        <Grid Grid.Row="0" Grid.RowSpan="2" Grid.Column="1">
+        <StackPanel Grid.Row="2" Grid.Column="0" Margin="4 0" Name="GameState" Background="LightGray">
+            <Grid>
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                    <RowDefinition Height="*" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="2*" />
+                </Grid.ColumnDefinitions>
+                <Label FontWeight="Bold" Margin="-2" FontSize="12" Grid.Row="0">ClientID</Label>
+                <TextBox FontSize="12" Margin="4 -2 4 -2" Name="ClientId" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="1">
+                    123
+                </TextBox>
+                <TextBox FontSize="10" Margin="4 -2 4 -2" Name="ClientIdBits" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="1" Grid.Column="1">
+                    456
+                </TextBox>
+                <Label FontWeight="Bold" Margin="-2" FontSize="12" Grid.Row="2">Time</Label>
+                <TextBox FontSize="12" Margin="4 -2 4 -2" Name="GameTime" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="3">
+                    123
+                </TextBox>
+                <TextBox FontSize="10" Margin="4 -2 4 -2" Name="GameTimeBits" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="3" Grid.Column="1">
+                    456
+                </TextBox>
+                <Label FontWeight="Bold" Margin="-2" FontSize="12" Grid.Row="4">X</Label>
+                <TextBox FontSize="12" Margin="4 -2 4 -2" Name="CoordsX" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="5">
+                    123
+                </TextBox>
+                <TextBox FontSize="10" Margin="4 -2 4 -2" Name="CoordsXBits" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="5" Grid.Column="1">
+                    456
+                </TextBox>
+                <Label FontWeight="Bold" Margin="-2" FontSize="12" Grid.Row="6">Y</Label>
+                <TextBox FontSize="12" Margin="4 -2 4 -2" Name="CoordsY" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="7">
+                    123
+                </TextBox>
+                <TextBox FontSize="10" Margin="4 -2 4 -2" Name="CoordsYBits" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="7" Grid.Column="1">
+                    456
+                </TextBox>
+                <Label FontWeight="Bold" Margin="-2" FontSize="12" Grid.Row="8">Z</Label>
+                <TextBox FontSize="12" Margin="4 -2 4 -2" Name="CoordsZ" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="9">
+                    123
+                </TextBox>
+                <TextBox FontSize="10" Margin="4 -2 4 -2" Name="CoordsZBits" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="9" Grid.Column="1">
+                    456
+                </TextBox>
+                <Label FontWeight="Bold" Margin="-2" FontSize="12" Grid.Row="10">T</Label>
+                <TextBox FontSize="12" Margin="4 -2 4 -2" Name="CoordsT" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="11">
+                    123
+                </TextBox>
+                <TextBox FontSize="10" Margin="4 -2 4 -2" Name="CoordsTBits" Background="Transparent"
+                         BorderBrush="Transparent" IsReadOnly="True" Grid.Row="11" Grid.Column="1">
+                    456
+                </TextBox>
+            </Grid>
+        </StackPanel>
+        <Grid Grid.Row="0" Grid.RowSpan="3" Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="30" />
                 <RowDefinition Height="*" />
@@ -93,7 +171,8 @@
                 <ColumnDefinition Width="40" />
                 <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
-            <CheckBox Name="IsFavorite" Grid.Row="0" Grid.Column="0" Margin="2 4 4 2" Background="White" VerticalAlignment="Center"
+            <CheckBox Name="IsFavorite" Grid.Row="0" Grid.Column="0" Margin="2 4 4 2" Background="White"
+                      VerticalAlignment="Center"
                       HorizontalAlignment="Center" Checked="FavoriteToggleButton_OnChecked"
                       Unchecked="FavoriteToggleButton_OnUnchecked">
                 <CheckBox.LayoutTransform>
