@@ -1,11 +1,10 @@
-[gd_scene load_steps=3 format=3 uid="uid://crnh2iji1j4va"]
+[gd_scene load_steps=3 format=3 uid="uid://by5d4uevbi07x"]
 
-[ext_resource type="Script" path="res://ModelImport.cs" id="1_kx7dm"]
+[ext_resource type="MeshLibrary" uid="uid://53gk2moprky" path="res://landscape.meshlib" id="2_7f642"]
+[ext_resource type="Script" path="res://TerrainFill.cs" id="2_074sn"]
 
-[sub_resource type="ArrayMesh" id="ArrayMesh_t5jaq"]
-
-[node name="Node3D" type="Node3D"]
-
-[node name="MeshInstance3D" type="MeshInstance3D" parent="."]
-mesh = SubResource("ArrayMesh_t5jaq")
-script = ExtResource("1_kx7dm")
+[node name="Terrain" type="GridMap"]
+mesh_library = ExtResource("2_7f642")
+cell_size = Vector3(100, 1000, 100)
+script = ExtResource("2_074sn")
+metadata/_editor_floor_ = Vector3(0, 0, 0)
