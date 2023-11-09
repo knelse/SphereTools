@@ -131,3 +131,11 @@ public static class CoordsHelper
         return new WorldCoords(x, y, z, turn);
     }
 }
+
+public class PacketBufferEntry
+{
+    public DateTime ArrivalTime;
+    public byte[] Buffer;
+    public bool WasProcessed;
+    public byte[]? OriginalBuffer;
+}

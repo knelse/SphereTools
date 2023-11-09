@@ -148,6 +148,7 @@
         <Grid Grid.Row="0" Grid.RowSpan="3" Grid.Column="1">
             <Grid.RowDefinitions>
                 <RowDefinition Height="30" />
+                <RowDefinition Height="4*" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
             <Grid.ColumnDefinitions>
@@ -243,10 +244,13 @@
                 &gt;&gt; 7
             </Button>
             <TextBox Name="LogRecordTextDisplay" Grid.Column="0" Grid.ColumnSpan="19" Grid.Row="1" Margin="4 8 4 0"
-                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True"
                      Style="{StaticResource LogRecordTextViewStyle}">
                 aaabbbbbbbbbcccccccccccccc
             </TextBox>
+            <TextBox Name="ContentPreview" Grid.Column="0" Grid.ColumnSpan="19" Grid.Row="2" Margin="4 8 4 0"
+                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True"
+                     Style="{StaticResource LogRecordTextViewStyle}" />
         </Grid>
     </Grid>
 </Window>

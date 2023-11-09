@@ -46,6 +46,9 @@ namespace PacketLogViewer
             LoadContent();
             UpdateClientCoords();
             UpdateGameTime();
+            
+            // prewarm
+            var _ = SphObjectDb.GameObjectDataDb;
 
             LogList.ItemsSource = LogRecords.Any() ? LogRecords : defaultContent;
             LogList.ContextMenu = new ContextMenu();
@@ -216,6 +219,28 @@ namespace PacketLogViewer
             LogList.UpdateLayout();
         }
 
+        public void UpdateContentPreview (LogRecord selected)
+        {
+            try
+            {
+                var bytes = Convert.FromHexString(selected.Content);
+                var sphObjects = ObjectPacketTools.GetObjectsFromPacket(bytes);
+                if (sphObjects.Count > 0)
+                {
+                    ContentPreview.Text = ObjectPacketTools.GetTextOutput(sphObjects);
+                }
+                else
+                {
+                    ContentPreview.Text = "";
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+                ContentPreview.Text = "Not an item packet";
+            }
+        }
+
         private void OnLogListOnSelectionChanged(object sender, SelectionChangedEventArgs args)
         {
             try
@@ -230,6 +255,7 @@ namespace PacketLogViewer
                 TrySetCurrentTextContent();
                 IsFavorite.IsChecked = selected?.Favorite ?? false;
                 LogList.ScrollIntoView(selected);
+                UpdateContentPreview(selected);
             }
             catch
             {
