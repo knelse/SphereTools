@@ -176,5 +176,13 @@ public class PacketCapture
 
         packetsToProcess[PacketSource.CLIENT].Sort(CapturedPacketRawData.Compare);
         packetsToProcess[PacketSource.SERVER].Sort(CapturedPacketRawData.Compare);
+
+        CapturedPacketRawData.CombinePacketsInSequence(packetsToProcess[PacketSource.SERVER])
+            .ForEach(ProcessPacketRawData);
+        packetsToProcess[PacketSource.CLIENT].ForEach(ProcessPacketRawData);
+    }
+
+    private static void ProcessPacketRawData (CapturedPacketRawData packetRawData)
+    {
     }
 }

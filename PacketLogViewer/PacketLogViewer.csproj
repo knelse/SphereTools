@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\ObjectPacketTools\ObjectPacketTools.csproj"/>
+        <ProjectReference Include="..\SphereHelpers\SphereHelpers.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
