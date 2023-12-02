@@ -1,19 +1,28 @@
 ﻿using System;
+using LiteDB;
 
 namespace PacketLogViewer.Models;
 
 public class LogRecord
 {
-    public string Origin { get; set; }
-    public DateTime Date { get; set; }
-    public string Content { get; set; }
-    public bool Favorite { get; set; }
-
-    public LogRecord(string origin, DateTime date, string content, bool favorite = false)
+    public LogRecord (StoredPacket storedPacket)
     {
-        Origin = origin;
-        Date = date;
-        Content = content;
-        Favorite = favorite;
+        Source = storedPacket.Source;
+        Timestamp = storedPacket.Timestamp;
+        ContentBytes = storedPacket.ContentBytes;
+        ContentString = Convert.ToHexString(ContentBytes);
+        ContentJson = storedPacket.ContentJson;
+        Favorite = false;
+        HiddenByDefault = PacketAnalyzer.ShouldBeHiddenByDefault(storedPacket);
     }
+
+    public PacketSource Source { get; set; }
+    public DateTime Timestamp { get; set; }
+    public byte[] ContentBytes { get; set; }
+    public string ContentJson { get; set; }
+
+    [BsonIgnore] public string ContentString { get; set; }
+
+    public bool Favorite { get; set; }
+    public bool HiddenByDefault { get; set; }
 }

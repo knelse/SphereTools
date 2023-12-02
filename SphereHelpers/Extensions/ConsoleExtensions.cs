@@ -1,6 +1,4 @@
-﻿using System;
-
-namespace PacketLogViewer.Extensions;
+﻿namespace PacketLogViewer.Extensions;
 
 public static class ConsoleExtensions
 {

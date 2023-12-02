@@ -1,69 +1,58 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Globalization;
-using System.IO;
 using System.Linq;
 using System.Numerics;
 using System.Text;
-using System.Threading;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+using LiteDB;
 using PacketLogViewer.Models;
+using SphServer.Helpers;
 
 namespace PacketLogViewer;
 
 public partial class MainWindow
 {
-    public static Encoding Win1251 = null!;
-    public readonly FileSystemWatcher ContentFileSystemWatcher;
+    private static Encoding Win1251 = null!;
+
+    public static readonly LiteDatabase PacketDatabase =
+        new (@"Filename=C:\_sphereStuff\sph_packets.db;Connection=shared;");
+
+    public static readonly ILiteCollection<StoredPacket> PacketCollection =
+        PacketDatabase.GetCollection<StoredPacket>("Packets");
+
     public readonly PacketCapture PacketCapture;
-    public readonly FileSystemWatcher PingFileSystemWatcher;
     public readonly DispatcherTimer SphereTimeUpdateTimer;
 
     public MainWindow ()
     {
         InitializeComponent();
-        PacketCapture = new PacketCapture();
-
-        var defaultContent = new List<LogRecord>
+        LoadContent();
+        PacketCapture = new PacketCapture
         {
-            new ("SRV", DateTime.Now,
-                "72002C010018E4CAE6084063830C2E4C2EAC6D8E8B6BAEAC8C6C8E8B0B0000206C0E0485C646A6A626E62B2645" +
-                "014006C645E6460120E60424C88908640C2D4CC565CCEC0C40C5A54D8C0C40C5850E8F0E802DADCC8DCEA50CAF0C80C7" +
-                "0724068429A929890A2406008429A929890A240600")
+            OnPacketProcessed = OnPacketProcessed
         };
 
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         Win1251 = Encoding.GetEncoding(1251);
 
-        LoadContent();
-        UpdateClientCoords();
+        // UpdateClientCoords();
         UpdateGameTime();
 
         // prewarm
         _ = SphObjectDb.GameObjectDataDb;
 
-        LogList.ItemsSource = LogRecords.Any() ? LogRecords : defaultContent;
+        LogList.ItemsSource = LogRecords;
         LogList.ContextMenu = new ContextMenu();
         var menuItem = new MenuItem { Header = "Copy" };
         menuItem.Click += MenuItem_OnClick;
         LogList.ContextMenu.Items.Add(menuItem);
 
         LogList.SelectionChanged += OnLogListOnSelectionChanged;
-        LogList.SelectedItem = LogList.Items[^1];
-        LogList.ScrollIntoView(LogList.Items[^1]);
-
-        ContentFileSystemWatcher = new FileSystemWatcher(@"c:\_sphereDumps\", "mixed");
-        ContentFileSystemWatcher.Changed += (_, _) => { Dispatcher.BeginInvoke(LoadContent); };
-        ContentFileSystemWatcher.EnableRaisingEvents = true;
-
-        PingFileSystemWatcher = new FileSystemWatcher(@"c:\_sphereDumps\", "ping");
-        PingFileSystemWatcher.Changed += (_, _) => { Dispatcher.BeginInvoke(UpdateClientCoords); };
-        PingFileSystemWatcher.EnableRaisingEvents = true;
 
         LogList.KeyDown += (_, args) =>
         {
@@ -78,12 +67,17 @@ public partial class MainWindow
         var view = CollectionViewSource.GetDefaultView(LogList.ItemsSource);
         view.Filter = o =>
         {
-            if (!ShowFavoritesOnly)
+            if (ShowFavoritesOnly)
+            {
+                return (o as LogRecord)?.Favorite ?? false;
+            }
+
+            if (!HideUninteresting)
             {
                 return true;
             }
 
-            return (o as LogRecord)?.Favorite ?? true;
+            return !((o as LogRecord)?.HiddenByDefault ?? false);
         };
 
         SphereTimeUpdateTimer = new DispatcherTimer
@@ -92,133 +86,106 @@ public partial class MainWindow
         };
         SphereTimeUpdateTimer.Tick += (_, _) => UpdateGameTime();
         SphereTimeUpdateTimer.Start();
+
+        ScrollIntoViewIfSelectionExists();
     }
 
     public BigInteger CurrentContent { get; set; }
     public int StartByteLine { get; set; }
     public int CurrentShift { get; set; }
     public ObservableCollection<LogRecord> LogRecords { get; } = new ();
-    public int CurrentStreamPosition { get; set; }
     public bool ShowFavoritesOnly { get; set; }
+    public bool HideUninteresting { get; set; } = true;
+
+    private void OnPacketProcessed (StoredPacket storedPacket)
+    {
+        storedPacket.Id = PacketCollection.Insert(storedPacket);
+        Dispatcher.Invoke(() =>
+        {
+            LogRecords.Add(new LogRecord(storedPacket));
+            LogList.UpdateLayout();
+        });
+    }
 
     public void UpdateGameTime ()
     {
         var time = TimeHelper.GetCurrentSphereDateTime().AddYears(7800);
         GameTime.Text = time.ToString("dd/MM/yyyy HH:mm");
-        GameTimeBits.Text = ByteArrayToBinaryString(TimeHelper.EncodeCurrentSphereDateTime(), false, true);
+        // TODO
+        GameTimeBits.Text = "0";
     }
 
-    public void UpdateClientCoords ()
-    {
-        var retryCount = 0;
-        while (retryCount < 10)
-        {
-            try
-            {
-                var textContent = File.ReadAllLines(@"c:\_sphereDumps\ping");
-                var lastPing = textContent[^1].Split("\t", StringSplitOptions.RemoveEmptyEntries);
-                if (lastPing.Length < 5)
-                {
-                    MessageBox.Show("Too few coords in the last ping");
-                    return;
-                }
-
-                var x = double.Parse(lastPing[1]);
-                var y = double.Parse(lastPing[2]);
-                var z = double.Parse(lastPing[3]);
-                var t = double.Parse(lastPing[4]);
-                CoordsX.Text = $"{x:F4}";
-                CoordsY.Text = $"{y:F4}";
-                CoordsZ.Text = $"{z:F4}";
-                CoordsT.Text = $"{t:F4}";
-
-                var xBytes = EncodeServerCoordinate(x);
-                var yBytes = EncodeServerCoordinate(y);
-                var zBytes = EncodeServerCoordinate(z);
-                var tBytes = EncodeServerCoordinate(t);
-
-                CoordsXBits.Text = ByteArrayToBinaryString(xBytes, false, true);
-                CoordsYBits.Text = ByteArrayToBinaryString(yBytes, false, true);
-                CoordsZBits.Text = ByteArrayToBinaryString(zBytes, false, true);
-                CoordsTBits.Text = ByteArrayToBinaryString(tBytes, false, true);
-                break;
-            }
-            catch (IOException ex)
-            {
-                retryCount++;
-                Thread.Sleep(10);
-                if (retryCount >= 10)
-                {
-                    MessageBox.Show(ex.ToString());
-                }
-            }
-        }
-
-        LogList.UpdateLayout();
-    }
+    // public void UpdateClientCoords ()
+    // {
+    //     var retryCount = 0;
+    //     while (retryCount < 10)
+    //     {
+    //         try
+    //         {
+    //             var textContent = File.ReadAllLines(@"c:\_sphereDumps\ping");
+    //             var lastPing = textContent[^1].Split("\t", StringSplitOptions.RemoveEmptyEntries);
+    //             if (lastPing.Length < 5)
+    //             {
+    //                 MessageBox.Show("Too few coords in the last ping");
+    //                 return;
+    //             }
+    //
+    //             var x = double.Parse(lastPing[1]);
+    //             var y = double.Parse(lastPing[2]);
+    //             var z = double.Parse(lastPing[3]);
+    //             var t = double.Parse(lastPing[4]);
+    //             CoordsX.Text = $"{x:F4}";
+    //             CoordsY.Text = $"{y:F4}";
+    //             CoordsZ.Text = $"{z:F4}";
+    //             CoordsT.Text = $"{t:F4}";
+    //
+    //             var xBytes = EncodeServerCoordinate(x);
+    //             var yBytes = EncodeServerCoordinate(y);
+    //             var zBytes = EncodeServerCoordinate(z);
+    //             var tBytes = EncodeServerCoordinate(t);
+    //
+    //             CoordsXBits.Text = ByteArrayToBinaryString(xBytes, false, true);
+    //             CoordsYBits.Text = ByteArrayToBinaryString(yBytes, false, true);
+    //             CoordsZBits.Text = ByteArrayToBinaryString(zBytes, false, true);
+    //             CoordsTBits.Text = ByteArrayToBinaryString(tBytes, false, true);
+    //             break;
+    //         }
+    //         catch (IOException ex)
+    //         {
+    //             retryCount++;
+    //             Thread.Sleep(10);
+    //             if (retryCount >= 10)
+    //             {
+    //                 MessageBox.Show(ex.ToString());
+    //             }
+    //         }
+    //     }
+    //
+    //     LogList.UpdateLayout();
+    // }
 
     public void LoadContent ()
     {
-        var retryCount = 0;
-        while (retryCount < 10)
+        PacketCollection.EnsureIndex(x => x.Source);
+        // might not be great
+        PacketCollection.EnsureIndex(x => x.Timestamp);
+
+        var packetsToLoad = PacketCollection.Query().OrderByDescending(x => x.Timestamp).Limit(1000).ToList();
+        if (packetsToLoad is null)
         {
-            try
-            {
-                var textContent = File.ReadAllLines(@"c:\_sphereDumps\mixed")
-                    .Where(x => !string.IsNullOrWhiteSpace(x)).ToList();
-                for (var i = CurrentStreamPosition; i < textContent.Count; i++)
-                {
-                    var logEntry = textContent[i];
-                    var cleanedUpText = logEntry.Replace("=", "").Replace("-", "");
-                    if (string.IsNullOrWhiteSpace(cleanedUpText))
-                    {
-                        continue;
-                    }
-
-                    var split = cleanedUpText.Split('\t',
-                        StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-
-                    try
-                    {
-                        LogRecords.Add(new LogRecord(split.Length > 2 ? split[0] : "---",
-                            split.Length > 1 ? DateTime.Parse(split[1]) : DateTime.MinValue, split[^1]));
-                    }
-                    catch (Exception ex)
-                    {
-                        MessageBox.Show(logEntry + "\n" + ex);
-                    }
-                }
-
-                var data7600 = textContent.LastOrDefault(x => x[27..].StartsWith("76002C0100"));
-                var data3200 = textContent.LastOrDefault(x => x[27..].StartsWith("32002C0100"));
-                DateTime? time7600 = data7600 is null ? null : DateTime.Parse(data7600[6..24]);
-                DateTime? time3200 = data3200 is null ? null : DateTime.Parse(data3200[6..24]);
-                var lastClientIdRecord = data7600 ?? data3200;
-                if (time3200 > time7600)
-                {
-                    lastClientIdRecord = data3200;
-                }
-
-                var clientId = lastClientIdRecord is null
-                    ? "0000"
-                    : lastClientIdRecord[43..45] + lastClientIdRecord[41..43];
-                ClientId.Text = clientId;
-                var clientIdBytes = Convert.FromHexString(clientId);
-                ClientIdBits.Text = ByteArrayToBinaryString(clientIdBytes, false, true);
-
-                CurrentStreamPosition = textContent.Count;
-                break;
-            }
-            catch (Exception ex)
-            {
-                retryCount++;
-                Thread.Sleep(10);
-                if (retryCount >= 10)
-                {
-                    MessageBox.Show(ex.ToString());
-                }
-            }
+            MessageBox.Show("Packets to load are null");
+            return;
         }
+
+        if (!packetsToLoad.Any())
+        {
+            MessageBox.Show("No packets to load");
+            return;
+        }
+
+        packetsToLoad.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+
+        packetsToLoad.ForEach(x => LogRecords.Add(new LogRecord(x)));
 
         LogList.UpdateLayout();
     }
@@ -227,16 +194,9 @@ public partial class MainWindow
     {
         try
         {
-            var bytes = Convert.FromHexString(selected.Content);
+            var bytes = selected.ContentBytes;
             var sphObjects = ObjectPacketTools.GetObjectsFromPacket(bytes);
-            if (sphObjects.Count > 0)
-            {
-                ContentPreview.Text = ObjectPacketTools.GetTextOutput(sphObjects, true);
-            }
-            else
-            {
-                ContentPreview.Text = "";
-            }
+            ContentPreview.Text = sphObjects.Count > 0 ? ObjectPacketTools.GetTextOutput(sphObjects, true) : "";
         }
         catch (Exception ex)
         {
@@ -249,11 +209,13 @@ public partial class MainWindow
     {
         try
         {
+            if (args.AddedItems.Count < 1)
+            {
+                return;
+            }
+
             var selected = args.AddedItems[0] as LogRecord;
-            var positiveValue = "0" + selected?.Content ?? throw new InvalidOperationException();
-            CurrentContent =
-                new BigInteger(BigInteger.Parse(positiveValue, NumberStyles.HexNumber).ToByteArray().AsSpan(), true,
-                    true);
+            CurrentContent = new BigInteger(selected.ContentBytes, true);
             CurrentShift = 0;
 
             TrySetCurrentTextContent();
@@ -285,12 +247,12 @@ public partial class MainWindow
         return Convert.ToString(b, 2).PadLeft(8, '0');
     }
 
-    // 0xAD is a soft hyphen and doesn't render, but it's not a control/whitespace/separator
+// 0xAD is a soft hyphen and doesn't render, but it's not a control/whitespace/separator
     public static char GetVisibleChar (char c)
     {
-        return (c >= 0x20 && c <= 0x7E) || (c >= 'А' && c <= 'я') ? c : '·';
+        return (c >= 0x20 && c <= 0x7E) || c is >= 'А' and <= 'я' ? c : '·';
     }
-    // char.IsControl(c) || char.IsWhiteSpace(c) || char.IsSeparator(c) || c == 0xAD ? '·' : c;
+// char.IsControl(c) || char.IsWhiteSpace(c) || char.IsSeparator(c) || c == 0xAD ? '·' : c;
 
     public static char GetEncoded1251Char (byte b)
     {
@@ -411,7 +373,8 @@ public partial class MainWindow
     private void CopySelectedRowContent ()
     {
         var selectedRow = (LogRecord) LogList.SelectedItem;
-        var text = $"{selectedRow.Origin}\t\t\t{selectedRow.Date}\t\t\t{selectedRow.Content}\n";
+        var text =
+            $"{selectedRow.Source}\t\t\t{selectedRow.Timestamp}\t\t\t{Convert.ToHexString(selectedRow.ContentBytes)}\n";
         Clipboard.SetText(text);
     }
 
@@ -439,139 +402,55 @@ public partial class MainWindow
 
     private void ShowFavoritesOnlyToggleButton_OnChecked (object sender, RoutedEventArgs e)
     {
-        ShowFavoritesOnly = true;
-        CollectionViewSource.GetDefaultView(LogList.ItemsSource).Refresh();
-        if (LogList.Items.Count > 0)
+        if (ShowFavoritesOnly)
         {
-            LogList.SelectedItem = LogList.Items[^1];
-            LogList.ScrollIntoView(LogList.Items[^1]);
+            return;
         }
+
+        ShowFavoritesOnly = true;
+        ScrollIntoViewIfSelectionExists();
     }
 
     private void ShowFavoritesOnlyToggleButton_OnUnchecked (object sender, RoutedEventArgs e)
     {
         ShowFavoritesOnly = false;
+        ScrollIntoViewIfSelectionExists();
+    }
+
+    private void HideUninteresting_OnChecked (object sender, RoutedEventArgs e)
+    {
+        if (HideUninteresting)
+        {
+            return;
+        }
+
+        HideUninteresting = true;
+        ScrollIntoViewIfSelectionExists();
+    }
+
+    private void HideUninteresting_OnUnchecked (object sender, RoutedEventArgs e)
+    {
+        HideUninteresting = false;
+        ScrollIntoViewIfSelectionExists();
+    }
+
+    private void ScrollIntoViewIfSelectionExists ()
+    {
         CollectionViewSource.GetDefaultView(LogList.ItemsSource).Refresh();
-        if (LogList.Items.Count > 0)
+        if (LogList.Items.Count < 1)
         {
-            LogList.SelectedItem = LogList.Items[^1];
-            LogList.ScrollIntoView(LogList.Items[^1]);
-        }
-    }
-
-    // copypaste, remove it
-    public static byte[] EncodeServerCoordinate (double a)
-    {
-        var scale = 69;
-
-        var a_abs = Math.Abs(a);
-        var a_temp = a_abs;
-
-        var steps = 0;
-
-        if ((int) a_abs == 0)
-        {
-            scale = 58;
+            return;
         }
 
-        else if (a_temp < 2048)
+        var selected = LogList.SelectedItem ?? LogList.Items[^1];
+        if (!LogList.Items.PassesFilter(selected))
         {
-            while (a_temp < 2048)
-            {
-                a_temp *= 2;
-                steps += 1;
-            }
-
-            scale -= (steps + 1) / 2;
-
-            if (scale < 0)
-            {
-                scale = 58;
-            }
-        }
-        else
-        {
-            while (a_temp > 4096)
-            {
-                a_temp /= 2;
-                steps += 1;
-            }
-
-            scale += steps / 2;
+            // should only happen when switching to a more restricted view with filtered out item selected
+            selected = LogList.Items[^1];
         }
 
-        var a_3 = (byte) (((a < 0 ? 1 : 0) << 7) + scale);
-        var mul = Math.Pow(2, (int) Math.Log(a_abs, 2));
-        var numToEncode = (int) (0b100000000000000000000000 * (a_abs / mul + 1));
+        LogList.SelectedItem = selected;
 
-        var a_2 = (byte) (((numToEncode & 0b111111110000000000000000) >> 16) + (steps % 2 == 1 ? 0b10000000 : 0));
-        var a_1 = (byte) ((numToEncode & 0b1111111100000000) >> 8);
-        var a_0 = (byte) (numToEncode & 0b11111111);
-
-        return new[] { a_0, a_1, a_2, a_3 };
-    }
-
-    // copypaste, remove
-    public static string ByteArrayToBinaryString (byte[] ba, bool noPadding = false, bool addSpaces = false)
-    {
-        var hex = new StringBuilder(ba.Length * 2);
-
-        foreach (var val in ba)
-        {
-            var str = Convert.ToString(val, 2);
-            if (!noPadding)
-            {
-                str = str.PadLeft(8, '0');
-            }
-
-            hex.Append(str);
-
-            if (addSpaces)
-            {
-                hex.Append(' ');
-            }
-        }
-
-        return hex.ToString();
-    }
-}
-
-public static class TimeHelper
-{
-    public static readonly DateTime RealtimeOrigin = new (1998, 8, 21, 10, 00, 6);
-
-    public static DateTime GetCurrentSphereDateTime ()
-    {
-        var sphereTimeOffset = (DateTime.Now - RealtimeOrigin).TotalSeconds * 12;
-        var sphereDateTime = new DateTime().AddSeconds(sphereTimeOffset);
-
-        return sphereDateTime;
-    }
-
-    // copypaste, remove
-    public static byte[] EncodeCurrentSphereDateTime ()
-    {
-        var currentSphereTime = GetCurrentSphereDateTime();
-        var seconds = currentSphereTime.Second / 12;
-        var minutes_last4 = (byte) ((currentSphereTime.Minute & 0b1111) << 4);
-        // 1-4 minutes 5-8 seconds 
-        var firstDateByte = (byte) (minutes_last4 + (seconds & 0b1111));
-        var minutes_first2 = (byte) ((currentSphereTime.Minute & 0b110000) >> 4);
-        var hours = (byte) (currentSphereTime.Hour << 2);
-        var days_last1 = (byte) ((currentSphereTime.Day % 2) << 7);
-        // 1 days 2-6 hours 7-8 minutes
-        var secondDateByte = (byte) (days_last1 + hours + minutes_first2);
-        var days_first4 = (byte) ((currentSphereTime.Day & 0b11110) >> 1);
-        var month = (byte) (currentSphereTime.Month << 4);
-        // 1-4 months 5-8 days
-        var thirdDateByte = (byte) (month + days_first4);
-        var years_last8 = (byte) (currentSphereTime.Year & 0b11111111);
-        var years_first2 = (byte) ((currentSphereTime.Year & 0b1100000000) >> 8);
-        var fourthDateByte = (byte) (0b00110100 + years_first2);
-
-        return new[]
-        {
-            firstDateByte, secondDateByte, thirdDateByte, years_last8, fourthDateByte
-        };
+        LogList.ScrollIntoView(selected);
     }
 }

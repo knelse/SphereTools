@@ -7,11 +7,12 @@ using System.Threading;
 using System.Threading.Tasks;
 using PacketDotNet;
 using PacketLogViewer.Extensions;
+using PacketLogViewer.Models;
 using SharpPcap;
 
 namespace PacketLogViewer;
 
-internal enum PacketSource
+public enum PacketSource
 {
     CLIENT,
     SERVER
@@ -20,9 +21,8 @@ internal enum PacketSource
 public class PacketCapture
 {
     private const int sphereLiveServerPort = 25860;
-
+    private readonly ILiveDevice captureDevice;
     private readonly List<byte> packetDataQueue = new ();
-
     private readonly List<CapturedPacketRawData> rawCapturedPackets = new ();
 
     private readonly HashSet<IPAddress> sphereLiveServers = new ()
@@ -31,9 +31,12 @@ public class PacketCapture
         IPAddress.Parse("77.223.107.69")
     };
 
+    public Action<StoredPacket> OnPacketProcessed;
+
     public PacketCapture (string macAddress = "C87F54061FF1")
     {
-        var captureDevice = CaptureDeviceList.Instance.FirstOrDefault(x => x.MacAddress?.ToString() == macAddress);
+        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+        captureDevice = CaptureDeviceList.Instance.FirstOrDefault(x => x.MacAddress?.ToString() == macAddress);
         if (captureDevice is null)
         {
             ConsoleExtensions.WriteLineColored($"ERROR: Capture device with mac address {macAddress} not found",
@@ -49,22 +52,8 @@ public class PacketCapture
         var timeAfterLoad = DateTime.Now;
         ConsoleExtensions.WriteLineColored(
             $"Ready for packets. Load time: {(timeAfterLoad - time).TotalMilliseconds} msec", ConsoleColor.Yellow);
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
-        try
-        {
-            captureDevice.Open();
-            captureDevice.StartCapture();
-            Task.Run(PacketQueueProcessingLoop);
-        }
-        catch (Exception ex)
-        {
-            ConsoleExtensions.WriteException(ex);
-        }
-        finally
-        {
-            captureDevice.Close();
-        }
+        Task.Run(PacketQueueProcessingLoop);
     }
 
     private void CaptureDeviceOnPacketArrival (object _, SharpPcap.PacketCapture capture)
@@ -139,6 +128,8 @@ public class PacketCapture
 
     private void PacketQueueProcessingLoop ()
     {
+        captureDevice.Open();
+        captureDevice.StartCapture();
         while (true)
         {
             try
@@ -152,6 +143,8 @@ public class PacketCapture
 
             Thread.Sleep(100);
         }
+
+        captureDevice.Close();
     }
 
     private void ProcessPacketQueue ()
@@ -182,7 +175,15 @@ public class PacketCapture
         packetsToProcess[PacketSource.CLIENT].ForEach(ProcessPacketRawData);
     }
 
-    private static void ProcessPacketRawData (CapturedPacketRawData packetRawData)
+    private void ProcessPacketRawData (CapturedPacketRawData packetRawData)
     {
+        var storedPacket = new StoredPacket
+        {
+            ContentBytes = packetRawData.DecodedBuffer,
+            ContentJson = "",
+            Source = packetRawData.Source,
+            Timestamp = packetRawData.ArrivalTime
+        };
+        OnPacketProcessed(storedPacket);
     }
 }

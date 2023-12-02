@@ -28,6 +28,11 @@ internal class CapturedPacketRawData
 
     internal static int GetPacketNumberInSequence (byte[] buffer)
     {
+        if (buffer.Length < 8)
+        {
+            return 0;
+        }
+
         return (buffer[7] << 8) + buffer[6];
     }
 

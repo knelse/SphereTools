@@ -3,11 +3,10 @@
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
-        xmlns:local="clr-namespace:PacketLogViewer"
         mc:Ignorable="d"
         Title="PacketLogViewer"
-        Height="800"
-        Width="1100">
+        Height="1440"
+        Width="2560">
     <Window.Resources>
         <Style x:Key="LogRowHighlightStyle" TargetType="ListViewItem">
             <Style.Setters>
@@ -16,12 +15,12 @@
                 <Setter Property="Height" Value="20" />
             </Style.Setters>
             <Style.Triggers>
-                <DataTrigger Binding="{Binding Origin}" Value="SRV">
-                    <Setter Property="Background" Value="Beige"></Setter>
+                <DataTrigger Binding="{Binding Source}" Value="1"> <!--SERVER = 1-->
+                    <Setter Property="Background" Value="Beige" />
                     <Setter Property="Foreground" Value="Black" />
                 </DataTrigger>
-                <DataTrigger Binding="{Binding Origin}" Value="CLI">
-                    <Setter Property="Background" Value="AliceBlue"></Setter>
+                <DataTrigger Binding="{Binding Source}" Value="0"> <!--CLIENT = 0-->
+                    <Setter Property="Background" Value="AliceBlue" />
                     <Setter Property="Foreground" Value="Black" />
                 </DataTrigger>
                 <Trigger Property="IsSelected" Value="True">
@@ -41,20 +40,34 @@
         <Grid.RowDefinitions>
             <RowDefinition Height="30" />
             <RowDefinition Height="7*" />
-            <RowDefinition Height="3*" MaxHeight="220"/>
+            <RowDefinition Height="3*" MaxHeight="220" />
         </Grid.RowDefinitions>
         <Grid.ColumnDefinitions>
+            <ColumnDefinition Width="800" />
             <ColumnDefinition Width="*" />
-            <ColumnDefinition Width="2*" />
         </Grid.ColumnDefinitions>
-        <CheckBox Grid.Row="0" Grid.Column="0" Margin="2 4 4 2" Background="White" VerticalAlignment="Center"
-                  HorizontalAlignment="Left" Checked="ShowFavoritesOnlyToggleButton_OnChecked"
-                  Unchecked="ShowFavoritesOnlyToggleButton_OnUnchecked">
-            <CheckBox.LayoutTransform>
-                <ScaleTransform ScaleX="1.5" ScaleY="1.5" />
-            </CheckBox.LayoutTransform>
-            Show Favorites Only
-        </CheckBox>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="3*" />
+            </Grid.ColumnDefinitions>
+            <CheckBox Grid.Row="0" Grid.Column="0" Margin="2 4 4 2" Background="White" VerticalAlignment="Center"
+                      IsChecked="False" HorizontalAlignment="Left" Checked="ShowFavoritesOnlyToggleButton_OnChecked"
+                      Unchecked="ShowFavoritesOnlyToggleButton_OnUnchecked">
+                <CheckBox.LayoutTransform>
+                    <ScaleTransform ScaleX="1.5" ScaleY="1.5" />
+                </CheckBox.LayoutTransform>
+                Show Favorites Only
+            </CheckBox>
+            <CheckBox Grid.Row="0" Grid.Column="1" Margin="2 4 4 2" Background="White" VerticalAlignment="Center"
+                      IsChecked="True" HorizontalAlignment="Left" Checked="HideUninteresting_OnChecked"
+                      Unchecked="HideUninteresting_OnUnchecked">
+                <CheckBox.LayoutTransform>
+                    <ScaleTransform ScaleX="1.5" ScaleY="1.5" />
+                </CheckBox.LayoutTransform>
+                Hide Less Interesting
+            </CheckBox>
+        </Grid>
         <GridSplitter Grid.Row="1" Grid.Column="0" Grid.RowSpan="2" Width="8" Background="White"
                       ResizeBehavior="CurrentAndNext"
                       Margin="10 4 0 4 " />
@@ -62,10 +75,10 @@
                   ItemContainerStyle="{StaticResource LogRowHighlightStyle}" SelectionMode="Single">
             <ListView.View>
                 <GridView>
-                    <GridViewColumn Header="Origin" Width="Auto" DisplayMemberBinding="{Binding Origin}" />
-                    <GridViewColumn Header="Date" Width="Auto"
-                                    DisplayMemberBinding="{Binding Date, StringFormat='{}{0:dd.MM.yy HH:mm:ss}'}" />
-                    <GridViewColumn Header="Content" Width="Auto" DisplayMemberBinding="{Binding Content}" />
+                    <GridViewColumn Header="Source" Width="Auto" DisplayMemberBinding="{Binding Source}" />
+                    <GridViewColumn Header="Timestamp" Width="Auto"
+                                    DisplayMemberBinding="{Binding Timestamp, StringFormat='{}{0:dd.MM.yy HH:mm:ss}'}" />
+                    <GridViewColumn Header="Content" Width="Auto" DisplayMemberBinding="{Binding ContentString}" />
                 </GridView>
             </ListView.View>
         </ListView>
@@ -181,8 +194,7 @@
                 </CheckBox.LayoutTransform>
             </CheckBox>
             <TextBox Name="StartByte" Grid.Row="0" Grid.Column="1" Margin="2 4 4 2" Height="24" TextAlignment="Center"
-                     VerticalContentAlignment="Center" TextChanged="StartByte_OnTextChanged">
-            </TextBox>
+                     VerticalContentAlignment="Center" TextChanged="StartByte_OnTextChanged" />
             <Button Name="ShiftLeft7" Grid.Row="0" Grid.Column="2" Margin="2 4 4 2" Click="Shift_OnClick"
                     Background="#CCDDEE">
                 &lt;&lt; 7
