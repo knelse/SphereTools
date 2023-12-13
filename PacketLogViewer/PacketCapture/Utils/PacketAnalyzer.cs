@@ -48,6 +48,7 @@ internal static class PacketAnalyzer
 
     public static readonly List<Func<byte[], bool>> ServerPacketHideRules = new ()
     {
+        c => ObjectPacketTools.ByteArrayCompare(c, packet_04_00_4F_01),
         c => c[0] == 0x08 && c[6] == 0xF4 && c[7] == 0x01,
         c => c[0] == 0x0C && c[10] == 0x0D && c[11] == 0xE2,
         c => c[0] == 0x12 && c[14] == 0x1B && c[15] == 0x01 && c[16] == 0x60,
@@ -78,10 +79,6 @@ internal static class PacketAnalyzer
     private static bool ShouldBeHiddenByDefaultServer (StoredPacket storedPacket)
     {
         var content = storedPacket.ContentBytes;
-        if (ObjectPacketTools.ByteArrayCompare(content, packet_04_00_4F_01))
-        {
-            return true;
-        }
 
         return ServerPacketHideRules.Any(ruleFunc => ruleFunc(content));
     }

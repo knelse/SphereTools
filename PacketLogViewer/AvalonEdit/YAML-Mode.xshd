@@ -1,0 +1,100 @@
+<?xml version="1.0"?>
+<!-- Imperfect syntax grammar for YAML by Tobias Kiertscher <dev@mastersign.de> -->
+<SyntaxDefinition xmlns="http://icsharpcode.net/sharpdevelop/syntaxdefinition/2008"
+                  name="YAML" extensions=".yaml,.yml">
+
+  <Color name="Comment" foreground="LightSlateGray" fontStyle="italic" />
+  <Color name="String" foreground="DarkGreen" fontWeight="normal" />
+  <Color name="Array" foreground="DarkMagenta" fontWeight="bold" />
+  <Color name="MultilineStringIndicator" foreground="DarkMagenta" fontWeight="bold" />
+  <Color name="MapKey" foreground="Firebrick" />
+  <Color name="Keyword" foreground="DarkCyan" />
+  <Color name="Number" foreground="RoyalBlue" />
+  <Color name="Json" foreground="SlateBlue" />
+  <Color name="Punctuation" foreground="MediumSlateBlue" />
+
+  <RuleSet>
+    <Span color="Comment" begin="#" />
+
+    <Span color="MultilineStringIndicator" multiline="true">
+      <Begin>(?&lt;=\:)\s*[&gt;|][+-]?\d*</Begin>
+      <End>^$</End>
+      <RuleSet>
+        <Rule color="String">.+</Rule>
+      </RuleSet>
+    </Span>
+
+    <Import ruleSet="Literals" />
+    <Span ruleSet="JsonExpression">
+      <Begin>(?&lt;=\:)\s(?=\[|\{)</Begin>
+    </Span>
+
+    <Rule color="Array">^\s*-</Rule>
+    <Rule color="MapKey">\s*(?:&apos;.+?&apos;|&quot;.+?&quot;|\S+?)\s*(?=\:)</Rule>
+
+  </RuleSet>
+
+  <RuleSet name="Literals">
+    <Import ruleSet="Strings" />
+    <Rule color="Keyword">(?&lt;=\:|-)\s+(true|false|yes|no|on|off|null|NaN)\s*$</Rule>
+    <Rule color="Number">(?&lt;=\:|-)\s*(\b0[xX][0-9a-fA-F]+|(\b\d+(\.[0-9]+)?|\.[0-9]+)([eE][+-]?[0-9]+)?)\s*$</Rule>
+  </RuleSet>
+
+  <RuleSet name="Strings">
+    <Span color="String">
+      <Begin>(?&lt;=\:|-)\s*&quot;</Begin>
+      <End>&quot;</End>
+      <RuleSet>
+        <Span begin="\\" end="." foreground="IndianRed" />
+      </RuleSet>
+    </Span>
+    <Span color="String">
+      <Begin>(?&lt;=\:|-)\s*&apos;</Begin>
+      <End>&apos;</End>
+      <RuleSet>
+        <Span begin="\\" end="." foreground="IndianRed" />
+      </RuleSet>
+    </Span>
+  </RuleSet>
+
+  <RuleSet name="JsonStrings">
+    <Span color="Json">
+      <Begin>&quot;</Begin>
+      <End>&quot;</End>
+      <RuleSet>
+        <Span begin="\\" end="." foreground="IndianRed" />
+      </RuleSet>
+    </Span>
+    <Span color="Json">
+      <Begin>&apos;</Begin>
+      <End>&apos;</End>
+      <RuleSet>
+        <Span begin="\\" end="." foreground="IndianRed" />
+      </RuleSet>
+    </Span>
+  </RuleSet>
+
+  <RuleSet name="JsonObject">
+    <Import ruleSet="JsonExpression" />
+    <Rule color="Punctuation">,</Rule>
+  </RuleSet>
+
+  <RuleSet name="JsonArray">
+    <Import ruleSet="JsonExpression"/>
+    <Rule color="Punctuation">,</Rule>
+  </RuleSet>
+
+  <RuleSet name="JsonExpression">
+    <Span color="Comment" begin="#" />
+    <Span color="Json" ruleSet="JsonObject" multiline="true">
+      <Begin>\{</Begin>
+      <End>\}</End>
+    </Span>
+    <Span color="Json" ruleSet="JsonArray" multiline="true">
+      <Begin>\[</Begin>
+      <End>\]</End>
+    </Span>
+    <Import ruleSet="JsonStrings" />
+  </RuleSet>
+
+</SyntaxDefinition>

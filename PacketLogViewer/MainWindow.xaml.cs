@@ -1,14 +1,20 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.IO;
 using System.Linq;
 using System.Numerics;
+using System.Reflection;
 using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
 using System.Windows.Input;
 using System.Windows.Threading;
+using System.Xml;
+using ICSharpCode.AvalonEdit.Highlighting;
+using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using LiteDB;
 using PacketLogViewer.Models;
 using SphServer.Helpers;
@@ -17,6 +23,7 @@ namespace PacketLogViewer;
 
 public partial class MainWindow
 {
+    private const string KaitaiPath = @"c:\source\SphereKaitaiPackets\";
     private static Encoding Win1251 = null!;
 
     public static readonly LiteDatabase PacketDatabase =
@@ -25,8 +32,11 @@ public partial class MainWindow
     public static readonly ILiteCollection<StoredPacket> PacketCollection =
         PacketDatabase.GetCollection<StoredPacket>("Packets");
 
+    public readonly Dictionary<string, string> KaitaiDefinitions = new ();
+
     public readonly PacketCapture PacketCapture;
     public readonly DispatcherTimer SphereTimeUpdateTimer;
+    private readonly string TempFileKaitaiBytes = Path.GetTempFileName();
 
     public MainWindow ()
     {
@@ -88,6 +98,24 @@ public partial class MainWindow
         SphereTimeUpdateTimer.Start();
 
         ScrollIntoViewIfSelectionExists();
+        Loaded += OnLoaded;
+        LoadKaitaiDefinitions();
+
+        KaitaiScriptText.KeyDown += (_, args) =>
+        {
+            if (args.KeyboardDevice.Modifiers != ModifierKeys.Control || args.Key != Key.S)
+            {
+                return;
+            }
+
+            var selectedItem = KaitaiDefitionsTreeView.SelectedItem;
+            if (selectedItem is null)
+            {
+                return;
+            }
+
+            SaveCurrentKaitaiDefinition(selectedItem);
+        };
     }
 
     public BigInteger CurrentContent { get; set; }
@@ -96,6 +124,14 @@ public partial class MainWindow
     public ObservableCollection<LogRecord> LogRecords { get; } = new ();
     public bool ShowFavoritesOnly { get; set; }
     public bool HideUninteresting { get; set; } = true;
+
+    private void OnLoaded (object o, RoutedEventArgs routedEventArgs)
+    {
+        using var yamlDefinitionStream = Assembly.GetExecutingAssembly()
+            .GetManifestResourceStream("PacketLogViewer.AvalonEdit.YAML-Mode.xshd")!;
+        using var reader = new XmlTextReader(yamlDefinitionStream);
+        KaitaiScriptText.SyntaxHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
+    }
 
     private void OnPacketProcessed (StoredPacket storedPacket)
     {
@@ -452,5 +488,241 @@ public partial class MainWindow
         LogList.SelectedItem = selected;
 
         LogList.ScrollIntoView(selected);
+    }
+
+    private void KaitaiCompile_OnClick (object sender, RoutedEventArgs e)
+    {
+        KaitaiCompile();
+    }
+
+    public void KaitaiCompile ()
+    {
+        var selectedItem = KaitaiDefitionsTreeView.SelectedItem;
+        SaveCurrentKaitaiDefinition(selectedItem);
+        var selectedKaitai = (string) ((TreeViewItem) selectedItem).Header;
+        var currentPacket = (LogRecord) LogList.SelectedItem;
+        File.WriteAllBytes(TempFileKaitaiBytes, currentPacket.ContentBytes);
+        var ksdump = new Process();
+        var kaitaiPath = GetKaitaiPath(selectedKaitai);
+        ksdump.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
+        ksdump.StartInfo.FileName = @"c:\Ruby\bin\ksdump.bat";
+        ksdump.StartInfo.Arguments = $@"{TempFileKaitaiBytes} {kaitaiPath}";
+        ksdump.StartInfo.CreateNoWindow = true;
+        ksdump.StartInfo.RedirectStandardOutput = true;
+        Dispatcher.BeginInvoke(async () =>
+        {
+            ksdump.Start();
+            await ksdump.WaitForExitAsync();
+            var result = await ksdump.StandardOutput.ReadToEndAsync();
+            Console.WriteLine(result);
+            ParseKaitaiCompiledOutput(result);
+        });
+    }
+
+    public void ParseKaitaiCompiledOutput (string input)
+    {
+        // we'll break it a bit for readability
+        try
+        {
+            var lines = input.ReplaceLineEndings("\n")
+                .Split("\n", StringSplitOptions.RemoveEmptyEntries);
+
+            var formattedOutput = new StringBuilder();
+            var kaitaiContent = KaitaiScriptText.Document.Text;
+            var kaitaiOrder = kaitaiContent.ReplaceLineEndings("\n")
+                .Split("\n", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
+                .Where(x => x.StartsWith("- id")).Select(x => x[6..]).ToList();
+            var valueMapping = new Dictionary<string, object>();
+            foreach (var line in lines)
+            {
+                var valueSeparator = line.IndexOf(':');
+
+                if (valueSeparator < 0)
+                {
+                    formattedOutput.AppendLine(line);
+                    continue;
+                }
+
+                var propertyName = line[..valueSeparator];
+                var propertyValue = valueSeparator + 2 > line.Length ? "" : line[(valueSeparator + 2)..];
+                valueMapping.Add(propertyName, propertyValue);
+                // we won't support nested types for now
+
+                // if (string.IsNullOrWhiteSpace(propertyValue))
+                // {
+                //     // should only happen for nested types
+                //     var trimmedName = propertyName.Trim();
+                //     var indexOfPropertyId = kaitaiContent.IndexOf($"- id: {trimmedName}");
+                //     var propertyIdSubstring = kaitaiContent[indexOfPropertyId..];
+                //     var indexOfPropertyType = propertyIdSubstring.IndexOf("type: ") + 6;
+                //     var propertyTypeSubstring = propertyIdSubstring[indexOfPropertyType..];
+                //     var indexOfPropertyEnd = propertyTypeSubstring.IndexOf("\n");
+                //     var propertyType = propertyTypeSubstring[..indexOfPropertyEnd];
+                //     propertyName = $"{SnakeCaseToCamelCase(propertyName)} [{SnakeCaseToCamelCase(propertyType)}]";
+                // }
+            }
+
+            foreach (var orderedPropertyName in kaitaiOrder)
+            {
+                var name = SnakeCaseToCamelCase(orderedPropertyName);
+                if (!valueMapping.ContainsKey(orderedPropertyName))
+                {
+                    formattedOutput.AppendLine($"{name}: null");
+                    continue;
+                }
+
+                var value = (string) valueMapping[orderedPropertyName];
+                var formattedValue = value;
+                // assuming it's at max a long
+                if (long.TryParse(value, out var longValue))
+                {
+                    if (longValue >= 0)
+                    {
+                        var hexValue = $"{longValue:X}";
+                        if (hexValue.Length % 2 == 1)
+                        {
+                            hexValue = hexValue.PadLeft(hexValue.Length + 1, '0');
+                        }
+
+                        formattedValue = $"0x{hexValue} = {value}";
+                    }
+                }
+
+                formattedOutput.AppendLine($"{name} = {formattedValue}");
+            }
+
+            KaitaiScriptJsonOutputText.Document.Text = formattedOutput.ToString();
+        }
+        catch
+        {
+            KaitaiScriptJsonOutputText.Document.Text = "";
+        }
+    }
+
+    public string SnakeCaseToCamelCase (string input)
+    {
+        return input
+            .Split(new[] { "_" }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => char.ToUpperInvariant(s[0]) + s.Substring(1, s.Length - 1))
+            .Aggregate(string.Empty, (s1, s2) => s1 + s2);
+    }
+
+    public void LoadKaitaiDefinitions ()
+    {
+        var kaitaiFiles = Directory.EnumerateFiles(KaitaiPath, "*.ksy");
+        foreach (var definitionFile in kaitaiFiles)
+        {
+            var contents = File.ReadAllText(definitionFile);
+            var name = Path.GetFileNameWithoutExtension(definitionFile);
+            KaitaiDefinitions.Add(name, contents);
+            CreateKaitaiDefinitionItem(name);
+        }
+
+        KaitaiDefitionsTreeView.SelectedItemChanged += (_, args) =>
+        {
+            if (args.NewValue == args.OldValue)
+            {
+                return;
+            }
+
+            if (args.NewValue is null)
+            {
+                KaitaiScriptText.Document.Text = "";
+                return;
+            }
+
+            var header = (string) (args.NewValue as TreeViewItem).Header;
+            if (!KaitaiDefinitions.ContainsKey(header))
+            {
+                KaitaiScriptText.Document.Text = "";
+                return;
+            }
+
+            var kaitaiScript = KaitaiDefinitions[header];
+            KaitaiScriptText.Document.Text = kaitaiScript;
+            KaitaiScriptJsonOutputText.Document.Text = "";
+        };
+
+        KaitaiDefitionsTreeView.ContextMenu = new ContextMenu();
+        var createItem = new MenuItem
+        {
+            Header = "Create new definition"
+        };
+        createItem.Click += (_, _) =>
+        {
+            var dialog = new CreateKaitaiDialog();
+            var name = "";
+            if (dialog.ShowDialog() == true)
+            {
+                name = dialog.Name;
+            }
+
+            if (string.IsNullOrWhiteSpace(name))
+            {
+                MessageBox.Show("Please input name to create a new definition");
+                return;
+            }
+
+            CreateKaitaiDefinitionItem(name, true);
+            KaitaiDefitionsTreeView.UpdateLayout();
+        };
+
+        KaitaiDefitionsTreeView.ContextMenu.Items.Add(createItem);
+        SelectFirstDefinitionItem();
+    }
+
+    public void SelectFirstDefinitionItem ()
+    {
+        var firstItem = (TreeViewItem) KaitaiDefitionsTreeView.Items.GetItemAt(0);
+        firstItem.IsSelected = true;
+        KaitaiScriptJsonOutputText.Document.Text = "";
+    }
+
+    public void CreateKaitaiDefinitionItem (string header, bool isSelected = false)
+    {
+        var item = new TreeViewItem
+        {
+            Header = header,
+            IsExpanded = true,
+            IsSelected = isSelected,
+            ContextMenu = new ContextMenu()
+        };
+
+        var deleteMenuItem = new MenuItem
+        {
+            Header = "Delete definition"
+        };
+        deleteMenuItem.Click += (_, _) =>
+        {
+            var confirmDialogResult = MessageBox.Show(
+                $"Do you really want to delete definition \"{header}\"?",
+                "Confirm deletion?",
+                MessageBoxButton.YesNo);
+            if (confirmDialogResult == MessageBoxResult.Yes)
+            {
+                var path = GetKaitaiPath(header);
+                File.Delete(path);
+                KaitaiDefitionsTreeView.Items.Remove(item);
+                SelectFirstDefinitionItem();
+            }
+        };
+        item.ContextMenu.Items.Add(deleteMenuItem);
+        KaitaiDefitionsTreeView.Items.Add(item);
+        KaitaiScriptJsonOutputText.Document.Text = "";
+    }
+
+    public string GetKaitaiPath (string name)
+    {
+        return Path.Combine(KaitaiPath, name + ".ksy");
+    }
+
+    public void SaveCurrentKaitaiDefinition (object selectedItem)
+    {
+        var selectedScriptItem = selectedItem as TreeViewItem;
+        var contents = KaitaiScriptText.Document.Text;
+        var header = (string) selectedScriptItem.Header;
+        var outputFile = GetKaitaiPath(header);
+        File.WriteAllText(outputFile, contents);
+        KaitaiDefinitions[header] = contents;
     }
 }
