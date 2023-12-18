@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Numerics;
@@ -10,13 +9,16 @@ using System.Text;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Data;
+using System.Windows.Documents;
 using System.Windows.Input;
+using System.Windows.Media;
 using System.Windows.Threading;
 using System.Xml;
 using ICSharpCode.AvalonEdit.Highlighting;
 using ICSharpCode.AvalonEdit.Highlighting.Xshd;
 using LiteDB;
 using PacketLogViewer.Models;
+using SimpleKaitaiParser;
 using SphServer.Helpers;
 
 namespace PacketLogViewer;
@@ -33,10 +35,10 @@ public partial class MainWindow
         PacketDatabase.GetCollection<StoredPacket>("Packets");
 
     public readonly Dictionary<string, string> KaitaiDefinitions = new ();
+    private readonly SimpleKaitaiParser.SimpleKaitaiParser KaitaiParser = new ();
 
     public readonly PacketCapture PacketCapture;
     public readonly DispatcherTimer SphereTimeUpdateTimer;
-    private readonly string TempFileKaitaiBytes = Path.GetTempFileName();
 
     public MainWindow ()
     {
@@ -115,6 +117,7 @@ public partial class MainWindow
             }
 
             SaveCurrentKaitaiDefinition(selectedItem);
+            KaitaiCompile();
         };
     }
 
@@ -255,7 +258,7 @@ public partial class MainWindow
             CurrentShift = 0;
 
             TrySetCurrentTextContent();
-            IsFavorite.IsChecked = selected?.Favorite ?? false;
+            IsFavorite.IsChecked = selected.Favorite;
             LogList.ScrollIntoView(selected);
             UpdateContentPreview(selected);
         }
@@ -501,105 +504,141 @@ public partial class MainWindow
         SaveCurrentKaitaiDefinition(selectedItem);
         var selectedKaitai = (string) ((TreeViewItem) selectedItem).Header;
         var currentPacket = (LogRecord) LogList.SelectedItem;
-        File.WriteAllBytes(TempFileKaitaiBytes, currentPacket.ContentBytes);
-        var ksdump = new Process();
-        var kaitaiPath = GetKaitaiPath(selectedKaitai);
-        ksdump.StartInfo.WindowStyle = ProcessWindowStyle.Hidden;
-        ksdump.StartInfo.FileName = @"c:\Ruby\bin\ksdump.bat";
-        ksdump.StartInfo.Arguments = $@"{TempFileKaitaiBytes} {kaitaiPath}";
-        ksdump.StartInfo.CreateNoWindow = true;
-        ksdump.StartInfo.RedirectStandardOutput = true;
-        Dispatcher.BeginInvoke(async () =>
-        {
-            ksdump.Start();
-            await ksdump.WaitForExitAsync();
-            var result = await ksdump.StandardOutput.ReadToEndAsync();
-            Console.WriteLine(result);
-            ParseKaitaiCompiledOutput(result);
-        });
-    }
 
-    public void ParseKaitaiCompiledOutput (string input)
-    {
-        // we'll break it a bit for readability
+        var currentDefinition = KaitaiDefinitions[selectedKaitai];
+        KaitaiScriptCompileOutputText.Text = "";
         try
         {
-            var lines = input.ReplaceLineEndings("\n")
-                .Split("\n", StringSplitOptions.RemoveEmptyEntries);
-
-            var formattedOutput = new StringBuilder();
-            var kaitaiContent = KaitaiScriptText.Document.Text;
-            var kaitaiOrder = kaitaiContent.ReplaceLineEndings("\n")
-                .Split("\n", StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries)
-                .Where(x => x.StartsWith("- id")).Select(x => x[6..]).ToList();
-            var valueMapping = new Dictionary<string, object>();
-            foreach (var line in lines)
-            {
-                var valueSeparator = line.IndexOf(':');
-
-                if (valueSeparator < 0)
-                {
-                    formattedOutput.AppendLine(line);
-                    continue;
-                }
-
-                var propertyName = line[..valueSeparator];
-                var propertyValue = valueSeparator + 2 > line.Length ? "" : line[(valueSeparator + 2)..];
-                valueMapping.Add(propertyName, propertyValue);
-                // we won't support nested types for now
-
-                // if (string.IsNullOrWhiteSpace(propertyValue))
-                // {
-                //     // should only happen for nested types
-                //     var trimmedName = propertyName.Trim();
-                //     var indexOfPropertyId = kaitaiContent.IndexOf($"- id: {trimmedName}");
-                //     var propertyIdSubstring = kaitaiContent[indexOfPropertyId..];
-                //     var indexOfPropertyType = propertyIdSubstring.IndexOf("type: ") + 6;
-                //     var propertyTypeSubstring = propertyIdSubstring[indexOfPropertyType..];
-                //     var indexOfPropertyEnd = propertyTypeSubstring.IndexOf("\n");
-                //     var propertyType = propertyTypeSubstring[..indexOfPropertyEnd];
-                //     propertyName = $"{SnakeCaseToCamelCase(propertyName)} [{SnakeCaseToCamelCase(propertyType)}]";
-                // }
-            }
-
-            foreach (var orderedPropertyName in kaitaiOrder)
-            {
-                var name = SnakeCaseToCamelCase(orderedPropertyName);
-                if (!valueMapping.ContainsKey(orderedPropertyName))
-                {
-                    formattedOutput.AppendLine($"{name}: null");
-                    continue;
-                }
-
-                var value = (string) valueMapping[orderedPropertyName];
-                var formattedValue = value;
-                // assuming it's at max a long
-                if (long.TryParse(value, out var longValue))
-                {
-                    if (longValue >= 0)
-                    {
-                        var hexValue = $"{longValue:X}";
-                        if (hexValue.Length % 2 == 1)
-                        {
-                            hexValue = hexValue.PadLeft(hexValue.Length + 1, '0');
-                        }
-
-                        formattedValue = $"0x{hexValue} = {value}";
-                    }
-                }
-
-                formattedOutput.AppendLine($"{name} = {formattedValue}");
-            }
-
-            KaitaiScriptJsonOutputText.Document.Text = formattedOutput.ToString();
+            var parsedOutput = KaitaiParser.ParseByteArray(currentDefinition, currentPacket.ContentBytes);
+            PrettifyKaitaiCompileOutput(parsedOutput);
         }
-        catch
+        catch (Exception ex)
         {
-            KaitaiScriptJsonOutputText.Document.Text = "";
+            KaitaiScriptCompileOutputText.Text = ex.Message;
         }
     }
 
-    public string SnakeCaseToCamelCase (string input)
+    public void PrettifyKaitaiCompileOutput (List<KaitaiParsedEntry> parsedEntries)
+    {
+        foreach (var parsedEntry in parsedEntries)
+        {
+            var splitPath = parsedEntry.Path.Split('/', StringSplitOptions.RemoveEmptyEntries);
+            var indentLevel = (splitPath.Length - 1) * 2;
+            var entryName = splitPath[^1];
+            var padding = string.Empty.PadLeft(indentLevel, '·');
+            KaitaiScriptCompileOutputText.Inlines.Add(
+                new Run(padding) { Foreground = Brushes.LightGray, FontSize = 12 });
+            if (parsedEntry.IsTrivialType)
+            {
+                KaitaiScriptCompileOutputText.Inlines.Add(new Run($"{entryName}") { Foreground = Brushes.Blue });
+                KaitaiScriptCompileOutputText.Inlines.Add(new Run(" = "));
+
+                switch (parsedEntry.Type)
+                {
+                    case "str":
+                        KaitaiScriptCompileOutputText.Inlines.Add(
+                            new Run($"\"{(string) parsedEntry.Value}\"") { FontWeight = FontWeights.Bold });
+                        break;
+                    case "f4":
+                    case "f8":
+                        KaitaiScriptCompileOutputText.Inlines.Add(
+                            new Run(((double) parsedEntry.Value).ToString()) { FontWeight = FontWeights.Bold });
+                        break;
+                    case SimpleKaitaiParser.SimpleKaitaiParser.ByteArrayTypeName:
+                        var byteArray = parsedEntry.Value as byte[];
+                        var stringValues = byteArray.Select(b => $"0x{b:X2}").ToList();
+
+                        KaitaiScriptCompileOutputText.Inlines.Add(
+                            new Run($"[{string.Join(", ", stringValues)}]") { FontWeight = FontWeights.Bold });
+                        KaitaiScriptCompileOutputText.Inlines.Add(new Run($" = [{string.Join(", ", byteArray)}]")
+                            { Foreground = Brushes.Gray });
+                        break;
+                    case SimpleKaitaiParser.SimpleKaitaiParser.EnumEntryValueType:
+                        KaitaiScriptCompileOutputText.Inlines.Add(new Run(parsedEntry.EnumValue.ToUpper())
+                            { FontWeight = FontWeights.Bold });
+
+                        var enumValueBytes = parsedEntry.Value as byte[];
+                        var enumBytesCopy = new byte[enumValueBytes.Length];
+                        Array.Copy(enumValueBytes, enumBytesCopy, enumValueBytes.Length);
+                        Array.Reverse(enumValueBytes);
+                        Array.Resize(ref enumValueBytes, 8);
+                        var enumBytesStr = Convert.ToHexString(enumBytesCopy).TrimStart('0');
+                        if (enumBytesStr.Length == 0)
+                        {
+                            enumBytesStr = "0";
+                        }
+
+                        var padWidth = enumBytesStr.Length % 2 == 0 ? enumBytesStr.Length : enumBytesStr.Length + 1;
+                        enumBytesStr = enumBytesStr.PadLeft(padWidth, '0');
+
+                        var enumValue = BitConverter.ToInt64(enumValueBytes);
+
+                        KaitaiScriptCompileOutputText.Inlines.Add(
+                            new Run(
+                                    $" ({SnakeCaseToCamelCase(parsedEntry.EnumName)}::{parsedEntry.EnumValue.ToUpper()} " +
+                                    $"= 0x{enumBytesStr} = {enumValue})")
+                                { Foreground = Brushes.Gray });
+                        break;
+                    default:
+                        var byteValue = parsedEntry.Value as byte[];
+                        KaitaiScriptCompileOutputText.Inlines.Add(
+                            new Run("0x") { FontWeight = FontWeights.Bold });
+                        var zeroBytesToSkip = 0;
+
+                        foreach (var b in byteValue)
+                        {
+                            if (b != 0)
+                            {
+                                break;
+                            }
+
+                            zeroBytesToSkip++;
+                        }
+
+                        if (zeroBytesToSkip == byteValue.Length)
+                        {
+                            KaitaiScriptCompileOutputText.Inlines.Add(
+                                new Run("00") { FontWeight = FontWeights.Bold });
+                        }
+                        else
+                        {
+                            for (var i = zeroBytesToSkip; i < byteValue.Length; i++)
+                            {
+                                if (i != zeroBytesToSkip)
+                                {
+                                    KaitaiScriptCompileOutputText.Inlines.Add(
+                                        new Run("·") { Foreground = Brushes.LightGray });
+                                }
+
+                                KaitaiScriptCompileOutputText.Inlines.Add(
+                                    new Run($"{byteValue[i]:X2}") { FontWeight = FontWeights.Bold });
+                            }
+                        }
+
+                        Array.Reverse(byteValue);
+                        Array.Resize(ref byteValue, 8);
+                        var longValue = BitConverter.ToInt64(byteValue);
+
+                        KaitaiScriptCompileOutputText.Inlines.Add(new Run($" = {longValue}")
+                            { Foreground = Brushes.Gray });
+
+                        break;
+                }
+            }
+            else
+            {
+                KaitaiScriptCompileOutputText.Inlines.Add(new Run($"{entryName} "));
+                KaitaiScriptCompileOutputText.Inlines.Add(new Run("[") { FontSize = 12 });
+                KaitaiScriptCompileOutputText.Inlines.Add(new Run($"{parsedEntry.Type}")
+                    { Foreground = Brushes.ForestGreen, FontSize = 12 });
+                KaitaiScriptCompileOutputText.Inlines.Add(new Run("]") { FontSize = 12 });
+            }
+
+            KaitaiScriptCompileOutputText.Inlines.Add("\n");
+        }
+    }
+
+    public static string SnakeCaseToCamelCase (string input)
     {
         return input
             .Split(new[] { "_" }, StringSplitOptions.RemoveEmptyEntries)
@@ -640,7 +679,7 @@ public partial class MainWindow
 
             var kaitaiScript = KaitaiDefinitions[header];
             KaitaiScriptText.Document.Text = kaitaiScript;
-            KaitaiScriptJsonOutputText.Document.Text = "";
+            KaitaiScriptCompileOutputText.Text = "";
         };
 
         KaitaiDefitionsTreeView.ContextMenu = new ContextMenu();
@@ -675,7 +714,7 @@ public partial class MainWindow
     {
         var firstItem = (TreeViewItem) KaitaiDefitionsTreeView.Items.GetItemAt(0);
         firstItem.IsSelected = true;
-        KaitaiScriptJsonOutputText.Document.Text = "";
+        KaitaiScriptCompileOutputText.Text = "";
     }
 
     public void CreateKaitaiDefinitionItem (string header, bool isSelected = false)
@@ -708,7 +747,7 @@ public partial class MainWindow
         };
         item.ContextMenu.Items.Add(deleteMenuItem);
         KaitaiDefitionsTreeView.Items.Add(item);
-        KaitaiScriptJsonOutputText.Document.Text = "";
+        KaitaiScriptCompileOutputText.Text = "";
     }
 
     public string GetKaitaiPath (string name)

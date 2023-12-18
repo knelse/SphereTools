@@ -5,7 +5,7 @@ meta:
   bit-endian: le
 seq:
   - id: header
-    type: client_header
+    type: packet_header
   - id: skip_1
     type: b32
   - id: skip_2
@@ -20,7 +20,7 @@ types:
     seq:
       - id: length
         type: u2
-  client_header:
+  packet_header:
     seq:
       - id: length
         type: packet_length

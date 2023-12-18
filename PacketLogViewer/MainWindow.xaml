@@ -308,12 +308,12 @@
                                            BorderBrush="Black" Margin="4 8 4 0" SyntaxHighlighting="YAML"
                                            Text="Kaitai here" FontFamily="Hack" FontSize="14" Padding="8"
                                            Background="Ivory" />
-                    <avalonedit:TextEditor Name="KaitaiScriptJsonOutputText" Grid.Row="2"
-                                           HorizontalScrollBarVisibility="Auto"
-                                           VerticalScrollBarVisibility="Auto" BorderThickness="0.5"
-                                           BorderBrush="Black" Margin="4 4 4 0" SyntaxHighlighting="Json"
-                                           Text="Json here" FontFamily="Hack" FontSize="14" Padding="8"
-                                           Background="GhostWhite" />
+                    <Border Grid.Row="2" BorderThickness="0.5" BorderBrush="DimGray" Margin="4 0 4 0">
+                        <TextBlock Name="KaitaiScriptCompileOutputText" Margin="4 4 4 0" TextWrapping="Wrap"
+                                   Padding="8" LineHeight="20" FontFamily="Hack" FontSize="14">
+                            Output goes here
+                        </TextBlock>
+                    </Border>
                     <Button Name="KaitaiCompileButton" Grid.Row="0" Margin="0 32 32 0" Height="100" Width="120"
                             Click="KaitaiCompile_OnClick" Style="{DynamicResource RoundButton}"
                             HorizontalAlignment="Right" VerticalAlignment="Top"

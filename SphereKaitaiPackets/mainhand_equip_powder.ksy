@@ -7,7 +7,7 @@ seq:
   - id: header
     type: client_header
   - id: skip_13_bit
-    type: b13
+    type: b12
   - id: equip_item_id
     type: b16
   - id: mainhand_state
