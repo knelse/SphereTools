@@ -309,10 +309,12 @@
                                            Text="Kaitai here" FontFamily="Hack" FontSize="14" Padding="8"
                                            Background="Ivory" />
                     <Border Grid.Row="2" BorderThickness="0.5" BorderBrush="DimGray" Margin="4 0 4 0">
-                        <TextBlock Name="KaitaiScriptCompileOutputText" Margin="4 4 4 0" TextWrapping="Wrap"
-                                   Padding="8" LineHeight="20" FontFamily="Hack" FontSize="14">
-                            Output goes here
-                        </TextBlock>
+                        <ScrollViewer>
+                            <TextBlock Name="KaitaiScriptCompileOutputText" Margin="4 4 4 0" TextWrapping="Wrap"
+                                       Padding="8" LineHeight="20" FontFamily="Hack" FontSize="14">
+                                Output goes here
+                            </TextBlock>
+                        </ScrollViewer>
                     </Border>
                     <Button Name="KaitaiCompileButton" Grid.Row="0" Margin="0 32 32 0" Height="100" Width="120"
                             Click="KaitaiCompile_OnClick" Style="{DynamicResource RoundButton}"

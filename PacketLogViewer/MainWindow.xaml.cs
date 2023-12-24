@@ -52,7 +52,6 @@ public partial class MainWindow
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         Win1251 = Encoding.GetEncoding(1251);
 
-        // UpdateClientCoords();
         UpdateGameTime();
 
         // prewarm
@@ -154,54 +153,35 @@ public partial class MainWindow
         GameTimeBits.Text = "0";
     }
 
-    // public void UpdateClientCoords ()
-    // {
-    //     var retryCount = 0;
-    //     while (retryCount < 10)
-    //     {
-    //         try
-    //         {
-    //             var textContent = File.ReadAllLines(@"c:\_sphereDumps\ping");
-    //             var lastPing = textContent[^1].Split("\t", StringSplitOptions.RemoveEmptyEntries);
-    //             if (lastPing.Length < 5)
-    //             {
-    //                 MessageBox.Show("Too few coords in the last ping");
-    //                 return;
-    //             }
-    //
-    //             var x = double.Parse(lastPing[1]);
-    //             var y = double.Parse(lastPing[2]);
-    //             var z = double.Parse(lastPing[3]);
-    //             var t = double.Parse(lastPing[4]);
-    //             CoordsX.Text = $"{x:F4}";
-    //             CoordsY.Text = $"{y:F4}";
-    //             CoordsZ.Text = $"{z:F4}";
-    //             CoordsT.Text = $"{t:F4}";
-    //
-    //             var xBytes = EncodeServerCoordinate(x);
-    //             var yBytes = EncodeServerCoordinate(y);
-    //             var zBytes = EncodeServerCoordinate(z);
-    //             var tBytes = EncodeServerCoordinate(t);
-    //
-    //             CoordsXBits.Text = ByteArrayToBinaryString(xBytes, false, true);
-    //             CoordsYBits.Text = ByteArrayToBinaryString(yBytes, false, true);
-    //             CoordsZBits.Text = ByteArrayToBinaryString(zBytes, false, true);
-    //             CoordsTBits.Text = ByteArrayToBinaryString(tBytes, false, true);
-    //             break;
-    //         }
-    //         catch (IOException ex)
-    //         {
-    //             retryCount++;
-    //             Thread.Sleep(10);
-    //             if (retryCount >= 10)
-    //             {
-    //                 MessageBox.Show(ex.ToString());
-    //             }
-    //         }
-    //     }
-    //
-    //     LogList.UpdateLayout();
-    // }
+    public void UpdateClientCoordsAndId (StoredPacket storedPacket)
+    {
+        try
+        {
+            var coords = CoordsHelper.GetCoordsFromPingBytes(storedPacket.ContentBytes);
+            CoordsX.Text = $"{coords.x:F4}";
+            CoordsY.Text = $"{coords.y:F4}";
+            CoordsZ.Text = $"{coords.z:F4}";
+            CoordsT.Text = $"{coords.turn:F4}";
+
+            var xBytes = CoordsHelper.EncodeServerCoordinate(coords.x);
+            var yBytes = CoordsHelper.EncodeServerCoordinate(coords.y);
+            var zBytes = CoordsHelper.EncodeServerCoordinate(coords.z);
+            var tBytes = CoordsHelper.EncodeServerCoordinate(coords.turn);
+
+            CoordsXBits.Text = StringConvertHelpers.ByteArrayToBinaryString(xBytes, false, true);
+            CoordsYBits.Text = StringConvertHelpers.ByteArrayToBinaryString(yBytes, false, true);
+            CoordsZBits.Text = StringConvertHelpers.ByteArrayToBinaryString(zBytes, false, true);
+            CoordsTBits.Text = StringConvertHelpers.ByteArrayToBinaryString(tBytes, false, true);
+
+            var id = (storedPacket.ContentBytes[16] >> 5) + (storedPacket.ContentBytes[17] << 3) +
+                     ((storedPacket.ContentBytes[18] & 0b11111) << 11);
+            ClientId.Text = $"{id:X4}";
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine(ex.Message);
+        }
+    }
 
     public void LoadContent ()
     {
@@ -209,7 +189,8 @@ public partial class MainWindow
         // might not be great
         PacketCollection.EnsureIndex(x => x.Timestamp);
 
-        var packetsToLoad = PacketCollection.Query().OrderByDescending(x => x.Timestamp).Limit(1000).ToList();
+        var packetsToLoad = PacketCollection.Query().OrderByDescending(x => x.Timestamp)
+            .Limit(1000).ToList();
         if (packetsToLoad is null)
         {
             MessageBox.Show("Packets to load are null");
@@ -261,6 +242,7 @@ public partial class MainWindow
             IsFavorite.IsChecked = selected.Favorite;
             LogList.ScrollIntoView(selected);
             UpdateContentPreview(selected);
+            KaitaiCompile();
         }
         catch
         {
@@ -320,6 +302,9 @@ public partial class MainWindow
             _ => CurrentContent >> CurrentShift
         };
         var shiftedValue = shiftedBigInt.ToByteArray();
+        // zero bytes would be lost here, so we have to resize
+        var selected = LogList.SelectedItem as LogRecord;
+        Array.Resize(ref shiftedValue, selected.ContentBytes.Length);
 
         var shiftedValueBytes = new List<byte[]>();
         for (var i = 0; i <= 7; i++)
@@ -426,6 +411,7 @@ public partial class MainWindow
 
         var item = (LogRecord) LogList.SelectedItem;
         item.Favorite = true;
+        UpdateStoredPacket(item);
     }
 
     private void FavoriteToggleButton_OnUnchecked (object sender, RoutedEventArgs e)
@@ -437,6 +423,7 @@ public partial class MainWindow
 
         var item = (LogRecord) LogList.SelectedItem;
         item.Favorite = false;
+        UpdateStoredPacket(item);
     }
 
     private void ShowFavoritesOnlyToggleButton_OnChecked (object sender, RoutedEventArgs e)
@@ -448,6 +435,19 @@ public partial class MainWindow
 
         ShowFavoritesOnly = true;
         ScrollIntoViewIfSelectionExists();
+    }
+
+    private void UpdateStoredPacket (LogRecord logRecord)
+    {
+        var storedPacket = PacketCollection.FindById(logRecord.Id);
+        if (storedPacket is null)
+        {
+            Console.WriteLine($"Stored packet {logRecord.Id} not found");
+            return;
+        }
+
+        storedPacket.Favorite = logRecord.Favorite;
+        PacketCollection.Update(storedPacket);
     }
 
     private void ShowFavoritesOnlyToggleButton_OnUnchecked (object sender, RoutedEventArgs e)
@@ -501,12 +501,21 @@ public partial class MainWindow
     public void KaitaiCompile ()
     {
         var selectedItem = KaitaiDefitionsTreeView.SelectedItem;
+        KaitaiScriptCompileOutputText.Text = "";
+        if (selectedItem is null)
+        {
+            return;
+        }
+
         SaveCurrentKaitaiDefinition(selectedItem);
         var selectedKaitai = (string) ((TreeViewItem) selectedItem).Header;
         var currentPacket = (LogRecord) LogList.SelectedItem;
+        if (currentPacket is null)
+        {
+            return;
+        }
 
         var currentDefinition = KaitaiDefinitions[selectedKaitai];
-        KaitaiScriptCompileOutputText.Text = "";
         try
         {
             var parsedOutput = KaitaiParser.ParseByteArray(currentDefinition, currentPacket.ContentBytes);
@@ -679,7 +688,7 @@ public partial class MainWindow
 
             var kaitaiScript = KaitaiDefinitions[header];
             KaitaiScriptText.Document.Text = kaitaiScript;
-            KaitaiScriptCompileOutputText.Text = "";
+            KaitaiCompile();
         };
 
         KaitaiDefitionsTreeView.ContextMenu = new ContextMenu();
@@ -757,7 +766,13 @@ public partial class MainWindow
 
     public void SaveCurrentKaitaiDefinition (object selectedItem)
     {
+        if (selectedItem is null)
+        {
+            return;
+        }
+
         var selectedScriptItem = selectedItem as TreeViewItem;
+        KaitaiScriptText.Document.Text = KaitaiScriptText.Document.Text.Replace("\t", "    ");
         var contents = KaitaiScriptText.Document.Text;
         var header = (string) selectedScriptItem.Header;
         var outputFile = GetKaitaiPath(header);

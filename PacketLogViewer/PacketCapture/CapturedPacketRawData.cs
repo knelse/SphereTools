@@ -15,7 +15,7 @@ internal class CapturedPacketRawData
     {
         if (self.DecodedBuffer.Length < 7 || other.DecodedBuffer.Length < 7)
         {
-            return -1;
+            return 0;
         }
 
         return GetPacketNumberInSequence(self.DecodedBuffer).CompareTo(GetPacketNumberInSequence(other.DecodedBuffer));

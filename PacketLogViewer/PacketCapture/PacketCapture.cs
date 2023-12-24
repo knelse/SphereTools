@@ -156,8 +156,9 @@ public class PacketCapture
         };
         var timeLimit = DateTime.UtcNow.AddSeconds(-1);
 
-        foreach (var rawCapturedPacket in rawCapturedPackets)
+        for (var index = 0; index < rawCapturedPackets.Count; index++)
         {
+            var rawCapturedPacket = rawCapturedPackets[index];
             if (rawCapturedPacket.WasProcessed || rawCapturedPacket.ArrivalTime > timeLimit)
             {
                 continue;
@@ -184,6 +185,7 @@ public class PacketCapture
             Source = packetRawData.Source,
             Timestamp = packetRawData.ArrivalTime
         };
+        storedPacket.HiddenByDefault = PacketAnalyzer.ShouldBeHiddenByDefault(storedPacket);
         OnPacketProcessed(storedPacket);
     }
 }
