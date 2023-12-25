@@ -34,6 +34,9 @@ public partial class MainWindow
     public static readonly ILiteCollection<StoredPacket> PacketCollection =
         PacketDatabase.GetCollection<StoredPacket>("Packets");
 
+    public static readonly ILiteCollection<StoredPacket> SplittedPacketCollection =
+        PacketDatabase.GetCollection<StoredPacket>("SplittedPackets");
+
     public readonly Dictionary<string, string> KaitaiDefinitions = new ();
     private readonly SimpleKaitaiParser.SimpleKaitaiParser KaitaiParser = new ();
 
@@ -57,26 +60,43 @@ public partial class MainWindow
         // prewarm
         _ = SphObjectDb.GameObjectDataDb;
 
-        LogList.ItemsSource = LogRecords;
-        LogList.ContextMenu = new ContextMenu();
+        LogListFullPackets.ItemsSource = LogRecords;
+        LogListSplitPackets.ItemsSource = LogRecordsSplitted;
+        LogListFullPackets.ContextMenu = new ContextMenu();
         var menuItem = new MenuItem { Header = "Copy" };
-        menuItem.Click += MenuItem_OnClick;
-        LogList.ContextMenu.Items.Add(menuItem);
+        menuItem.Click += FullPacketsLog_MenuItem_OnClick;
+        LogListFullPackets.ContextMenu.Items.Add(menuItem);
+        LogListSplitPackets.ContextMenu = new ContextMenu();
+        var menuItem1 = new MenuItem { Header = "Copy" };
+        menuItem1.Click += SplitPacketsLog_MenuItem_OnClick;
+        LogListSplitPackets.ContextMenu.Items.Add(menuItem1);
 
-        LogList.SelectionChanged += OnLogListOnSelectionChanged;
+        LogListFullPackets.SelectionChanged += OnLogListOnSelectionChanged;
+        LogListSplitPackets.SelectionChanged += OnLogListOnSelectionChanged;
 
-        LogList.KeyDown += (_, args) =>
+        LogListFullPackets.KeyDown += (_, args) =>
         {
             if (args.KeyboardDevice.Modifiers != ModifierKeys.Control || args.Key != Key.C)
             {
                 return;
             }
 
-            CopySelectedRowContent();
+            CopySelectedRowContent(LogListFullPackets);
         };
 
-        var view = CollectionViewSource.GetDefaultView(LogList.ItemsSource);
-        view.Filter = o =>
+        LogListSplitPackets.KeyDown += (_, args) =>
+        {
+            if (args.KeyboardDevice.Modifiers != ModifierKeys.Control || args.Key != Key.C)
+            {
+                return;
+            }
+
+            CopySelectedRowContent(LogListSplitPackets);
+        };
+
+        var fullPacketView = CollectionViewSource.GetDefaultView(LogListFullPackets.ItemsSource);
+        var splitPacketView = CollectionViewSource.GetDefaultView(LogListSplitPackets.ItemsSource);
+        var filterFunc = new Predicate<object>(o =>
         {
             if (ShowFavoritesOnly)
             {
@@ -89,7 +109,9 @@ public partial class MainWindow
             }
 
             return !((o as LogRecord)?.HiddenByDefault ?? false);
-        };
+        });
+        fullPacketView.Filter = filterFunc;
+        splitPacketView.Filter = filterFunc;
 
         SphereTimeUpdateTimer = new DispatcherTimer
         {
@@ -121,9 +143,11 @@ public partial class MainWindow
     }
 
     public BigInteger CurrentContent { get; set; }
+    public byte[] CurrentContentBytes { get; set; }
     public int StartByteLine { get; set; }
     public int CurrentShift { get; set; }
     public ObservableCollection<LogRecord> LogRecords { get; } = new ();
+    public ObservableCollection<LogRecord> LogRecordsSplitted { get; } = new ();
     public bool ShowFavoritesOnly { get; set; }
     public bool HideUninteresting { get; set; } = true;
 
@@ -138,11 +162,51 @@ public partial class MainWindow
     private void OnPacketProcessed (StoredPacket storedPacket)
     {
         storedPacket.Id = PacketCollection.Insert(storedPacket);
+        var splitBytes = storedPacket.Source == PacketSource.CLIENT
+            ? new List<byte[]>()
+            : PacketAnalyzer.SplitPacketIntoParts(storedPacket);
+        var splitPackets = splitBytes.Select(x => new StoredPacket
+        {
+            ContentBytes = x,
+            Favorite = false,
+            Timestamp = storedPacket.Timestamp,
+            ContentJson = "",
+            Source = storedPacket.Source,
+            HiddenByDefault = storedPacket.HiddenByDefault
+        }).ToList();
+        SplittedPacketCollection.InsertBulk(splitPackets);
+
+
         Dispatcher.Invoke(() =>
         {
             LogRecords.Add(new LogRecord(storedPacket));
-            LogList.UpdateLayout();
+            splitPackets.ForEach(x =>
+            {
+                var newRecord = new LogRecord(x)
+                {
+                    HiddenByDefault = storedPacket.HiddenByDefault
+                };
+                LogRecordsSplitted.Add(newRecord);
+            });
+            if (PacketAnalyzer.IsClientPingPacket(storedPacket))
+            {
+                UpdateClientCoordsAndId(storedPacket);
+            }
+
+            LogListFullPackets.UpdateLayout();
+            LogListSplitPackets.UpdateLayout();
         });
+    }
+
+    private ListView GetActivePacketLog ()
+    {
+        if (LogListTabControl.SelectedItem is null)
+        {
+            return LogListFullPackets;
+        }
+
+        var selectedLog = (string) (LogListTabControl.SelectedItem as TabItem).Header;
+        return selectedLog == "Full Packets" ? LogListFullPackets : LogListSplitPackets;
     }
 
     public void UpdateGameTime ()
@@ -188,26 +252,35 @@ public partial class MainWindow
         PacketCollection.EnsureIndex(x => x.Source);
         // might not be great
         PacketCollection.EnsureIndex(x => x.Timestamp);
+        SplittedPacketCollection.EnsureIndex(x => x.Source);
+        // might not be great
+        SplittedPacketCollection.EnsureIndex(x => x.Timestamp);
 
-        var packetsToLoad = PacketCollection.Query().OrderByDescending(x => x.Timestamp)
+        var fullPacketsToLoad = PacketCollection.Query().OrderByDescending(x => x.Timestamp)
             .Limit(1000).ToList();
-        if (packetsToLoad is null)
+
+        var splitPacketsToLoad = SplittedPacketCollection.Query().OrderByDescending(x => x.Timestamp)
+            .Limit(1000).ToList();
+        if (fullPacketsToLoad is null)
         {
             MessageBox.Show("Packets to load are null");
             return;
         }
 
-        if (!packetsToLoad.Any())
+        if (!fullPacketsToLoad.Any())
         {
             MessageBox.Show("No packets to load");
             return;
         }
 
-        packetsToLoad.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+        fullPacketsToLoad.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+        splitPacketsToLoad.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
 
-        packetsToLoad.ForEach(x => LogRecords.Add(new LogRecord(x)));
+        fullPacketsToLoad.ForEach(x => LogRecords.Add(new LogRecord(x)));
+        splitPacketsToLoad.ForEach(x => LogRecordsSplitted.Add(new LogRecord(x)));
 
-        LogList.UpdateLayout();
+        LogListFullPackets.UpdateLayout();
+        LogListSplitPackets.UpdateLayout();
     }
 
     public void UpdateContentPreview (LogRecord selected)
@@ -235,12 +308,13 @@ public partial class MainWindow
             }
 
             var selected = args.AddedItems[0] as LogRecord;
+            CurrentContentBytes = selected.ContentBytes;
             CurrentContent = new BigInteger(selected.ContentBytes, true);
             CurrentShift = 0;
 
             TrySetCurrentTextContent();
             IsFavorite.IsChecked = selected.Favorite;
-            LogList.ScrollIntoView(selected);
+            LogListFullPackets.ScrollIntoView(selected);
             UpdateContentPreview(selected);
             KaitaiCompile();
         }
@@ -303,8 +377,7 @@ public partial class MainWindow
         };
         var shiftedValue = shiftedBigInt.ToByteArray();
         // zero bytes would be lost here, so we have to resize
-        var selected = LogList.SelectedItem as LogRecord;
-        Array.Resize(ref shiftedValue, selected.ContentBytes.Length);
+        Array.Resize(ref shiftedValue, CurrentContentBytes.Length);
 
         var shiftedValueBytes = new List<byte[]>();
         for (var i = 0; i <= 7; i++)
@@ -389,14 +462,19 @@ public partial class MainWindow
         }
     }
 
-    private void MenuItem_OnClick (object sender, RoutedEventArgs e)
+    private void FullPacketsLog_MenuItem_OnClick (object sender, RoutedEventArgs e)
     {
-        CopySelectedRowContent();
+        CopySelectedRowContent(LogListFullPackets);
     }
 
-    private void CopySelectedRowContent ()
+    private void SplitPacketsLog_MenuItem_OnClick (object sender, RoutedEventArgs e)
     {
-        var selectedRow = (LogRecord) LogList.SelectedItem;
+        CopySelectedRowContent(LogListSplitPackets);
+    }
+
+    private void CopySelectedRowContent (ListView listView)
+    {
+        var selectedRow = (LogRecord) listView.SelectedItem;
         var text =
             $"{selectedRow.Source}\t\t\t{selectedRow.Timestamp}\t\t\t{Convert.ToHexString(selectedRow.ContentBytes)}\n";
         Clipboard.SetText(text);
@@ -404,24 +482,26 @@ public partial class MainWindow
 
     private void FavoriteToggleButton_OnChecked (object sender, RoutedEventArgs e)
     {
-        if (LogList.SelectedItem is null)
+        var logList = GetActivePacketLog();
+        if (logList.SelectedItem is null)
         {
             return;
         }
 
-        var item = (LogRecord) LogList.SelectedItem;
+        var item = (LogRecord) logList.SelectedItem;
         item.Favorite = true;
         UpdateStoredPacket(item);
     }
 
     private void FavoriteToggleButton_OnUnchecked (object sender, RoutedEventArgs e)
     {
-        if (LogList.SelectedItem is null)
+        var logList = GetActivePacketLog();
+        if (logList.SelectedItem is null)
         {
             return;
         }
 
-        var item = (LogRecord) LogList.SelectedItem;
+        var item = (LogRecord) logList.SelectedItem;
         item.Favorite = false;
         UpdateStoredPacket(item);
     }
@@ -439,7 +519,9 @@ public partial class MainWindow
 
     private void UpdateStoredPacket (LogRecord logRecord)
     {
-        var storedPacket = PacketCollection.FindById(logRecord.Id);
+        var logList = GetActivePacketLog();
+        var collection = logList == LogListFullPackets ? PacketCollection : SplittedPacketCollection;
+        var storedPacket = collection.FindById(logRecord.Id);
         if (storedPacket is null)
         {
             Console.WriteLine($"Stored packet {logRecord.Id} not found");
@@ -447,7 +529,7 @@ public partial class MainWindow
         }
 
         storedPacket.Favorite = logRecord.Favorite;
-        PacketCollection.Update(storedPacket);
+        collection.Update(storedPacket);
     }
 
     private void ShowFavoritesOnlyToggleButton_OnUnchecked (object sender, RoutedEventArgs e)
@@ -475,22 +557,24 @@ public partial class MainWindow
 
     private void ScrollIntoViewIfSelectionExists ()
     {
-        CollectionViewSource.GetDefaultView(LogList.ItemsSource).Refresh();
-        if (LogList.Items.Count < 1)
+        var logList = GetActivePacketLog();
+        CollectionViewSource.GetDefaultView(LogListFullPackets.ItemsSource).Refresh();
+        CollectionViewSource.GetDefaultView(LogListSplitPackets.ItemsSource).Refresh();
+        if (logList.Items.Count < 1)
         {
             return;
         }
 
-        var selected = LogList.SelectedItem ?? LogList.Items[^1];
-        if (!LogList.Items.PassesFilter(selected))
+        var selected = logList.SelectedItem ?? logList.Items[^1];
+        if (!logList.Items.PassesFilter(selected))
         {
             // should only happen when switching to a more restricted view with filtered out item selected
-            selected = LogList.Items[^1];
+            selected = logList.Items[^1];
         }
 
-        LogList.SelectedItem = selected;
+        logList.SelectedItem = selected;
 
-        LogList.ScrollIntoView(selected);
+        logList.ScrollIntoView(selected);
     }
 
     private void KaitaiCompile_OnClick (object sender, RoutedEventArgs e)
@@ -509,7 +593,8 @@ public partial class MainWindow
 
         SaveCurrentKaitaiDefinition(selectedItem);
         var selectedKaitai = (string) ((TreeViewItem) selectedItem).Header;
-        var currentPacket = (LogRecord) LogList.SelectedItem;
+        var logList = GetActivePacketLog();
+        var currentPacket = (LogRecord) logList.SelectedItem;
         if (currentPacket is null)
         {
             return;

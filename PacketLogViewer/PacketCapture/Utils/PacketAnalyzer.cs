@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using BitStreams;
 using PacketLogViewer.Models;
 
 namespace PacketLogViewer;
@@ -88,5 +89,106 @@ internal static class PacketAnalyzer
         var content = storedPacket.ContentBytes;
 
         return ClientPacketHideRules.Any(ruleFunc => ruleFunc(content));
+    }
+
+    public static bool IsClientPingPacket (StoredPacket storedPacket)
+    {
+        return storedPacket.Source == PacketSource.CLIENT && storedPacket.ContentBytes[0] == 0x26;
+    }
+
+    public static List<byte[]> SplitPacketIntoParts (StoredPacket storedPacket)
+    {
+        var bytesWithoutHeaders = new List<byte[]>();
+        var offset = 0;
+        while (offset < storedPacket.ContentBytes.Length)
+        {
+            var subspanTotalLength = BitConverter.ToInt16(storedPacket.ContentBytes, offset);
+            var start = offset + 7;
+            var end = offset + subspanTotalLength;
+            if (end < start)
+            {
+                break;
+            }
+
+            bytesWithoutHeaders.Add(storedPacket.ContentBytes[start..end]);
+            offset = end;
+        }
+
+        var subspans = new List<byte[]>();
+        foreach (var subPacket in bytesWithoutHeaders)
+        {
+            var stream = new BitStream(subPacket);
+            var previousOffset = (long) 0;
+            var previousBit = 0;
+            while (stream.ValidPosition)
+            {
+                var splitTest1 = stream.ReadByte();
+                if (!stream.ValidPosition)
+                {
+                    break;
+                }
+
+                if (splitTest1 == 0x00)
+                {
+                    var splitTest2 = stream.ReadByte();
+                    if (!stream.ValidPosition)
+                    {
+                        break;
+                    }
+
+                    if (splitTest2 != 0x3F && splitTest2 != 0x7E)
+                    {
+                        stream.SeekBack(15);
+                        continue;
+                    }
+
+                    var subspan =
+                        stream.GetStreamDataBetween(previousOffset, previousBit, stream.Offset - 2, stream.Bit);
+                    subspans.Add(subspan);
+                    previousOffset = stream.Offset;
+                    previousBit = stream.Bit;
+                }
+                else if (splitTest1 == 0xFF)
+                {
+                    var splitTest2 = stream.ReadBytes(31);
+                    if (!stream.ValidPosition)
+                    {
+                        break;
+                    }
+
+                    if (splitTest2[0] != 0xFF || splitTest2[1] != 0xFF || splitTest2[2] != 0xFF ||
+                        splitTest2[3] != 0x3F)
+                    {
+                        stream.SeekBack(30);
+                        continue;
+                    }
+
+                    var newOffset = stream.Offset - 5;
+                    var newBit = stream.Bit + 1;
+                    if (newBit >= 8)
+                    {
+                        newBit = 0;
+                        newOffset++;
+                    }
+
+                    var subspan = stream.GetStreamDataBetween(previousOffset, previousBit, newOffset, newBit);
+                    subspans.Add(subspan);
+                    previousOffset = stream.Offset;
+                    previousBit = stream.Bit;
+                }
+                else
+                {
+                    stream.SeekBack(7);
+                }
+            }
+
+            if (previousOffset < stream.Length)
+            {
+                var subspan = stream.GetStreamDataBetween(previousOffset, previousBit, int.MaxValue, 0);
+                subspans.Add(subspan);
+            }
+        }
+
+        return subspans;
     }
 }
