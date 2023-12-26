@@ -148,7 +148,7 @@ public class PacketCapture
                 ConsoleExtensions.WriteException(ex);
             }
 
-            Thread.Sleep(100);
+            Thread.Sleep(500);
         }
 
         captureDevice.Close();
@@ -179,13 +179,8 @@ public class PacketCapture
         packetsToProcess[PacketSource.SERVER].Sort(CapturedPacketRawData.Compare);
 
         var combinedList = CapturedPacketRawData.CombinePacketsInSequence(packetsToProcess[PacketSource.SERVER]);
-        var analyzedContents = new List<CapturedPacketRawData>();
-        foreach (var packet in combinedList)
-        {
-            analyzedContents.AddRange(TryAnalyzePacketContents(packet));
-        }
 
-        analyzedContents.ForEach(ProcessPacketRawData);
+        combinedList.ForEach(ProcessPacketRawData);
         packetsToProcess[PacketSource.CLIENT].ForEach(ProcessPacketRawData);
     }
 
@@ -200,25 +195,5 @@ public class PacketCapture
         };
         storedPacket.HiddenByDefault = PacketAnalyzer.ShouldBeHiddenByDefault(storedPacket);
         OnPacketProcessed(storedPacket);
-    }
-
-    private List<CapturedPacketRawData> TryAnalyzePacketContents (CapturedPacketRawData packetRawData)
-    {
-        var decoded = packetRawData.DecodedBuffer;
-
-        var results = new List<CapturedPacketRawData> { packetRawData };
-        if (packetRawData.Source == PacketSource.CLIENT ||
-            (decoded[0] == 0x04 && decoded[1] == 0x00))
-        {
-            return results;
-        }
-
-        var packetTarget = BitConverter.ToInt16(decoded, 7);
-        if (packetTarget == ClientId)
-        {
-            return results;
-        }
-
-        return PacketAnalyzer.TryAnalyzePacketContents(packetRawData);
     }
 }

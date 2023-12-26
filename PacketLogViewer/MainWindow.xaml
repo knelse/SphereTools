@@ -31,6 +31,27 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
+        <Style x:Key="LogRowHighlightStyleSplitted" TargetType="ListViewItem">
+            <Style.Setters>
+                <Setter Property="FontFamily" Value="Hack" />
+                <Setter Property="FontSize" Value="10" />
+                <Setter Property="Height" Value="15" />
+            </Style.Setters>
+            <Style.Triggers>
+                <DataTrigger Binding="{Binding Source}" Value="1"> <!--SERVER = 1-->
+                    <Setter Property="Background" Value="Beige" />
+                    <Setter Property="Foreground" Value="Black" />
+                </DataTrigger>
+                <DataTrigger Binding="{Binding Source}" Value="0"> <!--CLIENT = 0-->
+                    <Setter Property="Background" Value="AliceBlue" />
+                    <Setter Property="Foreground" Value="Black" />
+                </DataTrigger>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="Background" Value="MidnightBlue" />
+                    <Setter Property="Foreground" Value="White" />
+                </Trigger>
+            </Style.Triggers>
+        </Style>
         <Style x:Key="LogRecordTextViewStyle" TargetType="TextBox">
             <Style.Setters>
                 <Setter Property="FontFamily" Value="Hack" />
@@ -104,12 +125,18 @@
             </TabItem>
             <TabItem Header="Split Packets">
                 <ListView Margin="4" Name="LogListSplitPackets"
-                          ItemContainerStyle="{StaticResource LogRowHighlightStyle}" SelectionMode="Single">
+                          ItemContainerStyle="{StaticResource LogRowHighlightStyleSplitted}" SelectionMode="Single">
                     <ListView.View>
                         <GridView>
                             <GridViewColumn Header="Source" Width="Auto" DisplayMemberBinding="{Binding Source}" />
                             <GridViewColumn Header="Timestamp" Width="Auto"
                                             DisplayMemberBinding="{Binding Timestamp, StringFormat='{}{0:dd.MM.yy HH:mm:ss}'}" />
+                            <GridViewColumn Header="Object Type" Width="Auto"
+                                            DisplayMemberBinding="{Binding ObjectType}" />
+                            <GridViewColumn Header="Packet Type" Width="Auto"
+                                            DisplayMemberBinding="{Binding PacketType}" />
+                            <GridViewColumn Header="Target" Width="Auto"
+                                            DisplayMemberBinding="{Binding TargetId, StringFormat='{}{0:X4}'}" />
                             <GridViewColumn Header="Content" Width="Auto"
                                             DisplayMemberBinding="{Binding ContentString}" />
                         </GridView>

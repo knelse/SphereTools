@@ -14,7 +14,10 @@ public class LogRecord
         ContentString = Convert.ToHexString(ContentBytes);
         ContentJson = storedPacket.ContentJson;
         Favorite = storedPacket.Favorite;
-        HiddenByDefault = PacketAnalyzer.ShouldBeHiddenByDefault(storedPacket);
+        HiddenByDefault = storedPacket.HiddenByDefault || PacketAnalyzer.ShouldBeHiddenByDefault(storedPacket);
+        PacketType = storedPacket.PacketType;
+        TargetId = storedPacket.TargetId;
+        ObjectType = storedPacket.ObjectType;
     }
 
     public int Id { get; set; }
@@ -27,4 +30,7 @@ public class LogRecord
 
     public bool Favorite { get; set; }
     public bool HiddenByDefault { get; set; }
+    public PacketTypes? PacketType { get; set; }
+    public ushort TargetId { get; set; }
+    public ObjectType? ObjectType { get; set; }
 }

@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
 using BitStreams;
@@ -7,7 +8,7 @@ using PacketLogViewer.Models;
 
 namespace PacketLogViewer;
 
-internal enum PacketTypes
+public enum PacketTypes
 {
     /*Originating from client*/
     CLIENT_LOGIN_DATA,
@@ -41,7 +42,9 @@ internal enum PacketTypes
     SERVER_MOVE_ENTITY,
     SERVER_DESPAWN_ENTITY,
     SERVER_NEW_INSTANCED_ZONE,
-    SERVER_TELEPORT_PLAYER
+    SERVER_TELEPORT_PLAYER,
+
+    UNKNOWN
 }
 
 internal static class PacketAnalyzer
@@ -104,24 +107,148 @@ internal static class PacketAnalyzer
         var offset = 0;
         while (offset < storedPacket.ContentBytes.Length)
         {
+            if (ObjectPacketTools.ByteArrayCompare(storedPacket.ContentBytes, packet_04_00_4F_01, offset))
+            {
+                offset += 4;
+                continue;
+            }
+
             var subspanTotalLength = BitConverter.ToInt16(storedPacket.ContentBytes, offset);
             var start = offset + 7;
             var end = offset + subspanTotalLength;
-            if (end < start)
-            {
-                break;
-            }
 
             bytesWithoutHeaders.Add(storedPacket.ContentBytes[start..end]);
             offset = end;
         }
 
         var subspans = new List<byte[]>();
+        var previousEntityId = 0;
+        var previousEntityType = 0;
+        var combinedList = new List<byte[]>();
+        var writeStream = new BitStream(new MemoryStream())
+        {
+            AutoIncreaseStream = true
+        };
         foreach (var subPacket in bytesWithoutHeaders)
         {
+            var readStream = new BitStream(subPacket);
+            var entityId = readStream.ReadUInt16();
+            readStream.ReadByte(2);
+            var entityType = readStream.ReadUInt16(10);
+            readStream.ReadByte(2);
+            if (entityId == previousEntityId && entityType == previousEntityType)
+            {
+                // continuing the same data packet
+                while (readStream.ValidPosition)
+                {
+                    writeStream.WriteBit(readStream.ReadBit());
+                }
+            }
+            else
+            {
+                writeStream.Seek(0, 0);
+                var writeResult = writeStream.GetStreamData();
+                combinedList.Add(writeResult);
+                writeStream = new BitStream(new MemoryStream())
+                {
+                    AutoIncreaseStream = true
+                };
+                writeStream.WriteUInt16(entityId);
+                writeStream.WriteByte(0, 2);
+                writeStream.WriteUInt16(entityType, 10);
+                writeStream.WriteByte(0, 2);
+                while (readStream.ValidPosition)
+                {
+                    writeStream.WriteBit(readStream.ReadBit());
+                }
+
+                previousEntityId = entityId;
+                previousEntityType = entityType;
+            }
+        }
+
+        writeStream.Seek(0, 0);
+        var lastResult = writeStream.GetStreamData();
+        combinedList.Add(lastResult);
+
+        var tradeEntities = new HashSet<int>
+        {
+            (int) ObjectType.NpcTrade
+        };
+        var containerEntities = new HashSet<int>
+        {
+            (int) ObjectType.Chest,
+            (int) ObjectType.Sack,
+            (int) ObjectType.SackMobLoot,
+            (int) ObjectType.MantraBookSmall,
+            (int) ObjectType.MantraBookLarge,
+            (int) ObjectType.MantraBookGreat,
+            (int) ObjectType.AlchemyPot,
+            (int) ObjectType.BackpackLarge,
+            (int) ObjectType.BackpackSmall,
+            (int) ObjectType.MapBook,
+            (int) ObjectType.RecipeBook
+        };
+        foreach (var subPacket in combinedList)
+        {
             var stream = new BitStream(subPacket);
-            var previousOffset = (long) 0;
-            var previousBit = 0;
+            stream.ReadUInt16();
+            stream.ReadByte(2);
+            var entityType = stream.ReadUInt16(10);
+            stream.ReadByte(2);
+            if (tradeEntities.Contains(entityType) || containerEntities.Contains(entityType))
+            {
+                // don't split these, we (mostly) know the structure, just find the end
+                var offsetAfterItems = (long) 0;
+                var bitAfterItems = 0;
+                var separatorLength = tradeEntities.Contains(entityType) ? 15 : 23;
+                var separator = tradeEntities.Contains(entityType) ? 0x600A : 0x40105;
+                while (stream.ValidPosition)
+                {
+                    var separatorTest = stream.ReadUInt32(separatorLength);
+                    if (!stream.ValidPosition)
+                    {
+                        break;
+                    }
+
+                    if (separatorTest == separator)
+                    {
+                        offsetAfterItems = stream.Offset;
+                        bitAfterItems = stream.Bit;
+                    }
+                    else
+                    {
+                        stream.SeekBack(separatorLength - 1);
+                    }
+                }
+
+                if (offsetAfterItems != 0)
+                {
+                    stream.Seek(offsetAfterItems, bitAfterItems);
+                    stream.ReadBits(tradeEntities.Contains(entityType) ? 96 : 64);
+                    offsetAfterItems = stream.Offset;
+                    bitAfterItems = stream.Bit;
+                    var subspan = stream.GetStreamDataBetween(0, 0, offsetAfterItems, bitAfterItems);
+                    subspans.Add(subspan);
+                    if (stream.Length - stream.Offset < 5)
+                    {
+                        continue;
+                    }
+
+                    stream.SeekBack(8);
+                }
+                else
+                {
+                    stream.Seek(0, 0);
+                }
+            }
+            else
+            {
+                stream.Seek(0, 0);
+            }
+
+            var previousOffset = stream.Offset;
+            var previousBit = stream.Bit;
             while (stream.ValidPosition)
             {
                 var splitTest1 = stream.ReadByte();
@@ -132,7 +259,7 @@ internal static class PacketAnalyzer
 
                 if (splitTest1 == 0x00)
                 {
-                    var splitTest2 = stream.ReadByte();
+                    var splitTest2 = stream.ReadByte(7);
                     if (!stream.ValidPosition)
                     {
                         break;
@@ -140,13 +267,19 @@ internal static class PacketAnalyzer
 
                     if (splitTest2 != 0x3F && splitTest2 != 0x7E)
                     {
-                        stream.SeekBack(15);
+                        stream.SeekBack(14);
                         continue;
                     }
 
-                    var subspan =
-                        stream.GetStreamDataBetween(previousOffset, previousBit, stream.Offset - 2, stream.Bit);
-                    subspans.Add(subspan);
+                    stream.SeekBack(15);
+                    if (stream.Offset != previousOffset)
+                    {
+                        var subspan =
+                            stream.GetStreamDataBetween(previousOffset, previousBit, stream.Offset, stream.Bit);
+                        subspans.Add(subspan);
+                    }
+
+                    stream.ReadBits(15);
                     previousOffset = stream.Offset;
                     previousBit = stream.Bit;
                 }
@@ -192,56 +325,6 @@ internal static class PacketAnalyzer
         }
 
         return subspans;
-    }
-
-    public static List<CapturedPacketRawData> TryAnalyzePacketContents (CapturedPacketRawData capturedPacketRawData)
-    {
-        var decoded = capturedPacketRawData.DecodedBuffer;
-        var stream = new BitStream(capturedPacketRawData.DecodedBuffer);
-
-        var results = new List<CapturedPacketRawData> { capturedPacketRawData };
-        // stream.ReadBytes(6, true);
-        // while (stream.ValidPosition)
-        // {
-        //     var packetTarget = stream.ReadUInt16();
-        //     var entityRemoved = SkipZeroesTryFindPacketSplitter(stream);
-        //     if (entityRemoved)
-        //     {
-        //         continue;
-        //     }
-        //
-        //     stream.ReadByte(2);
-        //     var objectType = stream.ReadUInt16(10);
-        //     Console.WriteLine($"{packetTarget:X4} {objectType}");
-        // }
-
-        return results;
-    }
-
-    private static bool SkipZeroesTryFindPacketSplitter (BitStream stream)
-    {
-        var count = 0;
-        var test = stream.ReadByte(1);
-        while (test == 0x00 && stream.ValidPosition)
-        {
-            count++;
-            test = stream.ReadByte(1);
-        }
-
-        if (!stream.ValidPosition)
-        {
-            stream.SeekBack(count);
-            return false;
-        }
-
-        var test2 = stream.ReadByte(7);
-        if (test2 == 0x3F || test2 == 0x7E)
-        {
-            return true;
-        }
-
-        stream.SeekBack(count + 7);
-        return false;
     }
 
     internal static List<byte[]> SplitIntoItemSlots (BitStream stream, int separator, int separatorBitCount)
@@ -310,70 +393,103 @@ internal static class PacketAnalyzer
         stream.ReadByte(2);
         var entityType = stream.ReadUInt16(10);
         var entityTypeName = Enum.GetName(typeof (ObjectType), entityType) ?? "(undef)";
-        stream.ReadByte(2);
-        var action1 = stream.ReadByte();
-        var action2 = stream.ReadByte();
-        var output = new StringBuilder("\n");
-        if (action1 == 0x85 && action2 == 0x81)
+        var tradeEntities = new HashSet<int>
         {
-            // container item list
-            stream.ReadUInt16(15);
-            var itemSeparator = stream.ReadUInt16(15);
-            var inTrade = itemSeparator == 0x600A;
-            if (inTrade)
+            (int) ObjectType.NpcTrade
+        };
+        var containerEntities = new HashSet<int>
+        {
+            (int) ObjectType.Chest,
+            (int) ObjectType.Sack,
+            (int) ObjectType.SackMobLoot,
+            (int) ObjectType.MantraBookSmall,
+            (int) ObjectType.MantraBookLarge,
+            (int) ObjectType.MantraBookGreat,
+            (int) ObjectType.AlchemyPot,
+            (int) ObjectType.BackpackLarge,
+            (int) ObjectType.BackpackSmall,
+            (int) ObjectType.MapBook,
+            (int) ObjectType.RecipeBook
+        };
+        stream.ReadByte(2);
+        var output = new StringBuilder("\n");
+        if (tradeEntities.Contains(entityType))
+        {
+            var splittedBySeparator = SplitIntoItemSlots(stream, 0x600A, 15);
+            if (!splittedBySeparator.Any())
             {
-                var splittedBySeparator = SplitIntoItemSlots(stream, 0x600A, 15);
-                if (!splittedBySeparator.Any())
-                {
-                    output.AppendLine("[EMPTY]");
-                }
-
-                foreach (var splitted in splittedBySeparator)
-                {
-                    var splitStream = new BitStream(splitted);
-                    var itemSlot = splitStream.ReadByte();
-                    var itemId = splitStream.ReadUInt16();
-                    var skip = splitStream.ReadByte();
-                    var weight = splitStream.ReadUInt32();
-                    var cost = splitStream.ReadUInt32();
-                    analyzeResult.Add(new Dictionary<string, object>
-                    {
-                        ["ItemId"] = itemId,
-                        ["ItemSlot"] = itemSlot,
-                        ["Weight"] = weight,
-                        ["Skip"] = skip,
-                        ["Cost"] = cost
-                    });
-                    output.AppendLine($"{itemSlot:0#}: {itemId:X4} ({cost}t), {weight} u");
-                }
+                output.AppendLine("[EMPTY]");
             }
-            else
-            {
-                var splittedBySeparator = SplitIntoItemSlots(stream, 0x40105, 23);
-                if (!splittedBySeparator.Any())
-                {
-                    output.AppendLine("[EMPTY]");
-                }
 
-                foreach (var splitted in splittedBySeparator)
+            foreach (var splitted in splittedBySeparator)
+            {
+                var splitStream = new BitStream(splitted);
+                var itemSlot = splitStream.ReadByte();
+                var itemId = splitStream.ReadUInt16();
+                var skip = splitStream.ReadByte();
+                var weight = splitStream.ReadUInt32();
+                var cost = splitStream.ReadUInt32();
+                analyzeResult.Add(new Dictionary<string, object>
                 {
-                    var splitStream = new BitStream(splitted);
-                    var itemSlot = splitStream.ReadByte();
-                    var itemId = splitStream.ReadUInt16();
-                    var skip = splitStream.ReadByte();
-                    var weight = splitStream.ReadUInt32();
-                    analyzeResult.Add(new Dictionary<string, object>
-                    {
-                        ["ItemId"] = itemId,
-                        ["ItemSlot"] = itemSlot,
-                        ["Weight"] = weight,
-                        ["Skip"] = skip
-                    });
-                    output.AppendLine($"{itemSlot:0#}: {itemId:X4}, {weight} u");
-                }
+                    ["ItemId"] = itemId,
+                    ["ItemSlot"] = itemSlot,
+                    ["Weight"] = weight,
+                    ["Skip"] = skip,
+                    ["Cost"] = cost
+                });
+                output.AppendLine($"{itemSlot:0#}: {itemId:X4} ({cost}t), {weight} u");
+            }
+        }
+        else if (containerEntities.Contains(entityType))
+        {
+            var splittedBySeparator = SplitIntoItemSlots(stream, 0x40105, 23);
+            if (!splittedBySeparator.Any())
+            {
+                output.AppendLine("[EMPTY]");
+            }
+
+            foreach (var splitted in splittedBySeparator)
+            {
+                var splitStream = new BitStream(splitted);
+                var itemSlot = splitStream.ReadByte();
+                var itemId = splitStream.ReadUInt16();
+                var skip = splitStream.ReadByte();
+                var weight = splitStream.ReadUInt32();
+                analyzeResult.Add(new Dictionary<string, object>
+                {
+                    ["ItemId"] = itemId,
+                    ["ItemSlot"] = itemSlot,
+                    ["Weight"] = weight,
+                    ["Skip"] = skip
+                });
+                output.AppendLine($"{itemSlot:0#}: {itemId:X4}, {weight} u");
             }
         }
 
         return $"ID: {entityId:X4} ({entityType}, {entityTypeName})\n{output}";
+    }
+
+    public static StoredPacket AppendAnalyticsData (this StoredPacket storedPacket)
+    {
+        var stream = new BitStream(storedPacket.ContentBytes);
+        var id = stream.ReadUInt16();
+        storedPacket.TargetId = id;
+        stream.ReadByte(2);
+        var objectTypeVal = stream.ReadUInt16(10);
+        var objectType = Enum.IsDefined(typeof (ObjectType), objectTypeVal)
+            ? (ObjectType?) objectTypeVal
+            : null;
+        storedPacket.ObjectType = objectType;
+        storedPacket.PacketType = objectTypeVal switch
+        {
+            0 => PacketTypes.SERVER_DESPAWN_ENTITY,
+            _ => null
+        };
+        if (storedPacket.PacketType == PacketTypes.SERVER_DESPAWN_ENTITY)
+        {
+            storedPacket.HiddenByDefault = true;
+        }
+
+        return storedPacket;
     }
 }

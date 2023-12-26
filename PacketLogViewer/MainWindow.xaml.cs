@@ -173,21 +173,13 @@ public partial class MainWindow
             ContentJson = "",
             Source = storedPacket.Source,
             HiddenByDefault = storedPacket.HiddenByDefault
-        }).ToList();
+        }.AppendAnalyticsData()).ToList();
         SplittedPacketCollection.InsertBulk(splitPackets);
-
 
         Dispatcher.Invoke(() =>
         {
             LogRecords.Add(new LogRecord(storedPacket));
-            splitPackets.ForEach(x =>
-            {
-                var newRecord = new LogRecord(x)
-                {
-                    HiddenByDefault = storedPacket.HiddenByDefault
-                };
-                LogRecordsSplitted.Add(newRecord);
-            });
+            splitPackets.ForEach(x => LogRecordsSplitted.Add(new LogRecord(x)));
             if (PacketAnalyzer.IsClientPingPacket(storedPacket))
             {
                 UpdateClientCoordsAndId(storedPacket);

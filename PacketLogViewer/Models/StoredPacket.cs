@@ -12,4 +12,7 @@ public class StoredPacket
     public DateTime Timestamp { get; set; }
     public bool HiddenByDefault { get; set; }
     public bool Favorite { get; set; }
+    public PacketTypes? PacketType { get; set; }
+    public ushort TargetId { get; set; }
+    public ObjectType? ObjectType { get; set; }
 }

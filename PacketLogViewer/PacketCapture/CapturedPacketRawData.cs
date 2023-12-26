@@ -39,6 +39,7 @@ internal class CapturedPacketRawData
     internal static List<CapturedPacketRawData> CombinePacketsInSequence (List<CapturedPacketRawData> input)
     {
         var result = new List<CapturedPacketRawData>();
+        input.Sort(Compare);
 
         for (var i = 0; i < input.Count; i++)
         {
