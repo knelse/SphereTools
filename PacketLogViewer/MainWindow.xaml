@@ -87,17 +87,36 @@
         <GridSplitter Grid.Row="1" Grid.Column="0" Grid.RowSpan="2" Width="8" Background="White"
                       ResizeBehavior="CurrentAndNext"
                       Margin="10 4 0 4 " />
-        <ListView Grid.Row="1" Margin="4" Name="LogList" Grid.Column="0"
-                  ItemContainerStyle="{StaticResource LogRowHighlightStyle}" SelectionMode="Single">
-            <ListView.View>
-                <GridView>
-                    <GridViewColumn Header="Source" Width="Auto" DisplayMemberBinding="{Binding Source}" />
-                    <GridViewColumn Header="Timestamp" Width="Auto"
-                                    DisplayMemberBinding="{Binding Timestamp, StringFormat='{}{0:dd.MM.yy HH:mm:ss}'}" />
-                    <GridViewColumn Header="Content" Width="Auto" DisplayMemberBinding="{Binding ContentString}" />
-                </GridView>
-            </ListView.View>
-        </ListView>
+        <TabControl Grid.Row="1" Margin="4" Grid.Column="0" Name="LogListTabControl">
+            <TabItem Header="Full Packets">
+                <ListView Margin="4" Name="LogListFullPackets"
+                          ItemContainerStyle="{StaticResource LogRowHighlightStyle}" SelectionMode="Single">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Source" Width="Auto" DisplayMemberBinding="{Binding Source}" />
+                            <GridViewColumn Header="Timestamp" Width="Auto"
+                                            DisplayMemberBinding="{Binding Timestamp, StringFormat='{}{0:dd.MM.yy HH:mm:ss}'}" />
+                            <GridViewColumn Header="Content" Width="Auto"
+                                            DisplayMemberBinding="{Binding ContentString}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </TabItem>
+            <TabItem Header="Split Packets">
+                <ListView Margin="4" Name="LogListSplitPackets"
+                          ItemContainerStyle="{StaticResource LogRowHighlightStyle}" SelectionMode="Single">
+                    <ListView.View>
+                        <GridView>
+                            <GridViewColumn Header="Source" Width="Auto" DisplayMemberBinding="{Binding Source}" />
+                            <GridViewColumn Header="Timestamp" Width="Auto"
+                                            DisplayMemberBinding="{Binding Timestamp, StringFormat='{}{0:dd.MM.yy HH:mm:ss}'}" />
+                            <GridViewColumn Header="Content" Width="Auto"
+                                            DisplayMemberBinding="{Binding ContentString}" />
+                        </GridView>
+                    </ListView.View>
+                </ListView>
+            </TabItem>
+        </TabControl>
         <StackPanel Grid.Row="2" Grid.Column="0" Margin="4 0" Name="GameState" Background="LightGray">
             <Grid>
                 <Grid.RowDefinitions>

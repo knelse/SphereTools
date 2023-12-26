@@ -10,11 +10,16 @@ public enum ObjectType : ushort
     ScrollRecipe = 91,
     TokenIsland = 104,
     TokenIslandGuest = 105,
+    NpcQuestTitle = 205,
+    Monster = 210,
+    NpcTrade = 213,
+    NpcBanker = 225,
     Bead = 236,
     BackpackLarge = 400,
     BackpackSmall = 401,
     Sack = 405,
     Chest = 406,
+    SackMobLoot = 407,
     MantraBookSmall = 409,
     RecipeBook = 410,
     MantraBookLarge = 411,
@@ -52,6 +57,7 @@ public enum ObjectType : ushort
     EarString = 708,
     MonsterPart = 709,
     Firework = 712,
+    InkpotBroken = 715,
     ArmorChest = 750,
     ArmorAmulet = 751,
     ArmorBoots = 752,
@@ -82,8 +88,9 @@ public enum ObjectType : ushort
     QuestWeaponCrossbow = 963,
     SpecialGuild = 976, // sometimes different
     SpecialAbility = 977, // same type for specialization itself
+    SpecialAbilitySteal = 979, // same type for specialization itself
     ArmorHelmetPremium = 990,
     MantraWhite = 1000,
     MantraBlack = 1001,
-    Unknown = ushort.MaxValue,
+    Unknown = ushort.MaxValue
 }

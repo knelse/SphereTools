@@ -240,6 +240,7 @@ public partial class MainWindow
             var id = (storedPacket.ContentBytes[16] >> 5) + (storedPacket.ContentBytes[17] << 3) +
                      ((storedPacket.ContentBytes[18] & 0b11111) << 11);
             ClientId.Text = $"{id:X4}";
+            PacketCapture.SetClientId((short) id);
         }
         catch (Exception ex)
         {
@@ -287,9 +288,12 @@ public partial class MainWindow
     {
         try
         {
+            ContentPreview.Text = "";
             var bytes = selected.ContentBytes;
+            var packetContents = PacketAnalyzer.GetTextOutputForPacket(bytes);
+            ContentPreview.Text += packetContents + "\n";
             var sphObjects = ObjectPacketTools.GetObjectsFromPacket(bytes);
-            ContentPreview.Text = sphObjects.Count > 0 ? ObjectPacketTools.GetTextOutput(sphObjects, true) : "";
+            ContentPreview.Text += sphObjects.Count > 0 ? ObjectPacketTools.GetTextOutput(sphObjects) : "";
         }
         catch (Exception ex)
         {

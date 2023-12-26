@@ -31,6 +31,8 @@ public class PacketCapture
         IPAddress.Parse("77.223.107.69")
     };
 
+    internal short ClientId;
+
     public Action<StoredPacket> OnPacketProcessed;
 
     public PacketCapture (string macAddress = "C87F54061FF1")
@@ -54,6 +56,11 @@ public class PacketCapture
             $"Ready for packets. Load time: {(timeAfterLoad - time).TotalMilliseconds} msec", ConsoleColor.Yellow);
 
         Task.Run(PacketQueueProcessingLoop);
+    }
+
+    public void SetClientId (short clientId)
+    {
+        ClientId = clientId;
     }
 
     private void CaptureDeviceOnPacketArrival (object _, SharpPcap.PacketCapture capture)
@@ -171,8 +178,14 @@ public class PacketCapture
         packetsToProcess[PacketSource.CLIENT].Sort(CapturedPacketRawData.Compare);
         packetsToProcess[PacketSource.SERVER].Sort(CapturedPacketRawData.Compare);
 
-        CapturedPacketRawData.CombinePacketsInSequence(packetsToProcess[PacketSource.SERVER])
-            .ForEach(ProcessPacketRawData);
+        var combinedList = CapturedPacketRawData.CombinePacketsInSequence(packetsToProcess[PacketSource.SERVER]);
+        var analyzedContents = new List<CapturedPacketRawData>();
+        foreach (var packet in combinedList)
+        {
+            analyzedContents.AddRange(TryAnalyzePacketContents(packet));
+        }
+
+        analyzedContents.ForEach(ProcessPacketRawData);
         packetsToProcess[PacketSource.CLIENT].ForEach(ProcessPacketRawData);
     }
 
@@ -187,5 +200,25 @@ public class PacketCapture
         };
         storedPacket.HiddenByDefault = PacketAnalyzer.ShouldBeHiddenByDefault(storedPacket);
         OnPacketProcessed(storedPacket);
+    }
+
+    private List<CapturedPacketRawData> TryAnalyzePacketContents (CapturedPacketRawData packetRawData)
+    {
+        var decoded = packetRawData.DecodedBuffer;
+
+        var results = new List<CapturedPacketRawData> { packetRawData };
+        if (packetRawData.Source == PacketSource.CLIENT ||
+            (decoded[0] == 0x04 && decoded[1] == 0x00))
+        {
+            return results;
+        }
+
+        var packetTarget = BitConverter.ToInt16(decoded, 7);
+        if (packetTarget == ClientId)
+        {
+            return results;
+        }
+
+        return PacketAnalyzer.TryAnalyzePacketContents(packetRawData);
     }
 }

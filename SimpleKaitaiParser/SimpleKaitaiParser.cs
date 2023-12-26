@@ -134,9 +134,12 @@ public class SimpleKaitaiParser
                     else
                     {
                         var byteValue = value as byte[];
+                        var valueCopy = new byte[byteValue.Length];
+                        Array.Copy(byteValue, valueCopy, byteValue.Length);
                         parsedEntry.Type = EnumEntryValueType;
-                        Array.Resize(ref byteValue, 8);
-                        var enumValue = BitConverter.ToUInt64(byteValue);
+                        Array.Reverse(valueCopy);
+                        Array.Resize(ref valueCopy, 8);
+                        var enumValue = BitConverter.ToUInt64(valueCopy);
 
                         parsedEntry.EnumValue = DefinedEnums[typeEntry.EnumName].ContainsKey(enumValue)
                             ? DefinedEnums[typeEntry.EnumName][enumValue]
