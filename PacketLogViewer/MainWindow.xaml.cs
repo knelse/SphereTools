@@ -46,6 +46,10 @@ public partial class MainWindow
     public MainWindow ()
     {
         InitializeComponent();
+        KaitaiScriptCompileOutputText.Document = new FlowDocument
+        {
+            PagePadding = new Thickness(0)
+        };
         LoadContent();
         PacketCapture = new PacketCapture
         {
@@ -71,8 +75,8 @@ public partial class MainWindow
         menuItem1.Click += SplitPacketsLog_MenuItem_OnClick;
         LogListSplitPackets.ContextMenu.Items.Add(menuItem1);
 
-        LogListFullPackets.SelectionChanged += OnLogListOnSelectionChanged;
-        LogListSplitPackets.SelectionChanged += OnLogListOnSelectionChanged;
+        LogListFullPackets.SelectionChanged += LogListOnSelectionChanged;
+        LogListSplitPackets.SelectionChanged += LogListOnSelectionChanged;
 
         LogListFullPackets.KeyDown += (_, args) =>
         {
@@ -249,28 +253,43 @@ public partial class MainWindow
         // might not be great
         SplittedPacketCollection.EnsureIndex(x => x.Timestamp);
 
-        var fullPacketsToLoad = PacketCollection.Query().OrderByDescending(x => x.Timestamp)
-            .Limit(1000).ToList();
-
-        var splitPacketsToLoad = SplittedPacketCollection.Query().OrderByDescending(x => x.Timestamp)
-            .Limit(1000).ToList();
-        if (fullPacketsToLoad is null)
+        var packetsFull = PacketCollection.Query().Where(x => x.Favorite).OrderByDescending(x => x.Timestamp)
+            .Limit(100).ToList();
+        if (packetsFull is null)
         {
-            MessageBox.Show("Packets to load are null");
+            MessageBox.Show("Packets to load (full) are null");
             return;
         }
 
-        if (!fullPacketsToLoad.Any())
+        packetsFull.AddRange(PacketCollection.Query().Where(x => !x.HiddenByDefault).OrderByDescending(x => x.Timestamp)
+            .Limit(1000).ToList());
+
+        var packetsSplit = SplittedPacketCollection.Query().Where(x => x.Favorite).OrderByDescending(x => x.Timestamp)
+            .Limit(100).ToList();
+        if (packetsSplit is null)
         {
-            MessageBox.Show("No packets to load");
+            MessageBox.Show("Packets to load (split) are null");
             return;
         }
 
-        fullPacketsToLoad.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
-        splitPacketsToLoad.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+        packetsSplit.AddRange(SplittedPacketCollection.Query().OrderByDescending(x => x.Timestamp)
+            .Limit(1000).ToList());
 
-        fullPacketsToLoad.ForEach(x => LogRecords.Add(new LogRecord(x)));
-        splitPacketsToLoad.ForEach(x => LogRecordsSplitted.Add(new LogRecord(x)));
+        if (!packetsFull.Any())
+        {
+            MessageBox.Show("No full packets to load");
+        }
+
+        if (!packetsSplit.Any())
+        {
+            MessageBox.Show("No split packets to load");
+        }
+
+        packetsFull.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+        packetsSplit.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
+
+        packetsFull.ForEach(x => LogRecords.Add(new LogRecord(x)));
+        packetsSplit.ForEach(x => LogRecordsSplitted.Add(new LogRecord(x)));
 
         LogListFullPackets.UpdateLayout();
         LogListSplitPackets.UpdateLayout();
@@ -294,7 +313,7 @@ public partial class MainWindow
         }
     }
 
-    private void OnLogListOnSelectionChanged (object sender, SelectionChangedEventArgs args)
+    private void LogListOnSelectionChanged (object sender, SelectionChangedEventArgs args)
     {
         try
         {
@@ -403,7 +422,7 @@ public partial class MainWindow
         for (var i = StartByteLine; i < shiftedValue.Length; i++)
         {
             sbLogin.Append(GetEncodedLoginChar(shiftedValue[i]));
-            sbText.Append($"{i + 1,3:D}: ");
+            sbText.Append($"{i,3:D}: ");
             sbText.AppendLine(GetFormattedBinaryOutput(shiftedValue[i]));
         }
 
@@ -581,7 +600,7 @@ public partial class MainWindow
     public void KaitaiCompile ()
     {
         var selectedItem = KaitaiDefitionsTreeView.SelectedItem;
-        KaitaiScriptCompileOutputText.Text = "";
+        KaitaiScriptCompileOutputText.Document.Blocks.Clear();
         if (selectedItem is null)
         {
             return;
@@ -604,47 +623,70 @@ public partial class MainWindow
         }
         catch (Exception ex)
         {
-            KaitaiScriptCompileOutputText.Text = ex.Message;
+            KaitaiScriptCompileOutputText.Document.Blocks.Clear();
+            KaitaiScriptCompileOutputText.Document.Blocks.Add(new Paragraph(
+                new Run(ex.Message)));
         }
     }
 
     public void PrettifyKaitaiCompileOutput (List<KaitaiParsedEntry> parsedEntries)
     {
+        KaitaiScriptCompileOutputText.Document.Blocks.Clear();
+        var flowDocument = KaitaiScriptCompileOutputText.Document;
         foreach (var parsedEntry in parsedEntries)
         {
+            var paragraph = new Paragraph
+            {
+                FontFamily = new FontFamily("Hack"),
+                FontSize = 13,
+                Margin = new Thickness(0),
+                Padding = new Thickness(8, 0, 8, 0),
+                LineHeight = 20,
+                // LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+                TextAlignment = TextAlignment.Left,
+                BreakColumnBefore = false,
+                BreakPageBefore = false
+            };
+            if (!string.IsNullOrWhiteSpace(parsedEntry.Comment))
+            {
+                paragraph.Inlines.Add(new Run($"// {parsedEntry.Comment}\n")
+                {
+                    Foreground = Brushes.DarkOliveGreen
+                });
+            }
+
             var splitPath = parsedEntry.Path.Split('/', StringSplitOptions.RemoveEmptyEntries);
             var indentLevel = (splitPath.Length - 1) * 2;
             var entryName = splitPath[^1];
             var padding = string.Empty.PadLeft(indentLevel, '·');
-            KaitaiScriptCompileOutputText.Inlines.Add(
-                new Run(padding) { Foreground = Brushes.LightGray, FontSize = 12 });
+            paragraph.Inlines.Add(new Run(padding) { Foreground = Brushes.LightGray, FontSize = 12 });
             if (parsedEntry.IsTrivialType)
             {
-                KaitaiScriptCompileOutputText.Inlines.Add(new Run($"{entryName}") { Foreground = Brushes.Blue });
-                KaitaiScriptCompileOutputText.Inlines.Add(new Run(" = "));
+                paragraph.Inlines.Add(new Run($"{entryName}") { Foreground = Brushes.Blue });
+                paragraph.Inlines.Add(new Run(" = "));
 
                 switch (parsedEntry.Type)
                 {
                     case "str":
-                        KaitaiScriptCompileOutputText.Inlines.Add(
+                        paragraph.Inlines.Add(
                             new Run($"\"{(string) parsedEntry.Value}\"") { FontWeight = FontWeights.Bold });
                         break;
                     case "f4":
                     case "f8":
-                        KaitaiScriptCompileOutputText.Inlines.Add(
+                        paragraph.Inlines.Add(
                             new Run(((double) parsedEntry.Value).ToString()) { FontWeight = FontWeights.Bold });
                         break;
                     case SimpleKaitaiParser.SimpleKaitaiParser.ByteArrayTypeName:
                         var byteArray = parsedEntry.Value as byte[];
                         var stringValues = byteArray.Select(b => $"0x{b:X2}").ToList();
 
-                        KaitaiScriptCompileOutputText.Inlines.Add(
+                        paragraph.Inlines.Add(
                             new Run($"[{string.Join(", ", stringValues)}]") { FontWeight = FontWeights.Bold });
-                        KaitaiScriptCompileOutputText.Inlines.Add(new Run($" = [{string.Join(", ", byteArray)}]")
+                        paragraph.Inlines.Add(new Run($" = [{string.Join(", ", byteArray)}]")
                             { Foreground = Brushes.Gray });
                         break;
                     case SimpleKaitaiParser.SimpleKaitaiParser.EnumEntryValueType:
-                        KaitaiScriptCompileOutputText.Inlines.Add(new Run(parsedEntry.EnumValue.ToUpper())
+                        paragraph.Inlines.Add(new Run(parsedEntry.EnumValue.ToUpper())
                             { FontWeight = FontWeights.Bold });
 
                         var enumValueBytes = parsedEntry.Value as byte[];
@@ -662,16 +704,23 @@ public partial class MainWindow
                         enumBytesStr = enumBytesStr.PadLeft(padWidth, '0');
 
                         var enumValue = BitConverter.ToInt64(enumValueBytes);
+                        var enumValueStr = $"{enumValue}";
 
-                        KaitaiScriptCompileOutputText.Inlines.Add(
+                        if (parsedEntry.EnumName == "localizable" &&
+                            SphObjectDb.GameObjectDataDb.TryGetValue((int) enumValue, out var gameObject))
+                        {
+                            enumValueStr = gameObject.Localisation[Locale.Russian];
+                        }
+
+                        paragraph.Inlines.Add(
                             new Run(
                                     $" ({SnakeCaseToCamelCase(parsedEntry.EnumName)}::{parsedEntry.EnumValue.ToUpper()} " +
-                                    $"= 0x{enumBytesStr} = {enumValue})")
+                                    $"= 0x{enumBytesStr} = {enumValueStr})")
                                 { Foreground = Brushes.Gray });
                         break;
                     default:
                         var byteValue = parsedEntry.Value as byte[];
-                        KaitaiScriptCompileOutputText.Inlines.Add(
+                        paragraph.Inlines.Add(
                             new Run("0x") { FontWeight = FontWeights.Bold });
                         var zeroBytesToSkip = 0;
 
@@ -687,7 +736,7 @@ public partial class MainWindow
 
                         if (zeroBytesToSkip == byteValue.Length)
                         {
-                            KaitaiScriptCompileOutputText.Inlines.Add(
+                            paragraph.Inlines.Add(
                                 new Run("00") { FontWeight = FontWeights.Bold });
                         }
                         else
@@ -696,36 +745,55 @@ public partial class MainWindow
                             {
                                 if (i != zeroBytesToSkip)
                                 {
-                                    KaitaiScriptCompileOutputText.Inlines.Add(
+                                    paragraph.Inlines.Add(
                                         new Run("·") { Foreground = Brushes.LightGray });
                                 }
 
-                                KaitaiScriptCompileOutputText.Inlines.Add(
+                                paragraph.Inlines.Add(
                                     new Run($"{byteValue[i]:X2}") { FontWeight = FontWeights.Bold });
                             }
                         }
 
-                        Array.Reverse(byteValue);
-                        Array.Resize(ref byteValue, 8);
-                        var longValue = BitConverter.ToInt64(byteValue);
+                        if (byteValue.Length <= 8)
+                        {
+                            Array.Reverse(byteValue);
+                            Array.Resize(ref byteValue, 8);
+                            var longValue = BitConverter.ToInt64(byteValue);
 
-                        KaitaiScriptCompileOutputText.Inlines.Add(new Run($" = {longValue}")
-                            { Foreground = Brushes.Gray });
+                            paragraph.Inlines.Add(new Run($" = {longValue}")
+                                { Foreground = Brushes.Gray });
+                        }
 
                         break;
                 }
+
+                paragraph.Inlines.Add(
+                    new Run($" [{parsedEntry.StreamOffset}, {parsedEntry.StreamBit}]")
+                    {
+                        Foreground = new SolidColorBrush(new Color
+                        {
+                            R = 166,
+                            G = 166,
+                            B = 166,
+                            A = 255
+                        }),
+                        FontSize = 12
+                    });
             }
             else
             {
-                KaitaiScriptCompileOutputText.Inlines.Add(new Run($"{entryName} "));
-                KaitaiScriptCompileOutputText.Inlines.Add(new Run("[") { FontSize = 12 });
-                KaitaiScriptCompileOutputText.Inlines.Add(new Run($"{parsedEntry.Type}")
+                paragraph.Inlines.Add(new Run($"{entryName} "));
+                paragraph.Inlines.Add(new Run("[") { FontSize = 12 });
+                paragraph.Inlines.Add(new Run($"{parsedEntry.Type}")
                     { Foreground = Brushes.ForestGreen, FontSize = 12 });
-                KaitaiScriptCompileOutputText.Inlines.Add(new Run("]") { FontSize = 12 });
+                paragraph.Inlines.Add(new Run("]") { FontSize = 12 });
             }
 
-            KaitaiScriptCompileOutputText.Inlines.Add("\n");
+            // paragraph.Inlines.Add(new Run("\n"));
+            flowDocument.Blocks.Add(paragraph);
         }
+
+        KaitaiScriptCompileOutputText.Document = flowDocument;
     }
 
     public static string SnakeCaseToCamelCase (string input)
@@ -804,7 +872,7 @@ public partial class MainWindow
     {
         var firstItem = (TreeViewItem) KaitaiDefitionsTreeView.Items.GetItemAt(0);
         firstItem.IsSelected = true;
-        KaitaiScriptCompileOutputText.Text = "";
+        KaitaiScriptCompileOutputText.Document.Blocks.Clear();
     }
 
     public void CreateKaitaiDefinitionItem (string header, bool isSelected = false)
@@ -837,7 +905,7 @@ public partial class MainWindow
         };
         item.ContextMenu.Items.Add(deleteMenuItem);
         KaitaiDefitionsTreeView.Items.Add(item);
-        KaitaiScriptCompileOutputText.Text = "";
+        KaitaiScriptCompileOutputText.Document.Blocks.Clear();
     }
 
     public string GetKaitaiPath (string name)

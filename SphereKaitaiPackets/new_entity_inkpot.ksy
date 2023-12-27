@@ -1,28 +1,904 @@
 meta:
-  id: new_item_split
-  file-extension: new_item_split
+  id: new_entity_inkpot_with_header
+  file-extension: new_entity_inkpot_with_header
   endian: le
   bit-endian: le
 seq:
+# inkpot
+  - id: length
+    type: u2
+    comment: --- INKPOT ---
+  - id: skip
+    type: u5
   - id: entity_id
     type: u2
-  - id: skip_1
+  - id: skip_b2
     type: b2
   - id: object_type
     type: b10
     enum: object_types
-  - id: skip_2
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+# next, small backpack
+  - id: entity_id
+    type: u2
+    comment: --- SMALL BACKPACK ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
     type: b10
-  - id: coords_skip_maybe
-    size: 16
+    enum: object_types
+  - id: unknown
+    type: b192
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b61
+    type: b61
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+# next, sack 1
+  - id: entity_id
+    type: u2
+    comment: --- SACK 1 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b192
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b46
+    type: b46
+  - id: icon_name_length
+    type: u1
+  - id: icon_name
+    type: str
+    size: icon_name_length
+  - id: split
+    type: b7
+# next, mapbook
+  - id: entity_id
+    type: u2
+    comment: --- MAPBOOK ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b192
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b61
+    type: b61
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b6 #might be 7 or 8, we'll see
+#next, token 1 (has packet header here)
+  - id: length
+    type: u2
+    comment: --- TOKEN 1 ---
+  - id: skip
+    type: u5
+  - id: entity_id
+    type: u2
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: skip2
+    type: u3
+  - id: count
+    type: u2
+  - id: skip_b34
+    type: b38
+  - id: skip_00_00
+    type: u2
+  - id: split
+    type: b8
+#next, token 2
+  - id: entity_id
+    type: u2
+    comment: --- TOKEN 2 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: skip2
+    type: u3
+  - id: count
+    type: u2
+  - id: skip_b34
+    type: b38
+  - id: skip_00_00
+    type: u2
+  - id: split
+    type: b8
+#next, token 3
+  - id: entity_id
+    type: u2
+    comment: --- TOKEN 3 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: skip2
+    type: u3
+  - id: count
+    type: u2
+  - id: skip_b34
+    type: b38
+  - id: skip_00_00
+    type: u2
+  - id: split
+    type: b8
+#next, token 4
+  - id: entity_id
+    type: u2
+    comment: --- TOKEN 4 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: skip2
+    type: u3
+  - id: count
+    type: u2
+  - id: skip_b34
+    type: b38
+  - id: skip_00_00
+    type: u2
+  - id: split
+    type: b8
+#next, map Hyperion (has packet header here)
+  - id: length
+    type: u2
+    comment: --- MAP HYPERION ---
+  - id: skip
+    type: u5
+  - id: entity_id
+    type: u2
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
   - id: game_id
-    enum: localizable
     type: b14
-  - id: mob_id_maybe
-    type: b12
     enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+#next, map Shipstone
+  - id: entity_id
+    type: u2
+    comment: --- MAP SHIPSTONE ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: game_id
+    type: b14
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+#next, map Hyperion NW
+  - id: entity_id
+    type: u2
+    comment: --- MAP HYPERION NW ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: game_id
+    type: b14
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+#next, map Hyperion W
+  - id: entity_id
+    type: u2
+    comment: --- MAP HYPERION W ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: game_id
+    type: b14
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+#next, map Hyperion SW
+  - id: entity_id
+    type: u2
+    comment: --- MAP HYPERION SW ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: game_id
+    type: b14
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b5 #new packet here
+#next, map Hyperion SE(has packet header here)
+  - id: length
+    type: u2
+    comment: --- MAP HYPERION SE---
+  - id: skip
+    type: u5
+  - id: entity_id
+    type: u2
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: game_id
+    type: b14
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+#next, map Hyperion E
+  - id: entity_id
+    type: u2
+    comment: --- MAP HYPERION E ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: game_id
+    type: b14
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+#next, map Shipstone
+  - id: entity_id
+    type: u2
+    comment: --- MAP SHIPSTONE ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: game_id
+    type: b14
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+#next, map Torweal
+  - id: entity_id
+    type: u2
+    comment: --- MAP TORWEAL ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: game_id
+    type: b14
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+#next, map Bangville
+  - id: entity_id
+    type: u2
+    comment: --- MAP BANGVILLE ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: game_id
+    type: b14
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b5 #new packet here
+#next, map Sunpool SE(has packet header here)
+  - id: length
+    type: u2
+    comment: --- MAP SUNPOOL---
+  - id: skip
+    type: u5
+  - id: entity_id
+    type: u2
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b137
+  - id: has_game_id
+    type: b1
+  - id: game_id
+    type: b14
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+#next, earstring 1
+  - id: entity_id
+    type: u2
+    comment: --- EARSTRING 1 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types    
+  - id: unknown
+    type: b136
+  - id: has_game_id
+    type: b2
+  - id: game_id
+    type: b7
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: skip2
+    type: u3
+  - id: count
+    type: u2
+  - id: skip_b7
+    type: b7
+  - id: skip_00_00
+    type: u2
+  - id: split
+    type: b8
+#next, earstring 2
+  - id: entity_id
+    type: u2
+    comment: --- EARSTRING 2 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types    
+  - id: unknown
+    type: b136
+  - id: has_game_id
+    type: b2
+  - id: game_id
+    type: b7
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: skip2
+    type: u3
+  - id: count
+    type: u2
+  - id: skip_b7
+    type: b7
+  - id: skip_00_00
+    type: u2
+  - id: split
+    type: b8
+#next, earstring 3
+  - id: entity_id
+    type: u2
+    comment: --- EARSTRING 3 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types    
+  - id: unknown
+    type: b136
+  - id: has_game_id
+    type: b2
+  - id: game_id
+    type: b7
+    enum: localizable
+  - id: skip_b29
+    type: b29
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: skip2
+    type: u3
+  - id: count
+    type: u2
+  - id: skip_b7
+    type: b7
+  - id: skip_00_00
+    type: u2
+  - id: split
+    type: b8
+#next, earstring 4
+  - id: entity_id
+    type: u2
+    comment: --- EARSTRING 4 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types    
+  - id: unknown
+    type: b136
+  - id: has_game_id
+    type: b2
+  - id: game_id
+    type: b7
+    enum: localizable
+  - id: skip_b7
+    type: b7
+  # packet split happened here
+  - id: length
+    type: u2
+  - id: skip
+    type: u5
+  - id: entity_id
+    type: u2
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: skip_b25
+    type: b25
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b30
+    type: b30
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: skip2
+    type: u3
+  - id: count
+    type: u2
+  - id: skip_b7
+    type: b7
+  - id: skip_00_00
+    type: u2
+  - id: split
+    type: b8
+#next, large backpack
+  - id: entity_id
+    type: u2
+    comment: --- LARGE BACKPACK ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types    
+  - id: unknown
+    type: b192
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b61
+    type: b61
+  - id: unknown_FFFFFFFE
+    type: u4
+  - id: split
+    type: b8
+# next, sack 2
+  - id: entity_id
+    type: u2
+    comment: --- SACK 2 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b192
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b46
+    type: b46
+  - id: icon_name_length
+    type: u1
+  - id: icon_name
+    type: str
+    size: icon_name_length
+  - id: split
+    type: b7
+# next, sack 3
+  - id: entity_id
+    type: u2
+    comment: --- SACK 3 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b192
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b46
+    type: b46
+  - id: icon_name_length
+    type: u1
+  - id: icon_name
+    type: str
+    size: icon_name_length
+  - id: split
+    type: b7
+# next, sack 4(has packet header here)
+  - id: length
+    type: u2
+    comment: --- SACK 4 ---
+  - id: skip
+    type: u5
+  - id: entity_id
+    type: u2
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b192
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b46
+    type: b46
+  - id: icon_name_length
+    type: u1
+  - id: icon_name
+    type: str
+    size: icon_name_length
+  - id: split
+    type: b7
+# next, sack 5
+  - id: entity_id
+    type: u2
+    comment: --- SACK 5 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b192
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b46
+    type: b46
+  - id: icon_name_length
+    type: u1
+  - id: icon_name
+    type: str
+    size: icon_name_length
+  - id: split
+    type: b7
+# next, sack 6
+  - id: entity_id
+    type: u2
+    comment: --- SACK 6 ---
+  - id: skip_b2
+    type: b2
+  - id: object_type
+    type: b10
+    enum: object_types
+  - id: unknown
+    type: b192
+  - id: has_game_id
+    type: b1
+  - id: skip_4
+    type: u4
+  - id: container_id
+    type: u2
+  - id: skip_1
+    type: u1
+  - id: skip_b46
+    type: b46
+  - id: icon_name_length
+    type: u1
+  - id: icon_name
+    type: str
+    size: icon_name_length
+  - id: split
+    type: b1 # new packet here
+
+    
 enums:
   object_types:
+    4: player
     8: token
     30: mutator
     40: seed_castle
@@ -31,6 +907,7 @@ enums:
     68: trade_license
     90: scroll_legend
     91: scroll_recipe
+    95: mission
     104: token_island
     105: token_island_guest
     205: npc_quest_title

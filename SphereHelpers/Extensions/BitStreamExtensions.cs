@@ -17,9 +17,9 @@ public static class BitStreamExtensions
         return (ushort) BitsToInt(bitStream.ReadBits(countBits));
     }
 
-    public static ulong ReadUInt64 (this BitStream bitStream, long countBits)
+    public static long ReadInt64 (this BitStream bitStream, long countBits)
     {
-        return BitsToUInt64(bitStream.ReadBits(countBits));
+        return BitsToInt64(bitStream.ReadBits(countBits));
     }
 
     public static void WriteUInt16 (this BitStream bitStream, ushort val, int countBits)
@@ -40,9 +40,9 @@ public static class BitStreamExtensions
         return result;
     }
 
-    public static ulong BitsToUInt64 (Bit[] bits)
+    public static long BitsToInt64 (Bit[] bits)
     {
-        var result = (ulong) 0;
+        var result = (long) 0;
 
         for (var i = bits.Length - 1; i >= 0; i--)
         {

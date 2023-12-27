@@ -1,5 +1,6 @@
 ﻿using System.Text;
 using BitStreams;
+using SphereHelpers.Extensions;
 using VYaml.Serialization;
 
 namespace SimpleKaitaiParser;
@@ -11,11 +12,13 @@ public struct KaitaiScriptEntry
     public bool IsTrivialType;
     public string EnumName;
     public int Size;
+    public string SizeRef;
     public string Encoding;
+    public string Comment;
 
     public override string ToString ()
     {
-        return $"{Path} {Type} {IsTrivialType} {EnumName} {Size} {Encoding}";
+        return $"{Path} {Type} {IsTrivialType} {EnumName} {Size} {Encoding} //{Comment}";
     }
 }
 
@@ -27,12 +30,16 @@ public struct KaitaiParsedEntry
     public string EnumName;
     public string EnumValue;
     public object Value;
+    public long StreamOffset;
+    public int StreamBit;
+    public string Comment;
+    public long? LongValue;
 
     public override string ToString ()
     {
         var value = Value is null ? null :
             Value.GetType() == typeof (byte[]) ? Convert.ToHexString(Value as byte[]) : Value.ToString();
-        return $"{Path} {Type} {IsTrivialType} {value} {EnumName} {EnumValue}";
+        return $"{Path} {Type} {IsTrivialType} {value} {EnumName} {EnumValue} // {Comment}";
     }
 }
 
@@ -43,6 +50,7 @@ public class SimpleKaitaiParser
     public const string EnumEntryValueType = "__ENUM";
     private static Encoding Win1251 = null!;
     private readonly Dictionary<string, Dictionary<ulong, string>> DefinedEnums = new ();
+    private readonly List<KaitaiParsedEntry> ParsedEntries = new ();
     private readonly List<KaitaiScriptEntry> ScriptTypeOrder = new ();
     private BitStream BitStream;
     private Dictionary<object, object> DefinedTypes = new ();
@@ -64,6 +72,7 @@ public class SimpleKaitaiParser
         ScriptTypeOrder.Clear();
         DefinedTypes.Clear();
         DefinedEnums.Clear();
+        ParsedEntries.Clear();
         var parsed = YamlSerializer.Deserialize<Dictionary<string, object>>(Encoding.UTF8.GetBytes(script));
         if (parsed.TryGetValue("types", out var typeDefinitions))
         {
@@ -102,7 +111,6 @@ public class SimpleKaitaiParser
     {
         ParseKaitaiScript(script);
         BitStream = new BitStream(input);
-        var result = new List<KaitaiParsedEntry>();
         foreach (var typeEntry in ScriptTypeOrder)
         {
             var parsedEntry = new KaitaiParsedEntry
@@ -110,11 +118,15 @@ public class SimpleKaitaiParser
                 Path = typeEntry.Path,
                 Type = typeEntry.Type,
                 IsTrivialType = typeEntry.IsTrivialType,
-                EnumName = typeEntry.EnumName
+                EnumName = typeEntry.EnumName,
+                StreamOffset = BitStream.Offset,
+                StreamBit = BitStream.Bit,
+                Comment = typeEntry.Comment
             };
             if (typeEntry.IsTrivialType)
             {
-                var value = ReadTrivialTypeValue(typeEntry);
+                var (value, longValue) = ReadTrivialTypeValue(typeEntry);
+                parsedEntry.LongValue = longValue;
                 if (value is byte[] valueBytes)
                 {
                     Array.Reverse(valueBytes);
@@ -148,42 +160,65 @@ public class SimpleKaitaiParser
                 }
             }
 
-            result.Add(parsedEntry);
+            ParsedEntries.Add(parsedEntry);
         }
 
-        return result;
+        return ParsedEntries;
     }
 
-    private object ReadTrivialTypeValue (KaitaiScriptEntry typeEntry)
+    private Tuple<object, long?> ReadTrivialTypeValue (KaitaiScriptEntry typeEntry)
     {
         if (typeEntry.Type == "str")
         {
             // assuming win1251
-            var strBytes = BitStream.ReadBytes(typeEntry.Size, true);
-            return Win1251.GetString(strBytes);
+            var actualSize = string.IsNullOrWhiteSpace(typeEntry.SizeRef)
+                ? typeEntry.Size
+                : ParsedEntries.First(x => x.Path.EndsWith(typeEntry.SizeRef)).LongValue ?? 0;
+            if (actualSize == 0)
+            {
+                return new Tuple<object, long?>(string.Empty, null);
+            }
+
+            var strBytes = BitStream.ReadBytes(actualSize, true);
+            return new Tuple<object, long?>(Win1251.GetString(strBytes), null);
         }
 
         if (typeEntry.Type == ByteArrayTypeName || typeEntry.Size != 0)
         {
-            return BitStream.ReadBytes(typeEntry.Size, true);
+            return new Tuple<object, long?>(BitStream.ReadBytes(typeEntry.Size, true), null);
         }
 
         var length = long.Parse(typeEntry.Type[1..]);
 
         if (typeEntry.Type.StartsWith('b'))
         {
-            // bits, assuming it's at max a b64
-            return BitStream.ReadBytes(length);
+            long? longValueBits = null;
+            if (length <= 64)
+            {
+                longValueBits = BitStream.ReadInt64(length);
+                BitStream.SeekBack((int) length);
+            }
+
+            return new Tuple<object, long?>(BitStream.ReadBytes(length), longValueBits);
+        }
+
+        long? longValue = null;
+        if (length <= 8)
+        {
+            var bits = (int) length * 8;
+            longValue = BitStream.ReadInt64(bits);
+            BitStream.SeekBack(bits);
         }
 
         var bytes = BitStream.ReadBytes(length, true);
 
         if (typeEntry.Type.StartsWith('f'))
         {
-            return length == 4 ? BitConverter.ToSingle(bytes) : BitConverter.ToDouble(bytes);
+            var floating = length == 4 ? BitConverter.ToSingle(bytes) : BitConverter.ToDouble(bytes);
+            return new Tuple<object, long?>(floating, null);
         }
 
-        return bytes;
+        return new Tuple<object, long?>(bytes, longValue);
     }
 
     private void ParseTypeRecursive (List<string> currentPath, string typeName)
@@ -208,9 +243,24 @@ public class SimpleKaitaiParser
         var typeDict = typeDictBoxed as Dictionary<object, object>;
         var typeStr = typeDict.ContainsKey("type") ? typeDict["type"] as string : ByteArrayTypeName;
         var idStr = typeDict["id"] as string;
-        var size = typeDict.ContainsKey("size") ? (int) typeDict["size"] : 0;
+        var size = 0;
+        var sizeRef = "";
+        if (typeDict.ContainsKey("size"))
+        {
+            var sizeStr = typeDict["size"].ToString();
+            if (char.IsDigit(sizeStr, 0))
+            {
+                size = int.Parse(sizeStr);
+            }
+            else
+            {
+                sizeRef = sizeStr;
+            }
+        }
+
         var encoding = typeDict.ContainsKey("encoding") ? (string) typeDict["encoding"] : string.Empty;
         var enumName = typeDict.ContainsKey("enum") ? (string) typeDict["enum"] : string.Empty;
+        var comment = typeDict.ContainsKey("comment") ? (string) typeDict["comment"] : string.Empty;
         if (IsTrivialType(typeStr))
         {
             ScriptTypeOrder.Add(new KaitaiScriptEntry
@@ -219,8 +269,10 @@ public class SimpleKaitaiParser
                 Path = pathString + '/' + idStr,
                 Type = typeStr,
                 Size = size,
+                SizeRef = sizeRef,
                 Encoding = encoding,
-                EnumName = enumName
+                EnumName = enumName,
+                Comment = comment
             });
         }
         else
