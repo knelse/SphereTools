@@ -1,0 +1,22 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SpherePacketVisualEditor", "SpherePacketVisualEditor.csproj", "{B5A119B8-A05C-44C0-998B-54ED01001665}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "BitStream", "..\BitStream\BitStream.csproj", "{7F9B3E21-7824-4F77-9F6C-A9D31E3204D5}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{B5A119B8-A05C-44C0-998B-54ED01001665}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{B5A119B8-A05C-44C0-998B-54ED01001665}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{B5A119B8-A05C-44C0-998B-54ED01001665}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{B5A119B8-A05C-44C0-998B-54ED01001665}.Release|Any CPU.Build.0 = Release|Any CPU
+		{7F9B3E21-7824-4F77-9F6C-A9D31E3204D5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{7F9B3E21-7824-4F77-9F6C-A9D31E3204D5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{7F9B3E21-7824-4F77-9F6C-A9D31E3204D5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{7F9B3E21-7824-4F77-9F6C-A9D31E3204D5}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+EndGlobal
