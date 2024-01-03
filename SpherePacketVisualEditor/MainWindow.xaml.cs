@@ -1,9 +1,12 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Text;
 using System.Windows;
+using System.Windows.Controls;
 using System.Windows.Documents;
+using System.Windows.Input;
 using System.Windows.Media;
 using BitStreams;
 
@@ -14,125 +17,444 @@ public partial class MainWindow
     public static readonly byte[] PacketContents = Convert.FromHexString(
         "BE002C0100340FB017008B0F80842E090000000000000000409145068002C00037054021A100E0FFFFFFFF177B4164F80048E8920000000000000000001459640028401000000000140006B829000A03010185840280FFFFFFFF1FEE0595E10320A14B02000000000000000050649101A0004100000000500018E0A600280C0404141E14C6E8BEE6C2C6BEE66A007EB91774860F80842E0900000000000000004091450680020401000000400160809B02A030101050482800F8FFFFFF07C8002C0100340FBA1720B00F80842E090000000000000000409145068002C00037054021A100E0FFFFFFBFC020803E50782040380000F8ED5E80C03E0012BA24000000000000000000451619000A0003DC140085840280FFFFFFFF028300FA40E18120E10000E0C77B0102FB0048E8920000000000000000001459640028000C70530014120A00FEFFFFFF0B0C02E803850702850300805FEF0508EC0320A14B02000000000000000050649101A00030C04D0150482800F8FFFFFF2F3008A00F141E08160E000000C4002C0100340FBE17FC8A0F80842E09000000000000000040914526F411150006B829000A090500FFFFFFFFBFDF0B7EC507404297040000000000000000A0C82233FA880A0003DC140085840280FFFFFFFF1FF005BFE20320A14B020000000000000000506491297D440580016E0A80424201C0FFFFFFFF2FF8825FF10190D02501000000000000000028B2C89C3EA202C00037054021A100E0FFFFFFFF277CC1AFF80048E892000000000000000000145964521F510160809B02A0905000F0FFFFFF0FC4002C0100340FC317FC8A0F80842E09000000000000000040914566F511150006B829000A090500FFFFFFFF3FE20B7EC507404297040000000000000000A0C822D3FA880A0003DC140085840280FFFFFFFF5FF105BFE20320A14B020000000000000000506491797D440580016E0A80424201C0FFFFFFFFCFF8825FF10190D02501000000000000000028B2C8C43EA202C00037054021A100E0FFFFFFFF777CC1AFF80048E892000000000000000000145964661F510160809B02A0905000F0FFFFFF0FCA002C0100340FC817FC8A0F80842E090000000000000000409145A6F611150006B829000A090500FFFFFFFFBFE40B88C507404297040000000000000000A0C8224B1B150006B829000A090500FFFFFFFF85870200000000809FF205C4E20320A14B020000000000000000506491B58D0A0003DC140085840280FFFFFFFFC2434100000000C06FF90262F10190D02501000000000000000028B2C8E2460580016E0A80424201C0FFFFFF7FE1A14000000000E0C77C01B1F80048E8920000000000000000001459647523B9002C0100340FCC17104B0160809B02A0905000F0FFFFFF5F78282000000000F8C93502193E0012BA24000000000000000000451619000A1004000000000580016E0A80C240404021A100E0FFFFFFFFB7E54865F80048E8920000000000000000001459640028401000000000140006B829000A03010185078531BAAFB9B0B1AF391880DF9A2395E10320A14B02000000000000000050649101A0004100000000500018E0A600280C0404141E14C6E8BEE6C2C6BEE6620000A3002C0100340F6C8E54860F80842E0900000000000000004091450680020401000000400160809B02A030101050785018A3FB9A0B1BFB9A9301F8B53952193E0012BA24000000000000000000451619000A1004000000000580016E0A80C2404040E141618CEE6B2E6CEC6B6E06E0E7E64865F80048E8920000000000000000001459640028401000000000140006B829000A03010185078531BAAFB9B0B1AF391A0017002C0100F311970AAE9DE6C1E6056910645CF961BF0E");
 
-    private static Paragraph BitsParagraph;
-    private static Encoding Win1251 = null!;
+    private static BitStream CurrentContentBitStream;
 
-    private static readonly SolidColorBrush SelectionBrush = new ()
-    {
-        Color = Colors.SlateGray,
-        Opacity = 0.5
-    };
+    public static Encoding Win1251 = null!;
+
+    private static SolidColorBrush SelectionBrush;
+
+    private List<PacketPart> DefinedPacketParts = new ();
+
+    private TextPointer? EndTextPointer;
+    private int? LastCaretOffset;
+    private double LastVerticalOffset;
+    private ScrollViewer? PacketDisplayScrollViewer;
+    private TextPointer? StartTextPointer;
 
     public MainWindow ()
     {
         InitializeComponent();
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         Win1251 = Encoding.GetEncoding(1251);
-        BitsParagraph = new Paragraph
+        PacketVisualizerControl.KeyDown += PacketVisualizerControlAddPacketPart;
+        PacketVisualizerControl.KeyDown += PacketVisualizerControlHandlePartSelection;
+        SelectionBrush = new SolidColorBrush
         {
-            Padding = new Thickness(0, 4, 0, 4)
+            Color = ((SolidColorBrush) PacketVisualizerControl.SelectionBrush).Color,
+            Opacity = PacketVisualizerControl.SelectionOpacity
         };
-        PacketVisualizerRtb.Document.Blocks.Add(BitsParagraph);
-        UpdatePacketContent(PacketContents);
+        PacketVisualizerControl.SelectionBrush = Brushes.Transparent;
+        PacketVisualizerControl.PreviewMouseWheel += (_, _) => { };
+        var scrollViewerProperty =
+            typeof (RichTextBox).GetProperty("ScrollViewer", BindingFlags.NonPublic | BindingFlags.Instance);
+
+        Loaded += (_, _) =>
+        {
+            PacketDisplayScrollViewer = (ScrollViewer) scrollViewerProperty.GetValue(PacketVisualizerControl);
+
+            PacketDisplayScrollViewer.ScrollChanged += (sender, _) => { SynchronizeScrollValues(sender); };
+
+            PacketVisualizerDefinedPacketValuesScrollViewer.ScrollChanged += (sender, _) =>
+            {
+                SynchronizeScrollValues(sender);
+            };
+
+            PacketVisualizerLineNumbersScrollViewer.ScrollChanged +=
+                (sender, _) => { SynchronizeScrollValues(sender); };
+        };
+
+        CreateFlowDocumentWithHighlights(false, true);
     }
 
-    public void UpdatePacketContent (byte[]? packet)
+    private void SynchronizeScrollValues (object source)
     {
-        var stream = new BitStream(packet);
+        var scrollViewer = (ScrollViewer) source;
+        if (scrollViewer != PacketVisualizerLineNumbersScrollViewer &&
+            Math.Abs(PacketVisualizerLineNumbersScrollViewer.VerticalOffset - scrollViewer.VerticalOffset) >
+            double.Epsilon)
+        {
+            PacketVisualizerLineNumbersScrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset);
+        }
+
+        if (scrollViewer != PacketVisualizerDefinedPacketValuesScrollViewer &&
+            Math.Abs(PacketVisualizerDefinedPacketValuesScrollViewer.VerticalOffset - scrollViewer.VerticalOffset) >
+            double.Epsilon)
+        {
+            PacketVisualizerDefinedPacketValuesScrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset);
+        }
+
+        if (scrollViewer != PacketDisplayScrollViewer &&
+            Math.Abs(PacketDisplayScrollViewer.VerticalOffset - scrollViewer.VerticalOffset) > double.Epsilon)
+        {
+            PacketDisplayScrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset);
+        }
+    }
+
+    private void PacketVisualizerControlHandlePartSelection (object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.S && e.Key != Key.E && e.Key != Key.Escape)
+        {
+            return;
+        }
+
+        if (e.Key == Key.Escape)
+        {
+            ClearSelection();
+        }
+
+        var caretPosition = PacketVisualizerControl.CaretPosition;
+        if (caretPosition is null)
+        {
+            ClearSelection();
+            LastVerticalOffset = 0;
+            return;
+        }
+
+        LastCaretOffset = PacketVisualizerControl.Document.ContentStart.GetOffsetToPosition(caretPosition);
+        LastVerticalOffset = PacketVisualizerControl.VerticalOffset;
+
+        if (e.Key == Key.S)
+        {
+            StartTextPointer = caretPosition;
+        }
+
+        if (e.Key == Key.E)
+        {
+            EndTextPointer = caretPosition;
+        }
+
+        CreateFlowDocumentWithHighlights();
+    }
+
+    private void ClearSelection ()
+    {
+        StartTextPointer = null;
+        EndTextPointer = null;
+        LastCaretOffset = null;
+    }
+
+    private void UpdateScrolling ()
+    {
+        if (LastCaretOffset.HasValue)
+        {
+            var newCaretPosition = LastCaretOffset.Value <= 2
+                ? PacketVisualizerControl.Document.ContentStart.GetLineStartPosition(0)
+                : PacketVisualizerControl.Document.ContentStart.GetPositionAtOffset(LastCaretOffset.Value);
+            if (newCaretPosition is not null)
+            {
+                PacketVisualizerControl.CaretPosition = newCaretPosition;
+            }
+        }
+
+        PacketVisualizerControl.ScrollToVerticalOffset(LastVerticalOffset);
+        PacketVisualizerLineNumbersScrollViewer.ScrollToVerticalOffset(LastVerticalOffset);
+        PacketVisualizerDefinedPacketValuesScrollViewer.ScrollToVerticalOffset(LastVerticalOffset);
+    }
+
+    private void PacketVisualizerControlAddPacketPart (object sender, KeyEventArgs e)
+    {
+        if (e.KeyboardDevice.Modifiers != ModifierKeys.Control || e.Key != Key.D)
+        {
+            return;
+        }
+
+        if (StartTextPointer is null || EndTextPointer is null)
+        {
+            return;
+        }
+
+        var color = new Color
+        {
+            A = 150,
+            R = (byte) Random.Shared.Next(0, 255),
+            G = (byte) Random.Shared.Next(0, 255),
+            B = (byte) Random.Shared.Next(0, 255)
+        };
+
+        var dialog = new CreatePacketPartDefinitionDialog(color)
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            var name = dialog.Name;
+            color = dialog.Color;
+            var type = dialog.PacketPartType ?? PacketPartType.BITS;
+            var start = StartTextPointer;
+            var end = EndTextPointer;
+            AddNewDefinedPacketPart(CreatePacketPart(name, type, start, end,
+                new SolidColorBrush(color)));
+        }
+    }
+
+    public void CreateFlowDocumentWithHighlights (bool keepSelection = true, bool firstUpdateOnLoad = false)
+    {
+        CurrentContentBitStream = new BitStream(PacketContents);
+        PacketVisualizerLineNumbers.Inlines.Clear();
+        PacketVisualizerDefinedPacketValues.Inlines.Clear();
+        var document = new FlowDocument
+        {
+            FontFamily = new FontFamily("Hack"),
+            FontSize = 14,
+            LineHeight = 16,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+            PageWidth = 80,
+            TextAlignment = TextAlignment.Right,
+            PagePadding = new Thickness(10, 4, 0, 4)
+        };
+        var paragraph = new Paragraph
+        {
+            Margin = new Thickness(0)
+        };
+        var selectionBits = new List<Bit>();
         var sb = new StringBuilder();
-        while (stream.ValidPosition)
+        var selectionStartOffset = StartTextPointer?.GetCharOffset();
+        var selectionEndOffset = EndTextPointer?.GetCharOffset();
+
+        var actualStart = selectionStartOffset;
+        var actualEnd = selectionEndOffset;
+        if (actualStart > actualEnd)
         {
-            var currentByte = stream.ReadByte();
-            var byteStr = Convert.ToString(currentByte, 2).PadLeft(8, '0');
-            sb.AppendLine(byteStr);
+            actualEnd = selectionStartOffset;
+            actualStart = selectionEndOffset;
         }
 
-        BitsParagraph.Inlines.Clear();
-        BitsParagraph.Inlines.Add(sb.ToString());
+        var bits = CurrentContentBitStream.ReadBits(int.MaxValue);
+        var wasInSelection = false;
+        PacketPart? previousPacketPart = null;
+        Brush? textBrush = null;
+
+        var lineNumberSb = new StringBuilder();
+        var valueDisplayDict = new Dictionary<int, PacketPart>();
+
+        for (var i = 0; i < bits.Length; i++)
+        {
+            var currentPacketPart = DefinedPacketParts.FirstOrDefault(x => x.ContainsBitPosition(i));
+            var inSelection = keepSelection && actualStart <= i && actualEnd > i;
+
+            var textBlockChanged = (inSelection && !wasInSelection) || (wasInSelection && !inSelection) ||
+                                   (currentPacketPart != null && currentPacketPart != previousPacketPart) ||
+                                   (currentPacketPart == null && previousPacketPart != null);
+            if (inSelection)
+            {
+                selectionBits.Add(bits[i]);
+            }
+
+            if (textBlockChanged)
+            {
+                var newTextBrush = inSelection ? SelectionBrush : currentPacketPart?.HighlightColor;
+                if (textBrush is null)
+                {
+                    if (sb.Length > 0)
+                    {
+                        paragraph.Inlines.Add(sb.ToString());
+                    }
+                }
+                else
+                {
+                    paragraph.Inlines.Add(new Run(sb.ToString())
+                    {
+                        Background = textBrush
+                    });
+                }
+
+                sb.Clear();
+                textBrush = newTextBrush;
+
+                if (currentPacketPart is not null && previousPacketPart != currentPacketPart)
+                {
+                    valueDisplayDict.Add(i, currentPacketPart);
+                }
+
+                previousPacketPart = currentPacketPart;
+            }
+
+            wasInSelection = inSelection;
+            sb.Append(bits[i].AsInt());
+
+            if (i % 8 == 0)
+            {
+                lineNumberSb.AppendLine($"{i / 8}");
+            }
+        }
+
+        if (sb.Length > 0)
+        {
+            if (textBrush is null)
+            {
+                paragraph.Inlines.Add(sb.ToString());
+            }
+            else
+            {
+                paragraph.Inlines.Add(new Run(sb.ToString())
+                {
+                    Background = textBrush
+                });
+            }
+        }
+
+        PacketVisualizerLineNumbers.Text = lineNumberSb.ToString();
+        var packetDisplaySb = new StringBuilder();
+
+        for (var i = 0; i < bits.Length; i++)
+        {
+            if (valueDisplayDict.ContainsKey(i))
+            {
+                var part = valueDisplayDict[i];
+                PacketVisualizerDefinedPacketValues.Inlines.Add(packetDisplaySb.ToString());
+                PacketVisualizerDefinedPacketValues.Inlines.Add(new Run(part.Name)
+                {
+                    Background = part.HighlightColor
+                });
+                PacketVisualizerDefinedPacketValues.Inlines.Add(
+                    $": {part.GetDisplayTextForValueType()} [{Enum.GetName(part.PacketPartType) ?? string.Empty}] ");
+                packetDisplaySb.Clear();
+            }
+
+            if ((i - 1) % 8 == 0 && i > 1)
+            {
+                packetDisplaySb.AppendLine();
+            }
+        }
+
+        CurrentContentBitStream.Seek(0, 0);
+        if (packetDisplaySb.Length > 0)
+        {
+            PacketVisualizerDefinedPacketValues.Inlines.Add(packetDisplaySb.ToString());
+        }
+
+        document.Blocks.Add(paragraph);
+
+        if (firstUpdateOnLoad)
+        {
+            PacketReadableDisplayText.Inlines.Clear();
+            PacketReadableDisplayText.Inlines.Add(Convert.ToHexString(BitStream.BitArrayToBytes(bits)) + "\n");
+            var toShift = bits.ToList();
+            for (var i = 0; i < 8; i++)
+            {
+                var shiftedBytes = BitStream.BitArrayToBytes(toShift.ToArray());
+                var shiftedChars = Win1251.GetString(shiftedBytes).ToCharArray();
+                var shiftedString = new string(shiftedChars.Select(GetVisibleChar).ToArray());
+                PacketReadableDisplayText.Inlines.Add(new Run($"\n[{i}] {shiftedString}")
+                {
+                    FontSize = 14
+                });
+                toShift.RemoveAt(0);
+            }
+        }
+
+        PacketVisualizerControl.Document = document;
+        UpdateSelectedValueDisplay(selectionBits);
+        UpdateScrolling();
     }
 
-    private void PacketVisualizerRtb_OnSelectionChanged (object sender, RoutedEventArgs e)
+    private void PacketVisualizerControl_OnSelectionChanged (object o, RoutedEventArgs e)
     {
-        var selectionStart = PacketVisualizerRtb.Selection.Start;
-        var selectionEnd = PacketVisualizerRtb.Selection.End;
-
-        foreach (var inline in BitsParagraph.Inlines)
-        {
-            inline.Background = Brushes.Transparent;
-        }
-
-        PacketSelectedValueDisplay.Text = string.Empty;
-        if (selectionStart is null || selectionEnd is null)
-        {
-            PacketSelectedValueDisplay.Text = "Select bits to show value preview";
-            return;
-        }
-
-        var selectionStart_currentLineStart = selectionStart.GetLineStartPosition(0);
-        var selectionStart_nextLineStart = selectionStart_currentLineStart.GetLineStartPosition(1);
-        var selectionEnd_currentLineStart = selectionEnd.GetLineStartPosition(0);
-        var selectionEnd_previousLineEnd = selectionEnd_currentLineStart.GetPositionAtOffset(-2);
-        var selectionEnd_currentLineEnd = selectionEnd_currentLineStart.GetLineStartPosition(1);
-        var startEndSameLine =
-            selectionStart_currentLineStart.GetOffsetToPosition(selectionEnd_currentLineStart) == 0;
-
-        var newSelectionRange_middle = startEndSameLine
-            ? new TextRange(selectionStart, selectionEnd)
-            : new TextRange(selectionStart_nextLineStart, selectionEnd_previousLineEnd);
-
-        ColorizeTextRange(newSelectionRange_middle);
-
-        TextRange? newSelectionRange_invertedFirstLine = null;
-        TextRange? newSelectionRange_invertedLastLine = null;
-
-        if (!startEndSameLine)
-        {
-            newSelectionRange_invertedFirstLine = new TextRange(selectionStart_currentLineStart, selectionStart);
-            newSelectionRange_invertedLastLine = new TextRange(selectionEnd, selectionEnd_currentLineEnd);
-        }
-
-        ColorizeTextRange(newSelectionRange_invertedFirstLine);
-        ColorizeTextRange(newSelectionRange_invertedLastLine);
-
-        var bitsSelectionStart = GetBitValueInTextRange(newSelectionRange_invertedFirstLine);
-        var bitsSelectionMiddle = GetBitValueInTextRange(newSelectionRange_middle);
-        var bitsSelectionEnd = GetBitValueInTextRange(newSelectionRange_invertedLastLine);
-
-        var fullValueBits = new List<Bit>(bitsSelectionEnd);
-        fullValueBits.AddRange(bitsSelectionMiddle);
-        fullValueBits.AddRange(bitsSelectionStart);
-
-        Console.WriteLine($"start_start {selectionStart_currentLineStart.GetOffsetToPosition(BitsParagraph.ContentStart)} | start_actual_start {selectionStart.GetOffsetToPosition(BitsParagraph.ContentStart)} " +
-                          $"| end_actual_end {selectionEnd.GetOffsetToPosition(BitsParagraph.ContentStart)} | end_end {selectionEnd_currentLineEnd.GetOffsetToPosition(BitsParagraph.ContentStart)}");
-
-        UpdateSelectedValueDisplay(fullValueBits);
+        e.Handled = true;
     }
 
-    private void ColorizeTextRange (TextRange? textRange)
+    private PacketPart CreatePacketPart (string name, PacketPartType packetPartType, TextPointer? start,
+        TextPointer? end, Brush highlightColor)
     {
-        if (textRange is null)
+        var bitOffsetStart = start.GetCharOffset();
+        var bitOffsetEnd = end.GetCharOffset();
+        var offsetStart = bitOffsetStart / 8;
+        var bitStart = bitOffsetStart % 8;
+        var offsetEnd = bitOffsetEnd / 8;
+        var bitEnd = bitOffsetEnd % 8;
+
+        var positionStart = new StreamPosition(offsetStart, bitStart);
+        var positionEnd = new StreamPosition(offsetEnd, bitEnd);
+        var actualStart = positionStart;
+        var actualEnd = positionEnd;
+        if (positionStart.CompareTo(positionEnd) > 0)
         {
-            return;
+            actualStart = positionEnd;
+            actualEnd = positionStart;
         }
 
-        textRange.ApplyPropertyValue(TextElement.BackgroundProperty, SelectionBrush);
+        var bitLength = Math.Abs(bitOffsetEnd - bitOffsetStart);
+        CurrentContentBitStream.Seek(actualStart.Offset, actualStart.Bit);
+        var bits = CurrentContentBitStream.ReadBits(bitLength).ToList();
+        bits.Reverse();
+        var streamValueLength = (long) bits.Count;
+        return new PacketPart(streamValueLength, highlightColor, name, packetPartType, actualStart, actualEnd, bits);
     }
 
-    private List<Bit> GetBitValueInTextRange (TextRange? textRange)
+    private void UpdateDefinedPackets ()
     {
-        var result = new List<Bit>();
-        if (textRange is null)
+        DefinedPacketPartsControl.Document.Blocks.Clear();
+        DefinedPacketParts.Sort((a, b) => a.StreamPositionStart.CompareTo(b.StreamPositionStart));
+        foreach (var part in DefinedPacketParts)
         {
-            return result;
+            var paragraph = new Paragraph();
+            paragraph.Inlines.Add(new Run($"{part.Name}")
+            {
+                Background = part.HighlightColor
+            });
+            paragraph.Inlines.Add(": ");
+            var valueStr = part.GetDisplayTextForValueType();
+            paragraph.Inlines.Add(valueStr);
+
+            paragraph.Inlines.Add($" [{Enum.GetName(part.PacketPartType) ?? string.Empty}]");
+            paragraph.Inlines.Add($" [{part.StreamPositionEnd} to {part.StreamPositionStart}, {part.BitLength} bits]");
+            DefinedPacketPartsControl.Document.Blocks.Add(paragraph);
+        }
+    }
+
+    private void AddNewDefinedPacketPart (PacketPart packetPart)
+    {
+        var newPacketParts = new List<PacketPart>();
+        foreach (var definedPacketPart in DefinedPacketParts)
+        {
+            if (packetPart.Overlaps(definedPacketPart))
+            {
+                // remove old one
+                continue;
+            }
+
+            if (packetPart.ContainedWithin(definedPacketPart))
+            {
+                // split old and make it: old_start new old_end
+                var oldStart = definedPacketPart.GetPiece(definedPacketPart.StreamPositionStart,
+                    packetPart.StreamPositionStart, definedPacketPart.Name + "_1");
+                var oldEnd = definedPacketPart.GetPiece(packetPart.StreamPositionEnd,
+                    definedPacketPart.StreamPositionEnd, definedPacketPart.Name + "_2");
+                newPacketParts.Add(oldStart);
+                newPacketParts.Add(oldEnd);
+                continue;
+            }
+
+            if (packetPart.StreamPositionStart.CompareTo(definedPacketPart.StreamPositionStart) <= 0 &&
+                packetPart.StreamPositionEnd.CompareTo(definedPacketPart.StreamPositionEnd) < 0)
+            {
+                // leave a chunk of old when new part intersects the beginning of old
+                var oldChunk = definedPacketPart.GetPiece(packetPart.StreamPositionEnd,
+                    definedPacketPart.StreamPositionEnd);
+                newPacketParts.Add(oldChunk);
+                continue;
+            }
+
+            if (packetPart.StreamPositionStart.CompareTo(definedPacketPart.StreamPositionStart) > 0 &&
+                packetPart.StreamPositionStart.CompareTo(definedPacketPart.StreamPositionEnd) < 0 &&
+                packetPart.StreamPositionEnd.CompareTo(definedPacketPart.StreamPositionEnd) >= 0)
+            {
+                // leave a chunk of old when new part intersects the end of old
+                var oldChunk = definedPacketPart.GetPiece(definedPacketPart.StreamPositionStart,
+                    packetPart.StreamPositionStart);
+                newPacketParts.Add(oldChunk);
+                continue;
+            }
+
+            newPacketParts.Add(definedPacketPart);
         }
 
-        var text = textRange.Text.Split("\r\n", StringSplitOptions.RemoveEmptyEntries).Reverse().ToList();
-        foreach (var t in text)
-        {
-            result.AddRange(t.Select(x => new Bit(x - '0')).ToList());
-        }
-
-        return result;
+        newPacketParts.Add(packetPart);
+        newPacketParts.Sort((a, b) => a.StreamPositionStart.CompareTo(b.StreamPositionStart));
+        DefinedPacketParts = newPacketParts;
+        UpdateDefinedPackets();
+        CreateFlowDocumentWithHighlights(false);
+        ClearSelection();
     }
 
     private void UpdateSelectedValueDisplay (List<Bit> bits)
@@ -143,38 +465,18 @@ public partial class MainWindow
             return;
         }
 
-        bits.Reverse();
-
-        var remainingBitsToFullByte = bits.Count % 8;
-        var bitsPadding = remainingBitsToFullByte == 0 ? 0 : 8 - remainingBitsToFullByte;
-
-        if (bitsPadding != 0)
-        {
-            for (var i = 0; i < bitsPadding; i++)
-            {
-                bits.Add(0);
-            }
-        }
-        var bytes = BitStream.BitArrayToBytes(bits.ToArray());
-        var bytesString = Convert.ToHexString(bytes);
-        var textString = Win1251.GetString(bytes);
-        var stream = new BitStream(bytes);
-        var actualBits = bits.ToArray()[..^(bitsPadding)];
-        Array.Reverse(actualBits);
-        var bitsString = string.Join("", actualBits.Select(x => (int) x));
-        var longValue = stream.ReadInt64();
-        var longValueStr = bytes.Length > 8 ? "(too large)" : $"0x{longValue:X} = {longValue}";
-        stream.Seek(0, 0);
-        var ulongValue = stream.ReadUInt64();
-        var ulongValueStr = bytes.Length > 8 ? "(too large)" : $"0x{ulongValue:X} = {ulongValue}";
-        stream.Seek(0, 0);
-
+        var displayText = PacketPart.GetValueDisplayText(bits);
         var sb = new StringBuilder();
-        sb.AppendLine($"Bits:\t {bitsString} ({bitsString.Length})");
-        sb.AppendLine($"Bytes:\t {bytesString}");
-        sb.AppendLine($"Text:\t {textString}");
-        sb.AppendLine($"Int64:\t {longValueStr}");
-        sb.AppendLine($"UInt64: {ulongValueStr}");
+        sb.AppendLine($"Bits:\t {displayText.bitsStr} ({displayText.bitsStr.Length})");
+        sb.AppendLine($"Bytes:\t {displayText.bytesStr}");
+        sb.AppendLine($"Text:\t {displayText.textStr}");
+        sb.AppendLine($"Int64:\t {displayText.longStr}");
+        sb.AppendLine($"UInt64: {displayText.ulongStr}");
         PacketSelectedValueDisplay.Text = sb.ToString();
+    }
+
+    public static char GetVisibleChar (char c)
+    {
+        return (c >= 0x20 && c <= 0x7E) || c is >= 'А' and <= 'я' ? c : '·';
     }
 }

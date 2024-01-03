@@ -5,20 +5,67 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="MainWindow" Height="1080" Width="1920">
-    <Grid>
+    <Grid HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="150" />
+            <ColumnDefinition Width="33" />
+            <ColumnDefinition Width="100" />
+            <ColumnDefinition Width="200" />
+            <ColumnDefinition Width="4" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
-        <RichTextBox Name="PacketVisualizerRtb" SelectionChanged="PacketVisualizerRtb_OnSelectionChanged"
-                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True"
-                     AutoWordSelection="False" SelectionBrush="Transparent" SelectionOpacity="0" Margin="4"
-                     SelectionTextBrush="Black">
-            <FlowDocument Name="PacketVisualizerText" FontFamily="Hack" FontSize="14" LineHeight="16"
-                          LineStackingStrategy="BlockLineHeight" IsOptimalParagraphEnabled="False" />
-        </RichTextBox>
-        <Border Grid.Column="1" BorderThickness="0.5" BorderBrush="Black" Padding="4" Margin="4">
-            <TextBlock Name="PacketSelectedValueDisplay" FontFamily="Hack" FontSize="13" TextWrapping="Wrap">Select bits to show value preview</TextBlock>
-        </Border>
+        <Grid.RowDefinitions>
+            <RowDefinition Height="200" />
+            <RowDefinition Height="4" />
+            <RowDefinition Height="*" />
+        </Grid.RowDefinitions>
+        <ScrollViewer Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5" Name="PacketReadableDisplayTextScrollViewer"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Margin="0 4">
+            <TextBlock Name="PacketReadableDisplayText" FontFamily="Hack" FontSize="16" LineHeight="16"
+                       LineStackingStrategy="BlockLineHeight" TextAlignment="Left"
+                       TextWrapping="NoWrap" Padding="4 2" />
+        </ScrollViewer>
+        <GridSplitter Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" ResizeBehavior="PreviousAndNext"
+                      ResizeDirection="Rows" Height="4" Margin="4 0" HorizontalAlignment="Stretch" />
+        <ScrollViewer Grid.Row="2" Grid.Column="0" Name="PacketVisualizerLineNumbersScrollViewer"
+                      VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Hidden">
+            <TextBlock Name="PacketVisualizerLineNumbers" FontFamily="Hack" FontSize="12" LineHeight="16"
+                       Foreground="DimGray" Background="Ivory"
+                       LineStackingStrategy="BlockLineHeight" TextAlignment="Center" Width="30" Padding="0 0"
+                       Margin="0 4" />
+        </ScrollViewer>
+        <RichTextBox Grid.Row="2" Grid.Column="1" Name="PacketVisualizerControl"
+                     SelectionChanged="PacketVisualizerControl_OnSelectionChanged"
+                     Margin="0 4" Padding="0" Width="100" VerticalScrollBarVisibility="Auto"
+                     IsReadOnly="True" IsReadOnlyCaretVisible="True" />
+        <ScrollViewer Grid.Row="2" Grid.Column="2" Name="PacketVisualizerDefinedPacketValuesScrollViewer"
+                      VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto" Margin="0 4"
+                      Padding="4 0">
+            <TextBlock Name="PacketVisualizerDefinedPacketValues" FontFamily="Hack" FontSize="12" LineHeight="16"
+                       Background="Cornsilk" LineStackingStrategy="BlockLineHeight" TextAlignment="Left"
+                       TextWrapping="NoWrap" />
+        </ScrollViewer>
+        <GridSplitter Grid.Row="2" Grid.Column="3" ResizeBehavior="PreviousAndNext" Width="4" Margin="0 4" />
+        <Grid Grid.Row="2" Grid.Column="4">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="400" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <Border BorderThickness="0.5" BorderBrush="Black" Padding="0" Margin="0 4">
+                <ScrollViewer>
+                    <TextBlock Name="PacketSelectedValueDisplay" FontFamily="Hack" FontSize="13" TextWrapping="Wrap"
+                               Padding="4">
+                        Select bits to show value preview
+                    </TextBlock>
+                </ScrollViewer>
+            </Border>
+            <Border Grid.Row="1" BorderThickness="0.5" BorderBrush="Black" Padding="0" Margin="0 4">
+                <RichTextBox Name="DefinedPacketPartsControl" FontFamily="Hack" FontSize="13"
+                             HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                             IsReadOnly="True" Padding="4">
+                    <FlowDocument Name="DefinedPartsText" FontFamily="Hack" FontSize="14" LineHeight="16"
+                                  LineStackingStrategy="BlockLineHeight" IsOptimalParagraphEnabled="False" />
+                </RichTextBox>
+            </Border>
+        </Grid>
     </Grid>
 </Window>

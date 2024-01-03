@@ -11,4 +11,8 @@
         <ProjectReference Include="..\BitStream\BitStream.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <PackageReference Include="ColorPickerWPF" Version="1.0.9"/>
+    </ItemGroup>
+
 </Project>
