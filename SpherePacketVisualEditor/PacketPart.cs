@@ -67,14 +67,15 @@ public record StreamPosition (long Offset, int Bit)
 
 public class PacketPart
 {
+    public const string UndefinedPacketPartName = "__undef";
     public readonly long BitLength;
-    public readonly PacketPartDisplayText DisplayText;
     public readonly Brush HighlightColor;
     public readonly string Name;
     public readonly PacketPartType PacketPartType;
     public readonly StreamPosition StreamPositionEnd;
     public readonly StreamPosition StreamPositionStart;
-    public readonly List<Bit> Value;
+    public PacketPartDisplayText DisplayText;
+    public List<Bit> Value;
 
     public PacketPart (long length, Brush highlightColor, string name, PacketPartType packetPartType,
         StreamPosition streamPositionStart,
@@ -87,14 +88,13 @@ public class PacketPart
         StreamPositionStart = streamPositionStart;
         Value = value;
         PacketPartType = packetPartType;
-
-        DisplayText = GetValueDisplayText();
+        UpdateValueDisplayText();
     }
 
     public bool Overlaps (PacketPart other)
     {
         return StreamPositionStart.CompareTo(other.StreamPositionStart) <= 0 &&
-                StreamPositionEnd.CompareTo(other.StreamPositionEnd) >= 0;
+               StreamPositionEnd.CompareTo(other.StreamPositionEnd) >= 0;
     }
 
     public bool ContainedWithin (PacketPart other)
@@ -131,25 +131,25 @@ public class PacketPart
         switch (PacketPartType)
         {
             case PacketPartType.BITS:
-                return DisplayText.bitsStr;
+                return DisplayText.Bits;
             case PacketPartType.BYTES:
-                return DisplayText.bytesStr;
+                return DisplayText.Bytes;
             case PacketPartType.INT64:
-                return DisplayText.longStr;
+                return DisplayText.Long;
             case PacketPartType.UINT64:
-                return DisplayText.ulongStr;
+                return DisplayText.Ulong;
             case PacketPartType.STRING:
-                return DisplayText.textStr;
+                return DisplayText.Text;
             default:
                 return string.Empty;
         }
     }
 
-    private PacketPartDisplayText GetValueDisplayText ()
+    public void UpdateValueDisplayText ()
     {
         var bits = new List<Bit>(Value);
         bits.Reverse();
-        return GetValueDisplayText(bits);
+        DisplayText = GetValueDisplayText(bits);
     }
 
     public static PacketPartDisplayText GetValueDisplayText (List<Bit> bits)
@@ -176,10 +176,10 @@ public class PacketPart
         Array.Reverse(actualBits);
         var bitsString = string.Join("", actualBits.Select(x => (int) x));
         var longValue = stream.ReadInt64();
-        var longValueStr = bytes.Length > 8 ? "(too large)" : $"0x{longValue:X} = {longValue}";
+        var longValueStr = bytes.Length > 8 ? "(too large)" : $"0x{bytesString} = {longValue}";
         stream.Seek(0, 0);
         var ulongValue = stream.ReadUInt64();
-        var ulongValueStr = bytes.Length > 8 ? "(too large)" : $"0x{ulongValue:X} = {ulongValue}";
+        var ulongValueStr = bytes.Length > 8 ? "(too large)" : $"0x{bytesString} = {ulongValue}";
         stream.Seek(0, 0);
 
         return new PacketPartDisplayText(bitsString, bytesString, textString, longValueStr, ulongValueStr);

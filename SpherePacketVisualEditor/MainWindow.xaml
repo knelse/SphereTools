@@ -5,13 +5,27 @@
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
         Title="MainWindow" Height="1080" Width="1920">
+    <Window.Resources>
+        <Style x:Key="DefinedPacketsListStyle" TargetType="ListBoxItem">
+            <Style.Setters>
+                <Setter Property="FontFamily" Value="Hack" />
+                <Setter Property="FontSize" Value="13" />
+                <Setter Property="Height" Value="20" />
+                <Setter Property="Background" Value="MintCream" />
+                <Setter Property="BorderBrush" Value="Black" />
+                <Setter Property="BorderThickness" Value="0 0 0 1" />
+            </Style.Setters>
+        </Style>
+    </Window.Resources>
     <Grid HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0">
         <Grid.ColumnDefinitions>
-            <ColumnDefinition Width="33" />
+            <ColumnDefinition Width="100" />
             <ColumnDefinition Width="100" />
             <ColumnDefinition Width="200" />
             <ColumnDefinition Width="4" />
             <ColumnDefinition Width="*" />
+            <ColumnDefinition Width="4" />
+            <ColumnDefinition Width="300" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="200" />
@@ -25,12 +39,13 @@
                        TextWrapping="NoWrap" Padding="4 2" />
         </ScrollViewer>
         <GridSplitter Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" ResizeBehavior="PreviousAndNext"
-                      ResizeDirection="Rows" Height="4" Margin="4 0" HorizontalAlignment="Stretch" />
-        <ScrollViewer Grid.Row="2" Grid.Column="0" Name="PacketVisualizerLineNumbersScrollViewer"
+                      ResizeDirection="Rows" Height="4" Padding="0" HorizontalAlignment="Stretch" />
+        <ScrollViewer Grid.Row="2" Grid.Column="0" Name="PacketVisualizerLineNumbersAndValuesScrollViewer"
                       VerticalScrollBarVisibility="Hidden" HorizontalScrollBarVisibility="Hidden">
-            <TextBlock Name="PacketVisualizerLineNumbers" FontFamily="Hack" FontSize="12" LineHeight="16"
+            <TextBlock Name="PacketVisualizerLineNumbersAndValues" FontFamily="Hack" FontSize="12" LineHeight="16"
                        Foreground="DimGray" Background="Ivory"
-                       LineStackingStrategy="BlockLineHeight" TextAlignment="Center" Width="30" Padding="0 0"
+                       LineStackingStrategy="BlockLineHeight" TextAlignment="Right" Width="100" Padding="0 0"
+                       TextWrapping="NoWrap"
                        Margin="0 4" />
         </ScrollViewer>
         <RichTextBox Grid.Row="2" Grid.Column="1" Name="PacketVisualizerControl"
@@ -58,14 +73,46 @@
                     </TextBlock>
                 </ScrollViewer>
             </Border>
-            <Border Grid.Row="1" BorderThickness="0.5" BorderBrush="Black" Padding="0" Margin="0 4">
-                <RichTextBox Name="DefinedPacketPartsControl" FontFamily="Hack" FontSize="13"
-                             HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
-                             IsReadOnly="True" Padding="4">
-                    <FlowDocument Name="DefinedPartsText" FontFamily="Hack" FontSize="14" LineHeight="16"
-                                  LineStackingStrategy="BlockLineHeight" IsOptimalParagraphEnabled="False" />
-                </RichTextBox>
-            </Border>
+            <RichTextBox Grid.Row="1" Name="DefinedPacketPartsControl" FontFamily="Hack" FontSize="13"
+                         HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto"
+                         IsReadOnly="True" Padding="4">
+                <FlowDocument Name="DefinedPartsText" FontFamily="Hack" FontSize="14" LineHeight="16"
+                              LineStackingStrategy="BlockLineHeight" IsOptimalParagraphEnabled="False" />
+            </RichTextBox>
+        </Grid>
+        <GridSplitter Grid.Row="0" Grid.Column="5" Grid.RowSpan="3" ResizeBehavior="PreviousAndNext" Width="4"
+                      Margin="0 4" />
+        <Grid Grid.Row="0" Grid.Column="6" Grid.RowSpan="3">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="300" />
+                <RowDefinition Height="4" />
+                <RowDefinition Height="45" />
+                <RowDefinition Height="45" />
+                <RowDefinition Height="45" />
+                <RowDefinition Height="*" />
+            </Grid.RowDefinitions>
+            <ListBox Name="DefinedPacketsListBox" SelectionMode="Single"
+                     SelectionChanged="DefinedPacketsListBox_OnSelectionChanged"
+                     ItemContainerStyle="{StaticResource DefinedPacketsListStyle}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <GridSplitter Grid.Row="1" ResizeBehavior="PreviousAndNext"
+                          ResizeDirection="Rows" Height="4" Padding="0" HorizontalAlignment="Stretch" />
+            <Button Grid.Row="2" Width="220" Margin="6" Height="30"
+                    Click="CreateNewPacketDefinitionButton_OnClick">
+                Create new packet definition
+            </Button>
+            <Button Grid.Row="3" Width="220" Margin="6 0" Height="30"
+                    Click="SavePacketDefinition_OnClick">
+                Save packet definition
+            </Button>
+            <Button Grid.Row="4" Width="220" Margin="6 0" Height="30" Click="ExportSubpacket_OnClick">
+                Export subpacket
+            </Button>
         </Grid>
     </Grid>
 </Window>

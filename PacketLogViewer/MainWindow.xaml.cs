@@ -642,7 +642,6 @@ public partial class MainWindow
                 Margin = new Thickness(0),
                 Padding = new Thickness(8, 0, 8, 0),
                 LineHeight = 20,
-                // LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
                 TextAlignment = TextAlignment.Left,
                 BreakColumnBefore = false,
                 BreakPageBefore = false
