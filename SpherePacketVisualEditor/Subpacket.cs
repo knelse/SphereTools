@@ -2,7 +2,7 @@
 
 namespace SpherePacketVisualEditor;
 
-public class PacketDefinition
+public class Subpacket
 {
     public List<PacketPart> PacketParts = new ();
     public string Name { get; set; }

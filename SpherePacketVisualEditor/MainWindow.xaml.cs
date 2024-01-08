@@ -19,6 +19,7 @@ public partial class MainWindow
     private const string PacketDefinitionPath = @"C:\\source\\sphPacketDefinitions";
     private const string PacketDefinitionExtension = ".spd";
     private const string ExportedPartExtension = ".spdp";
+    private const string EnumExtension = ".sphenum";
 
     private static readonly byte[] PacketContents = Convert.FromHexString(
         "BE002C0100340FB017008B0F80842E090000000000000000409145068002C00037054021A100E0FFFFFFFF177B4164F80048E8920000000000000000001459640028401000000000140006B829000A03010185840280FFFFFFFF1FEE0595E10320A14B02000000000000000050649101A0004100000000500018E0A600280C0404141E14C6E8BEE6C2C6BEE66A007EB91774860F80842E0900000000000000004091450680020401000000400160809B02A030101050482800F8FFFFFF07C8002C0100340FBA1720B00F80842E090000000000000000409145068002C00037054021A100E0FFFFFFBFC020803E50782040380000F8ED5E80C03E0012BA24000000000000000000451619000A0003DC140085840280FFFFFFFF028300FA40E18120E10000E0C77B0102FB0048E8920000000000000000001459640028000C70530014120A00FEFFFFFF0B0C02E803850702850300805FEF0508EC0320A14B02000000000000000050649101A00030C04D0150482800F8FFFFFF2F3008A00F141E08160E000000C4002C0100340FBE17FC8A0F80842E09000000000000000040914526F411150006B829000A090500FFFFFFFFBFDF0B7EC507404297040000000000000000A0C82233FA880A0003DC140085840280FFFFFFFF1FF005BFE20320A14B020000000000000000506491297D440580016E0A80424201C0FFFFFFFF2FF8825FF10190D02501000000000000000028B2C89C3EA202C00037054021A100E0FFFFFFFF277CC1AFF80048E892000000000000000000145964521F510160809B02A0905000F0FFFFFF0FC4002C0100340FC317FC8A0F80842E09000000000000000040914566F511150006B829000A090500FFFFFFFF3FE20B7EC507404297040000000000000000A0C822D3FA880A0003DC140085840280FFFFFFFF5FF105BFE20320A14B020000000000000000506491797D440580016E0A80424201C0FFFFFFFFCFF8825FF10190D02501000000000000000028B2C8C43EA202C00037054021A100E0FFFFFFFF777CC1AFF80048E892000000000000000000145964661F510160809B02A0905000F0FFFFFF0FCA002C0100340FC817FC8A0F80842E090000000000000000409145A6F611150006B829000A090500FFFFFFFFBFE40B88C507404297040000000000000000A0C8224B1B150006B829000A090500FFFFFFFF85870200000000809FF205C4E20320A14B020000000000000000506491B58D0A0003DC140085840280FFFFFFFFC2434100000000C06FF90262F10190D02501000000000000000028B2C8E2460580016E0A80424201C0FFFFFF7FE1A14000000000E0C77C01B1F80048E8920000000000000000001459647523B9002C0100340FCC17104B0160809B02A0905000F0FFFFFF5F78282000000000F8C93502193E0012BA24000000000000000000451619000A1004000000000580016E0A80C240404021A100E0FFFFFFFFB7E54865F80048E8920000000000000000001459640028401000000000140006B829000A03010185078531BAAFB9B0B1AF391880DF9A2395E10320A14B02000000000000000050649101A0004100000000500018E0A600280C0404141E14C6E8BEE6C2C6BEE6620000A3002C0100340F6C8E54860F80842E0900000000000000004091450680020401000000400160809B02A030101050785018A3FB9A0B1BFB9A9301F8B53952193E0012BA24000000000000000000451619000A1004000000000580016E0A80C2404040E141618CEE6B2E6CEC6B6E06E0E7E64865F80048E8920000000000000000001459640028401000000000140006B829000A03010185078531BAAFB9B0B1AF391A0017002C0100F311970AAE9DE6C1E6056910645CF961BF0E");
@@ -31,9 +32,12 @@ public partial class MainWindow
 
     private static SolidColorBrush SelectionBrush = null!;
 
+    public static readonly Dictionary<string, Dictionary<int, string>> DefinedEnums = new ();
+    private readonly List<string> DefinedEnumNames = new ();
     public readonly ObservableCollection<PacketDefinition> PacketDefinitions = new ();
 
-    private List<PacketPart> DefinedPacketParts = new ();
+    public readonly ObservableCollection<PacketPart> PacketParts = new ();
+    public readonly ObservableCollection<Subpacket> Subpackets = new ();
 
     private TextPointer? EndTextPointer;
     private int? LastCaretOffset;
@@ -57,6 +61,7 @@ public partial class MainWindow
         PacketVisualizerControl.PreviewMouseWheel += (_, _) => { };
         var scrollViewerProperty =
             typeof (RichTextBox).GetProperty("ScrollViewer", BindingFlags.NonPublic | BindingFlags.Instance)!;
+        LoadEnums();
 
         Loaded += (_, _) =>
         {
@@ -73,9 +78,45 @@ public partial class MainWindow
                 (sender, _) => { SynchronizeScrollValues(sender); };
         };
 
+        KeyUp += (_, e) =>
+        {
+            if (e.KeyboardDevice.Modifiers != ModifierKeys.Control || e.Key != Key.S)
+            {
+                return;
+            }
+
+            if (DefinedPacketsListBox.SelectedItem is null)
+            {
+                return;
+            }
+
+            SaveSelectedPacketDefinition();
+        };
+
         CreateFlowDocumentWithHighlights(false, true);
 
         LoadPacketDefinitions();
+
+        PacketPartsInDefinitionListBox.ItemsSource = PacketParts;
+    }
+
+    private void LoadEnums ()
+    {
+        var enumFiles = Directory.EnumerateFiles(PacketDefinitionPath, $"*{EnumExtension}");
+        foreach (var enumFile in enumFiles)
+        {
+            var enumName = Path.GetFileNameWithoutExtension(enumFile);
+            DefinedEnums.Add(enumName, new Dictionary<int, string>());
+            DefinedEnumNames.Add(enumName);
+            var enumEntryLines = File.ReadAllLines(enumFile).Select(x =>
+                x.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToList();
+            foreach (var enumEntryLine in enumEntryLines)
+            {
+                var id = int.Parse(enumEntryLine[0]);
+                var name = enumEntryLine[1];
+                DefinedEnums[enumName].Add(id, name);
+            }
+        }
     }
 
     private void LoadPacketDefinitions ()
@@ -95,6 +136,28 @@ public partial class MainWindow
                 Name = Path.GetFileNameWithoutExtension(definitionFile),
                 FilePath = definitionFile
             });
+        }
+
+        if (PacketDefinitions.Any())
+        {
+            DefinedPacketsListBox.SelectedItem = PacketDefinitions.First();
+        }
+
+        SubpacketsListBox.ItemsSource = Subpackets;
+
+        var subpacketFiles = Directory.EnumerateFiles(PacketDefinitionPath, $"*{ExportedPartExtension}");
+        foreach (var subpacketFile in subpacketFiles)
+        {
+            Subpackets.Add(new Subpacket
+            {
+                Name = Path.GetFileNameWithoutExtension(subpacketFile),
+                FilePath = subpacketFile
+            });
+        }
+
+        if (Subpackets.Any())
+        {
+            SubpacketsListBox.SelectedItem = Subpackets.First();
         }
     }
 
@@ -203,7 +266,7 @@ public partial class MainWindow
             B = (byte) Random.Shared.Next(0, 255)
         };
 
-        var dialog = new CreatePacketPartDefinitionDialog(color)
+        var dialog = new CreatePacketPartDefinitionDialog(color, DefinedEnumNames)
         {
             Owner = this
         };
@@ -214,7 +277,8 @@ public partial class MainWindow
             var type = dialog.PacketPartType ?? PacketPartType.BITS;
             var start = StartTextPointer;
             var end = EndTextPointer;
-            AddNewDefinedPacketPart(CreatePacketPart(name, type, start, end,
+            var enumName = dialog.EnumName;
+            AddNewDefinedPacketPart(CreatePacketPart(name, enumName, type, start, end,
                 new SolidColorBrush(color)));
         }
     }
@@ -262,7 +326,7 @@ public partial class MainWindow
 
         for (var i = 0; i < PacketContentBits.Length; i++)
         {
-            var currentPacketPart = DefinedPacketParts.FirstOrDefault(x => x.ContainsBitPosition(i));
+            var currentPacketPart = PacketParts.FirstOrDefault(x => x.ContainsBitPosition(i));
             var inSelection = keepSelection && actualStart <= i && actualEnd > i;
 
             var textBlockChanged = (inSelection && !wasInSelection) || (wasInSelection && !inSelection) ||
@@ -310,6 +374,8 @@ public partial class MainWindow
 
             if (i % 8 == 7)
             {
+                // flip bits
+                lineByte = (int) ((((ulong) lineByte * 0x0202020202UL) & 0x010884422010UL) % 1023);
                 linesSb.Append($"[{lineByte:X2} ")
                     .Append($"{lineByte}".PadLeft(3, ' ')).Append("] ").AppendLine($"{i / 8} ".PadLeft(5, ' '));
                 lineByte = 0;
@@ -347,12 +413,7 @@ public partial class MainWindow
                 }
 
                 PacketVisualizerDefinedPacketValues.Inlines.Add(packetDisplaySb.ToString());
-                PacketVisualizerDefinedPacketValues.Inlines.Add(new Run(part.Name)
-                {
-                    Background = part.HighlightColor
-                });
-                PacketVisualizerDefinedPacketValues.Inlines.Add(
-                    $": {part.GetDisplayTextForValueType()} [{Enum.GetName(part.PacketPartType) ?? string.Empty}] ");
+                AddPacketPartInlines(PacketVisualizerDefinedPacketValues.Inlines, part);
                 packetDisplaySb.Clear();
             }
 
@@ -399,7 +460,8 @@ public partial class MainWindow
         e.Handled = true;
     }
 
-    private PacketPart CreatePacketPart (string name, PacketPartType packetPartType, TextPointer start,
+    private PacketPart CreatePacketPart (string name, string? enumName, PacketPartType packetPartType,
+        TextPointer start,
         TextPointer end, Brush highlightColor)
     {
         var bitOffsetStart = start.GetCharOffset();
@@ -424,34 +486,89 @@ public partial class MainWindow
         var bits = CurrentContentBitStream.ReadBits(bitLength).ToList();
         bits.Reverse();
         var streamValueLength = (long) bits.Count;
-        return new PacketPart(streamValueLength, highlightColor, name, packetPartType, actualStart, actualEnd, bits);
+        return new PacketPart(streamValueLength, highlightColor, name, enumName, packetPartType, actualStart, actualEnd,
+            bits);
     }
 
     private void UpdateDefinedPackets ()
     {
         DefinedPacketPartsControl.Document.Blocks.Clear();
-        DefinedPacketParts.Sort((a, b) => a.StreamPositionStart.CompareTo(b.StreamPositionStart));
-        foreach (var part in DefinedPacketParts)
+        var toSort = PacketParts.ToList();
+        toSort.Sort((a, b) => a.StreamPositionStart.CompareTo(b.StreamPositionStart));
+        PacketParts.Clear();
+        toSort.ForEach(x => PacketParts.Add(x));
+        foreach (var part in PacketParts)
         {
             var paragraph = new Paragraph();
-            paragraph.Inlines.Add(new Run($"{part.Name}")
+            if (part.Name == "entity_id")
             {
-                Background = part.HighlightColor
-            });
-            paragraph.Inlines.Add(": ");
-            var valueStr = part.GetDisplayTextForValueType();
-            paragraph.Inlines.Add(valueStr);
+                // it's a hack for now
+                paragraph.Inlines.Add(
+                    $"=============================================== {part.DisplayText.Ulong} ===============================================\n\n");
+            }
 
-            paragraph.Inlines.Add($" [{Enum.GetName(part.PacketPartType) ?? string.Empty}]");
-            paragraph.Inlines.Add($" [{part.StreamPositionEnd} to {part.StreamPositionStart}, {part.BitLength} bits]");
+            AddPacketPartInlines(paragraph.Inlines, part);
+
             DefinedPacketPartsControl.Document.Blocks.Add(paragraph);
         }
     }
 
-    private void AddNewDefinedPacketPart (PacketPart packetPart)
+    private void AddPacketPartInlines (InlineCollection inlineCollection, PacketPart part)
+    {
+        inlineCollection.Add(new Run($"{part.Name}")
+        {
+            Background = part.HighlightColor
+        });
+        inlineCollection.Add(": ");
+        var valueStr = part.GetDisplayTextForValueType();
+
+        if (part.EnumName is not null)
+        {
+            var enumValue = part.DisplayText.EnumValue?.ToUpper() ?? string.Empty;
+            inlineCollection.Add(new Run(enumValue) { FontWeight = FontWeights.Bold });
+            var enumName = SnakeCaseToCamelCase(part.EnumName);
+            inlineCollection.Add(new Run($" ({enumName}::{enumValue} = {valueStr})") { Foreground = Brushes.Gray });
+        }
+        else
+        {
+            var valueStrSplit = valueStr
+                .Split('=', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
+            if (valueStrSplit.Count > 1)
+            {
+                // hex = dec, like 0x17B0 = 6064
+                inlineCollection.Add(new Run(valueStrSplit[0]) { FontWeight = FontWeights.Bold });
+                inlineCollection.Add(new Run($" = {valueStrSplit[1]}") { Foreground = Brushes.Gray });
+            }
+
+            else
+            {
+                var valueTypeStr = part.PacketPartType == PacketPartType.BITS ? "0b" :
+                    part.PacketPartType == PacketPartType.BYTES ? "0x" : string.Empty;
+                inlineCollection.Add(new Run(valueTypeStr + valueStr) { FontWeight = FontWeights.Bold });
+            }
+        }
+
+        inlineCollection.Add(
+            new Run(
+                $" [{Enum.GetName(part.PacketPartType) ?? string.Empty}] [{part.StreamPositionEnd} to {part.StreamPositionStart}, {part.BitLength} bits] ")
+            {
+                Foreground = Brushes.Gray
+            });
+    }
+
+    private void AddNewDefinedPacketPartBulk (List<PacketPart> packetParts)
+    {
+        packetParts.ForEach(x => AddNewDefinedPacketPart(x, true));
+        UpdatePacketPartValues();
+        UpdateDefinedPackets();
+        CreateFlowDocumentWithHighlights(false);
+        ClearSelection();
+    }
+
+    private void AddNewDefinedPacketPart (PacketPart packetPart, bool isBulk = false)
     {
         var newPacketParts = new List<PacketPart>();
-        foreach (var definedPacketPart in DefinedPacketParts)
+        foreach (var definedPacketPart in PacketParts)
         {
             if (packetPart.Overlaps(definedPacketPart))
             {
@@ -497,10 +614,14 @@ public partial class MainWindow
 
         newPacketParts.Add(packetPart);
         newPacketParts.Sort((a, b) => a.StreamPositionStart.CompareTo(b.StreamPositionStart));
-        DefinedPacketParts = newPacketParts;
-        UpdateDefinedPackets();
-        CreateFlowDocumentWithHighlights(false);
-        ClearSelection();
+        PacketParts.Clear();
+        newPacketParts.ForEach(x => PacketParts.Add(x));
+        if (!isBulk)
+        {
+            UpdateDefinedPackets();
+            CreateFlowDocumentWithHighlights(false);
+            ClearSelection();
+        }
     }
 
     private void UpdateSelectedValueDisplay (List<Bit> bits)
@@ -511,7 +632,7 @@ public partial class MainWindow
             return;
         }
 
-        var displayText = PacketPart.GetValueDisplayText(bits);
+        var displayText = PacketPart.GetValueDisplayText(bits, null);
         var sb = new StringBuilder();
         sb.AppendLine($"Bits:\t {displayText.Bits} ({displayText.Bits.Length})");
         sb.AppendLine($"Bytes:\t {displayText.Bytes}");
@@ -528,18 +649,27 @@ public partial class MainWindow
 
     private void CreateNewPacketDefinitionButton_OnClick (object sender, RoutedEventArgs e)
     {
+        CreatePacketDefinition();
+    }
+
+    private void CreatePacketDefinition ()
+    {
         var dialog = new SaveNewPacketDefinitionDialog
         {
             Owner = this
         };
         if (dialog.ShowDialog() == true)
         {
+            var path = Path.Combine(PacketDefinitionPath, dialog.Name + PacketDefinitionExtension);
             var definition = new PacketDefinition
             {
-                Name = dialog.Name
+                Name = dialog.Name,
+                FilePath = path
             };
 
             PacketDefinitions.Add(definition);
+            SavePacketDefinition(dialog.Name, 0, 0);
+            DefinedPacketsListBox.SelectedItem = definition;
         }
     }
 
@@ -552,8 +682,8 @@ public partial class MainWindow
     {
         if (DefinedPacketsListBox.SelectedItem is not PacketDefinition selectedDefinition)
         {
-            MessageBox.Show("Nothing to save");
-            return;
+            CreatePacketDefinition();
+            selectedDefinition = (PacketDefinition) DefinedPacketsListBox.SelectedItem;
         }
 
         SavePacketDefinition(selectedDefinition.Name, 0, PacketContentBits.Length);
@@ -565,25 +695,26 @@ public partial class MainWindow
         var fileContentsSb = new StringBuilder();
         var currentIndex = startBitOffset;
         var nextPacketPartIndex =
-            DefinedPacketParts.FindIndex(x => x.StreamPositionStart.GetBitPosition() >= startBitOffset);
+            PacketParts.ToList().FindIndex(x => x.StreamPositionStart.GetBitPosition() >= startBitOffset);
         while (currentIndex < endBitOffset)
         {
             var nextPacketPart = nextPacketPartIndex == -1
                 ? null
-                : DefinedPacketParts.Count > nextPacketPartIndex
-                    ? DefinedPacketParts[nextPacketPartIndex]
+                : PacketParts.Count > nextPacketPartIndex
+                    ? PacketParts[nextPacketPartIndex]
                     : null;
 
-            var name = PacketPart.UndefinedPacketPartName;
+            var name = PacketPart.UndefinedFieldValue;
             var partType = PacketPartType.BITS;
+            var enumName = PacketPart.UndefinedFieldValue;
             Brush highlightColor = Brushes.Transparent;
             Bit[] bits;
             var startPosition = currentIndex;
             if (nextPacketPart is null)
             {
                 // only undef until end of packet
-                var endBitIndex = endBitOffset > CurrentContentBitStream.Length
-                    ? (int) CurrentContentBitStream.Length
+                var endBitIndex = endBitOffset > PacketContentBits.Length
+                    ? PacketContentBits.Length
                     : endBitOffset;
                 bits = PacketContentBits[currentIndex..endBitIndex];
             }
@@ -604,6 +735,7 @@ public partial class MainWindow
                     bits = PacketContentBits[nextPartStartIndex..nextPartEndIndex];
                     partType = nextPacketPart.PacketPartType;
                     name = nextPacketPart.Name;
+                    enumName = nextPacketPart.EnumName ?? PacketPart.UndefinedFieldValue;
                     highlightColor = nextPacketPart.HighlightColor;
                     currentIndex = nextPartEndIndex;
                     nextPacketPartIndex++;
@@ -612,8 +744,13 @@ public partial class MainWindow
 
             var solidColor = ((SolidColorBrush) highlightColor).Color;
 
+            if (exportedPart)
+            {
+                startPosition -= startBitOffset;
+            }
+
             fileContentsSb.AppendLine(
-                $"{name}\t{Enum.GetName(partType)}\t{startPosition}\t{bits.Length}\t{solidColor.R}\t{solidColor.G}" +
+                $"{name}\t{Enum.GetName(partType)}\t{startPosition}\t{bits.Length}\t{enumName}\t{solidColor.R}\t{solidColor.G}" +
                 $"\t{solidColor.B}\t{solidColor.A}\t{string.Join(null, bits.Reverse().Select(x => x.AsInt()))}");
 
             if (nextPacketPart is null)
@@ -630,7 +767,7 @@ public partial class MainWindow
 
     private void UpdatePacketPartValues ()
     {
-        foreach (var packetPart in DefinedPacketParts)
+        foreach (var packetPart in PacketParts)
         {
             CurrentContentBitStream.Seek(packetPart.StreamPositionStart.Offset, packetPart.StreamPositionStart.Bit);
             packetPart.Value = CurrentContentBitStream.ReadBits(packetPart.BitLength).Reverse().ToList();
@@ -646,7 +783,8 @@ public partial class MainWindow
         }
 
         packetDefinition.LoadFromFile();
-        DefinedPacketParts = packetDefinition.PacketParts;
+        PacketParts.Clear();
+        packetDefinition.PacketParts.ForEach(x => PacketParts.Add(x));
         LastVerticalOffset = PacketDisplayScrollViewer?.VerticalOffset ?? 0;
         UpdatePacketPartValues();
         UpdateDefinedPackets();
@@ -668,6 +806,92 @@ public partial class MainWindow
             var endBit = StreamPosition.FlipBitOffset(dialog.EndBit);
 
             SavePacketDefinition(name, startOffset * 8 + startBit, endOffset * 8 + endBit, true);
+            if (Subpackets.All(x => x.Name != name))
+            {
+                Subpackets.Add(new Subpacket
+                {
+                    Name = name,
+                    FilePath = Path.Combine(PacketDefinitionPath, name + ExportedPartExtension)
+                });
+            }
         }
+    }
+
+    private void DeletePacketPartInCurrentDefinition_OnClick (object sender, RoutedEventArgs e)
+    {
+        if (PacketPartsInDefinitionListBox.SelectedItem is not PacketPart packetPart)
+        {
+            return;
+        }
+
+        if (MessageBox.Show("Delete selected part?", "Delete selected part?",
+                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) !=
+            MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        PacketParts.Remove(packetPart);
+        UpdatePacketPartValues();
+        UpdateDefinedPackets();
+        CreateFlowDocumentWithHighlights();
+    }
+
+    private void ImportFromSubpacket_OnClick (object sender, RoutedEventArgs e)
+    {
+        if (SubpacketsListBox.SelectedItem is not Subpacket subpacket)
+        {
+            return;
+        }
+
+        var dialog = new ImportFromSubpacketDialog
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var startOffset = dialog.StartOffset;
+        var startBit = StreamPosition.FlipBitOffset(dialog.StartBit);
+
+        subpacket.LoadFromFile();
+
+        AddNewDefinedPacketPartBulk(subpacket.PacketParts.Select(x => x.ChangeOffsetAndBit(startOffset, startBit))
+            .ToList());
+    }
+
+    private void DeletePacketDefinition_OnClick (object sender, RoutedEventArgs e)
+    {
+        if (DefinedPacketsListBox.SelectedItem is not PacketDefinition packetDefinition)
+        {
+            return;
+        }
+
+        if (MessageBox.Show("Delete selected definition?", "Delete selected definition?",
+                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) ==
+            MessageBoxResult.Yes)
+        {
+            DeletePacketDefinition(packetDefinition);
+        }
+    }
+
+    private void DeletePacketDefinition (PacketDefinition packetDefinition)
+    {
+        PacketDefinitions.Remove(packetDefinition);
+        File.Delete(packetDefinition.FilePath);
+        if (PacketDefinitions.Any())
+        {
+            DefinedPacketsListBox.SelectedItem = PacketDefinitions.First();
+        }
+    }
+
+    public static string SnakeCaseToCamelCase (string input)
+    {
+        return input
+            .Split(new[] { "_" }, StringSplitOptions.RemoveEmptyEntries)
+            .Select(s => char.ToUpperInvariant(s[0]) + s.Substring(1, s.Length - 1))
+            .Aggregate(string.Empty, (s1, s2) => s1 + s2);
     }
 }

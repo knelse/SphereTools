@@ -9,6 +9,9 @@
     <Grid Margin="8" VerticalAlignment="Top">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="50" />
+            <ColumnDefinition Width="110" />
+            <ColumnDefinition Width="50" />
+            <ColumnDefinition Width="110" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
@@ -18,9 +21,13 @@
             <RowDefinition Height="*" />
         </Grid.RowDefinitions>
         <Label Grid.Row="0" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right">Name: </Label>
-        <TextBox Name="PacketPartName" Grid.Row="0" Grid.Column="1" MinWidth="250" VerticalAlignment="Center" />
-        <Label Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right">Type: </Label>
-        <ComboBox Name="PacketPartTypeComboBox" Grid.Row="1" Grid.Column="1" Height="20" Width="100"
+        <TextBox Name="PacketPartName" Grid.Row="0" Grid.Column="1" Grid.ColumnSpan="4" MinWidth="250"
+                 VerticalAlignment="Center" />
+        <Label Grid.Row="1" Grid.Column="0" VerticalAlignment="Center" HorizontalAlignment="Right"
+               VerticalContentAlignment="Center">
+            Type:
+        </Label>
+        <ComboBox Name="PacketPartTypeComboBox" Grid.Row="1" Grid.Column="1" Height="25" Width="100"
                   HorizontalAlignment="Left" SelectionChanged="PacketPartTypeComboBox_OnSelectionChanged">
             <ComboBox.ItemTemplate>
                 <DataTemplate>
@@ -28,7 +35,17 @@
                 </DataTemplate>
             </ComboBox.ItemTemplate>
         </ComboBox>
-        <ColorPickerWPF:ColorPickerControl Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="2" x:Name="ColorPicker"
+        <Label Grid.Row="1" Grid.Column="2" VerticalAlignment="Center" HorizontalAlignment="Right">Enum: </Label>
+        <ComboBox Name="EnumNameComboBox" Grid.Row="1" Grid.Column="3" Height="25" Width="100"
+                  HorizontalAlignment="Left" SelectionChanged="EnumNameComboBox_OnSelectionChanged"
+                  VerticalContentAlignment="Center">
+            <ComboBox.ItemTemplate>
+                <DataTemplate>
+                    <TextBlock Text="{Binding Name}" />
+                </DataTemplate>
+            </ComboBox.ItemTemplate>
+        </ComboBox>
+        <ColorPickerWPF:ColorPickerControl Grid.Column="0" Grid.Row="2" Grid.ColumnSpan="5" x:Name="ColorPicker"
                                            HorizontalAlignment="Stretch" Margin="0,10,0,0" VerticalAlignment="Top" />
         <WrapPanel Grid.Column="0" Grid.ColumnSpan="2" Grid.Row="3" HorizontalAlignment="Center" Margin="0,0,0,0"
                    VerticalAlignment="Top">

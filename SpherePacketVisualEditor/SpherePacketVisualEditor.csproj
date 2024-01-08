@@ -15,4 +15,12 @@
         <PackageReference Include="ColorPickerWPF" Version="1.0.9"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <Page Update="ImportFromSubpacketDialog.xaml">
+            <Generator>MSBuild:Compile</Generator>
+            <XamlRuntime>Wpf</XamlRuntime>
+            <SubType>Designer</SubType>
+        </Page>
+    </ItemGroup>
+
 </Project>

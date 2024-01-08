@@ -4,17 +4,24 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="MainWindow" Height="1080" Width="1920">
+        Top="75"
+        Title="MainWindow" Height="1440" Width="2560">
     <Window.Resources>
-        <Style x:Key="DefinedPacketsListStyle" TargetType="ListBoxItem">
+        <Style x:Key="PacketsListStyle" TargetType="ListBoxItem">
             <Style.Setters>
                 <Setter Property="FontFamily" Value="Hack" />
                 <Setter Property="FontSize" Value="13" />
                 <Setter Property="Height" Value="20" />
-                <Setter Property="Background" Value="MintCream" />
                 <Setter Property="BorderBrush" Value="Black" />
                 <Setter Property="BorderThickness" Value="0 0 0 1" />
             </Style.Setters>
+            <Style.Triggers>
+                <Trigger Property="IsSelected" Value="True">
+                    <Setter Property="FontSize" Value="16" />
+                    <Setter Property="FontWeight" Value="Bold" />
+                    <Setter Property="Height" Value="30" />
+                </Trigger>
+            </Style.Triggers>
         </Style>
     </Window.Resources>
     <Grid HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0">
@@ -25,7 +32,7 @@
             <ColumnDefinition Width="4" />
             <ColumnDefinition Width="*" />
             <ColumnDefinition Width="4" />
-            <ColumnDefinition Width="300" />
+            <ColumnDefinition Width="400" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>
             <RowDefinition Height="200" />
@@ -84,35 +91,121 @@
                       Margin="0 4" />
         <Grid Grid.Row="0" Grid.Column="6" Grid.RowSpan="3">
             <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="300" />
+                <RowDefinition Height="4" />
+                <RowDefinition Height="45" />
+                <RowDefinition Height="30" />
+                <RowDefinition Height="300" />
+                <RowDefinition Height="4" />
+                <RowDefinition Height="45" />
+                <RowDefinition Height="30" />
                 <RowDefinition Height="300" />
                 <RowDefinition Height="4" />
                 <RowDefinition Height="45" />
                 <RowDefinition Height="45" />
-                <RowDefinition Height="45" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <ListBox Name="DefinedPacketsListBox" SelectionMode="Single"
+            <Label HorizontalAlignment="Stretch" HorizontalContentAlignment="Center" Background="LightSalmon"
+                   VerticalAlignment="Stretch" VerticalContentAlignment="Center" BorderBrush="Black" Margin="0 4"
+                   Padding="0"
+                   BorderThickness="0.5" FontWeight="Bold">
+                Existing packet definitions
+            </Label>
+            <ListBox Grid.Row="1" Name="DefinedPacketsListBox" SelectionMode="Single"
                      SelectionChanged="DefinedPacketsListBox_OnSelectionChanged"
-                     ItemContainerStyle="{StaticResource DefinedPacketsListStyle}">
+                     ItemContainerStyle="{StaticResource PacketsListStyle}">
                 <ListBox.ItemTemplate>
                     <DataTemplate>
                         <TextBlock Text="{Binding Name}" />
                     </DataTemplate>
                 </ListBox.ItemTemplate>
             </ListBox>
-            <GridSplitter Grid.Row="1" ResizeBehavior="PreviousAndNext"
+            <GridSplitter Grid.Row="2" ResizeBehavior="PreviousAndNext"
                           ResizeDirection="Rows" Height="4" Padding="0" HorizontalAlignment="Stretch" />
-            <Button Grid.Row="2" Width="220" Margin="6" Height="30"
-                    Click="CreateNewPacketDefinitionButton_OnClick">
-                Create new packet definition
-            </Button>
-            <Button Grid.Row="3" Width="220" Margin="6 0" Height="30"
-                    Click="SavePacketDefinition_OnClick">
-                Save packet definition
-            </Button>
-            <Button Grid.Row="4" Width="220" Margin="6 0" Height="30" Click="ExportSubpacket_OnClick">
-                Export subpacket
-            </Button>
+            <Grid Grid.Row="3" HorizontalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="50" />
+                    <ColumnDefinition Width="50" />
+                    <ColumnDefinition Width="50" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Width="40" Margin="5 0" Height="30" FontWeight="Bold" FontSize="24"
+                        Click="SavePacketDefinition_OnClick" VerticalContentAlignment="Center" Padding="0">
+                    🖫
+                </Button>
+                <Button Grid.Column="1" Width="40" Margin="5 0" Height="30" FontWeight="Bold" FontSize="16"
+                        Click="CreateNewPacketDefinitionButton_OnClick">
+                    ➕
+                </Button>
+                <Button Grid.Column="2" Width="40" Margin="5 0" Height="30" FontWeight="Bold" FontSize="16"
+                        Click="DeletePacketDefinition_OnClick">
+                    ➖
+                </Button>
+            </Grid>
+            <Label Grid.Row="4" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                   Background="LightSalmon"
+                   VerticalAlignment="Stretch" VerticalContentAlignment="Center" BorderBrush="Black" Margin="0 4"
+                   Padding="0"
+                   BorderThickness="0.5" FontWeight="Bold">
+                Packet parts in definition
+            </Label>
+            <ListBox Grid.Row="5" Name="PacketPartsInDefinitionListBox" SelectionMode="Single"
+                     ItemContainerStyle="{StaticResource PacketsListStyle}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding PartListDisplayText}" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <GridSplitter Grid.Row="6" ResizeBehavior="PreviousAndNext"
+                          ResizeDirection="Rows" Height="4" Padding="0" HorizontalAlignment="Stretch" />
+            <Grid Grid.Row="7" HorizontalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="50" />
+                    <ColumnDefinition Width="50" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Margin="5 0" Width="40" Height="30" FontWeight="Bold" FontSize="24"
+                        VerticalContentAlignment="Center" Padding="0"
+                        Click="ImportFromSubpacket_OnClick">
+                    🖉
+                </Button>
+                <Button Grid.Column="1" Width="40" Margin="5 0" Height="30" FontWeight="Bold" FontSize="16"
+                        Click="DeletePacketPartInCurrentDefinition_OnClick">
+                    ➖
+                </Button>
+            </Grid>
+            <Label Grid.Row="8" HorizontalAlignment="Stretch" HorizontalContentAlignment="Center"
+                   Background="LightSalmon"
+                   VerticalAlignment="Stretch" VerticalContentAlignment="Center" BorderBrush="Black" Margin="0 4"
+                   Padding="0"
+                   BorderThickness="0.5" FontWeight="Bold">
+                Existing subpackets
+            </Label>
+            <ListBox Grid.Row="9" Name="SubpacketsListBox" SelectionMode="Single"
+                     ItemContainerStyle="{StaticResource PacketsListStyle}">
+                <ListBox.ItemTemplate>
+                    <DataTemplate>
+                        <TextBlock Text="{Binding Name}" />
+                    </DataTemplate>
+                </ListBox.ItemTemplate>
+            </ListBox>
+            <GridSplitter Grid.Row="10" ResizeBehavior="PreviousAndNext"
+                          ResizeDirection="Rows" Height="4" Padding="0" HorizontalAlignment="Stretch" />
+            <Grid Grid.Row="11" HorizontalAlignment="Center">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="50" />
+                    <ColumnDefinition Width="50" />
+                </Grid.ColumnDefinitions>
+                <Button Grid.Column="0" Margin="5 0" Width="40" Height="30" FontWeight="Bold" FontSize="24"
+                        VerticalContentAlignment="Center" Padding="0"
+                        Click="ImportFromSubpacket_OnClick">
+                    🧱
+                </Button>
+                <Button Grid.Column="1" Width="40" Margin="5 0" Height="30" FontWeight="Bold" FontSize="16"
+                        Click="ExportSubpacket_OnClick">
+                    ➕
+                </Button>
+            </Grid>
         </Grid>
     </Grid>
 </Window>
