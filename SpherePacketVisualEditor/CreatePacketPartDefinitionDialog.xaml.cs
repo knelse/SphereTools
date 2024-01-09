@@ -36,6 +36,8 @@ public partial class CreatePacketPartDefinitionDialog
         PacketPartName.Focus();
     }
 
+    public bool LengthFromPreviousField => LengthFromPreviousFieldCheckBox.IsChecked ?? false;
+
     public string Name => PacketPartName.Text;
     public Color Color => ColorPicker.Color;
 

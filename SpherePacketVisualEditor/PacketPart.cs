@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Windows.Media;
 using BitStreams;
+using SphServer.Helpers;
 
 namespace SpherePacketVisualEditor;
 
@@ -13,7 +14,9 @@ public enum PacketPartType
     BYTES,
     INT64,
     UINT64,
-    STRING
+    STRING,
+    COORDS_CLIENT,
+    COORDS_SERVER
 }
 
 public record PacketPartDisplayText (
@@ -22,7 +25,9 @@ public record PacketPartDisplayText (
     string textStr,
     string longStr,
     string ulongStr,
-    string? enumValueStr)
+    string? enumValueStr,
+    string? coordsClientStr,
+    string? coordsServerStr)
 {
     public readonly string Bits = bitsStr;
     public readonly string Bytes = bytesStr;
@@ -30,6 +35,8 @@ public record PacketPartDisplayText (
     public readonly string Long = longStr;
     public readonly string Text = textStr;
     public readonly string Ulong = ulongStr;
+    public readonly string? CoordsClient = coordsClientStr;
+    public readonly string? CoordsServer = coordsServerStr;
 }
 
 public record StreamPosition (long Offset, int Bit)
@@ -93,20 +100,23 @@ public record StreamPosition (long Offset, int Bit)
 public class PacketPart
 {
     public const string UndefinedFieldValue = "__undef";
-    public readonly long BitLength;
+    public const string LengthFromPreviousFieldValue = "__fromPrevious";
+    public long BitLength;
     public readonly string? EnumName;
     public readonly Brush HighlightColor;
+    public readonly bool LengthFromPreviousField;
     public readonly PacketPartType PacketPartType;
     public readonly StreamPosition StreamPositionEnd;
     public readonly StreamPosition StreamPositionStart;
     public PacketPartDisplayText DisplayText;
     public List<Bit> Value;
 
-    public PacketPart (long length, Brush highlightColor, string name, string? enumName, PacketPartType packetPartType,
-        StreamPosition streamPositionStart,
-        StreamPosition streamPositionEnd, List<Bit> value)
+    public PacketPart (long length, Brush highlightColor, string name, string? enumName, bool lengthFromPreviousField,
+        PacketPartType packetPartType,
+        StreamPosition streamPositionStart, StreamPosition streamPositionEnd, List<Bit> value)
     {
         BitLength = length;
+        LengthFromPreviousField = lengthFromPreviousField;
         HighlightColor = highlightColor;
         Name = name;
         EnumName = enumName;
@@ -153,8 +163,8 @@ public class PacketPart
 
         var newValue = Value.Skip(skipEnd > 0 ? skipEnd : 0).SkipLast(skipStart > 0 ? skipStart : 0).ToList();
 
-        return new PacketPart(newLength, HighlightColor, name ?? Name, EnumName, PacketPartType, newStart, newEnd,
-            newValue);
+        return new PacketPart(newLength, HighlightColor, name ?? Name, EnumName, false, PacketPartType,
+            newStart, newEnd, newValue);
     }
 
     public string GetDisplayTextForValueType ()
@@ -171,6 +181,10 @@ public class PacketPart
                 return DisplayText.Ulong;
             case PacketPartType.STRING:
                 return DisplayText.Text;
+            case PacketPartType.COORDS_CLIENT:
+                return DisplayText.CoordsClient;
+            case PacketPartType.COORDS_SERVER:
+                return DisplayText.CoordsServer;
             default:
                 return string.Empty;
         }
@@ -214,6 +228,10 @@ public class PacketPart
         var ulongValue = stream.ReadUInt64();
         var ulongValueStr = bytes.Length > 8 ? "(too large)" : $"0x{bytesString} = {ulongValue}";
         stream.Seek(0, 0);
+        var coordsServer = bytes.Length >= 4 ? CoordsHelper.DecodeServerCoordinate(bytes) : (double?) null;
+        var coordsServerStr = coordsServer is null ? null : $"{coordsServer:F2}";
+        var coordsClient = bytes.Length >= 5 ? CoordsHelper.DecodeClientCoordinate(bytes) : (double?) null;
+        var coordsClientStr = coordsClient is null ? null : $"{coordsClient:F2}";
 
         var enumValueStr = enumName is null ? null : "(undef)";
         if (bytes.Length <= 8 && enumName is not null && MainWindow.DefinedEnums.ContainsKey(enumName) &&
@@ -223,7 +241,7 @@ public class PacketPart
         }
 
         return new PacketPartDisplayText(bitsString, bytesString, textString, longValueStr, ulongValueStr,
-            enumValueStr);
+            enumValueStr, coordsClientStr, coordsServerStr);
     }
 
     public static List<PacketPart> LoadFromFile (string filePath, string groupName)
@@ -251,7 +269,16 @@ public class PacketPart
                 ? partType
                 : PacketPartType.BITS;
             var start = int.Parse(fieldValues[2]);
-            var length = int.Parse(fieldValues[3]);
+            var length = 0;
+            var lengthFromPrevious = false;
+            if (fieldValues[3] == LengthFromPreviousFieldValue)
+            {
+                lengthFromPrevious = true;
+            }
+            else
+            {
+                length = int.Parse(fieldValues[3]);
+            }
 
             var enumName = fieldValues[4];
             if (enumName == UndefinedFieldValue)
@@ -280,8 +307,8 @@ public class PacketPart
                 Color = color
             };
 
-            var part = new PacketPart(length, highlightColor, partName, enumName, packetPartType, startPosition,
-                endPosition, new List<Bit>());
+            var part = new PacketPart(length, highlightColor, partName, enumName, lengthFromPrevious, packetPartType,
+                startPosition, endPosition, new List<Bit>());
             parts.Add(part);
         }
 

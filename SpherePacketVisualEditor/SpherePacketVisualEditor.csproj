@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\BitStream\BitStream.csproj"/>
+        <ProjectReference Include="..\SphereHelpers\SphereHelpers.csproj"/>
     </ItemGroup>
 
     <ItemGroup>

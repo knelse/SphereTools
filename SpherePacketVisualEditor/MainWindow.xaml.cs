@@ -22,7 +22,9 @@ public partial class MainWindow
     private const string EnumExtension = ".sphenum";
 
     private static readonly byte[] PacketContents = Convert.FromHexString(
-        "BE002C0100340FB017008B0F80842E090000000000000000409145068002C00037054021A100E0FFFFFFFF177B4164F80048E8920000000000000000001459640028401000000000140006B829000A03010185840280FFFFFFFF1FEE0595E10320A14B02000000000000000050649101A0004100000000500018E0A600280C0404141E14C6E8BEE6C2C6BEE66A007EB91774860F80842E0900000000000000004091450680020401000000400160809B02A030101050482800F8FFFFFF07C8002C0100340FBA1720B00F80842E090000000000000000409145068002C00037054021A100E0FFFFFFBFC020803E50782040380000F8ED5E80C03E0012BA24000000000000000000451619000A0003DC140085840280FFFFFFFF028300FA40E18120E10000E0C77B0102FB0048E8920000000000000000001459640028000C70530014120A00FEFFFFFF0B0C02E803850702850300805FEF0508EC0320A14B02000000000000000050649101A00030C04D0150482800F8FFFFFF2F3008A00F141E08160E000000C4002C0100340FBE17FC8A0F80842E09000000000000000040914526F411150006B829000A090500FFFFFFFFBFDF0B7EC507404297040000000000000000A0C82233FA880A0003DC140085840280FFFFFFFF1FF005BFE20320A14B020000000000000000506491297D440580016E0A80424201C0FFFFFFFF2FF8825FF10190D02501000000000000000028B2C89C3EA202C00037054021A100E0FFFFFFFF277CC1AFF80048E892000000000000000000145964521F510160809B02A0905000F0FFFFFF0FC4002C0100340FC317FC8A0F80842E09000000000000000040914566F511150006B829000A090500FFFFFFFF3FE20B7EC507404297040000000000000000A0C822D3FA880A0003DC140085840280FFFFFFFF5FF105BFE20320A14B020000000000000000506491797D440580016E0A80424201C0FFFFFFFFCFF8825FF10190D02501000000000000000028B2C8C43EA202C00037054021A100E0FFFFFFFF777CC1AFF80048E892000000000000000000145964661F510160809B02A0905000F0FFFFFF0FCA002C0100340FC817FC8A0F80842E090000000000000000409145A6F611150006B829000A090500FFFFFFFFBFE40B88C507404297040000000000000000A0C8224B1B150006B829000A090500FFFFFFFF85870200000000809FF205C4E20320A14B020000000000000000506491B58D0A0003DC140085840280FFFFFFFFC2434100000000C06FF90262F10190D02501000000000000000028B2C8E2460580016E0A80424201C0FFFFFF7FE1A14000000000E0C77C01B1F80048E8920000000000000000001459647523B9002C0100340FCC17104B0160809B02A0905000F0FFFFFF5F78282000000000F8C93502193E0012BA24000000000000000000451619000A1004000000000580016E0A80C240404021A100E0FFFFFFFFB7E54865F80048E8920000000000000000001459640028401000000000140006B829000A03010185078531BAAFB9B0B1AF391880DF9A2395E10320A14B02000000000000000050649101A0004100000000500018E0A600280C0404141E14C6E8BEE6C2C6BEE6620000A3002C0100340F6C8E54860F80842E0900000000000000004091450680020401000000400160809B02A030101050785018A3FB9A0B1BFB9A9301F8B53952193E0012BA24000000000000000000451619000A1004000000000580016E0A80C2404040E141618CEE6B2E6CEC6B6E06E0E7E64865F80048E8920000000000000000001459640028401000000000140006B829000A03010185078531BAAFB9B0B1AF391A0017002C0100F311970AAE9DE6C1E6056910645CF961BF0E");
+        // "BE002C0100340FB017008B0F80842E090000000000000000409145068002C00037054021A100E0FFFFFFFF177B4164F80048E8920000000000000000001459640028401000000000140006B829000A03010185840280FFFFFFFF1FEE0595E10320A14B02000000000000000050649101A0004100000000500018E0A600280C0404141E14C6E8BEE6C2C6BEE66A007EB91774860F80842E0900000000000000004091450680020401000000400160809B02A030101050482800F8FFFFFF07C8002C0100340FBA1720B00F80842E090000000000000000409145068002C00037054021A100E0FFFFFFBFC020803E50782040380000F8ED5E80C03E0012BA24000000000000000000451619000A0003DC140085840280FFFFFFFF028300FA40E18120E10000E0C77B0102FB0048E8920000000000000000001459640028000C70530014120A00FEFFFFFF0B0C02E803850702850300805FEF0508EC0320A14B02000000000000000050649101A00030C04D0150482800F8FFFFFF2F3008A00F141E08160E000000C4002C0100340FBE17FC8A0F80842E09000000000000000040914526F411150006B829000A090500FFFFFFFFBFDF0B7EC507404297040000000000000000A0C82233FA880A0003DC140085840280FFFFFFFF1FF005BFE20320A14B020000000000000000506491297D440580016E0A80424201C0FFFFFFFF2FF8825FF10190D02501000000000000000028B2C89C3EA202C00037054021A100E0FFFFFFFF277CC1AFF80048E892000000000000000000145964521F510160809B02A0905000F0FFFFFF0FC4002C0100340FC317FC8A0F80842E09000000000000000040914566F511150006B829000A090500FFFFFFFF3FE20B7EC507404297040000000000000000A0C822D3FA880A0003DC140085840280FFFFFFFF5FF105BFE20320A14B020000000000000000506491797D440580016E0A80424201C0FFFFFFFFCFF8825FF10190D02501000000000000000028B2C8C43EA202C00037054021A100E0FFFFFFFF777CC1AFF80048E892000000000000000000145964661F510160809B02A0905000F0FFFFFF0FCA002C0100340FC817FC8A0F80842E090000000000000000409145A6F611150006B829000A090500FFFFFFFFBFE40B88C507404297040000000000000000A0C8224B1B150006B829000A090500FFFFFFFF85870200000000809FF205C4E20320A14B020000000000000000506491B58D0A0003DC140085840280FFFFFFFFC2434100000000C06FF90262F10190D02501000000000000000028B2C8E2460580016E0A80424201C0FFFFFF7FE1A14000000000E0C77C01B1F80048E8920000000000000000001459647523B9002C0100340FCC17104B0160809B02A0905000F0FFFFFF5F78282000000000F8C93502193E0012BA24000000000000000000451619000A1004000000000580016E0A80C240404021A100E0FFFFFFFFB7E54865F80048E8920000000000000000001459640028401000000000140006B829000A03010185078531BAAFB9B0B1AF391880DF9A2395E10320A14B02000000000000000050649101A0004100000000500018E0A600280C0404141E14C6E8BEE6C2C6BEE6620000A3002C0100340F6C8E54860F80842E0900000000000000004091450680020401000000400160809B02A030101050785018A3FB9A0B1BFB9A9301F8B53952193E0012BA24000000000000000000451619000A1004000000000580016E0A80C2404040E141618CEE6B2E6CEC6B6E06E0E7E64865F80048E8920000000000000000001459640028401000000000140006B829000A03010185078531BAAFB9B0B1AF391A0017002C0100F311970AAE9DE6C1E6056910645CF961BF0E"
+        "26002C010090FCB190080081A33021085050C54202C0D429C8FA286829EA001458B190007401"
+    );
 
     private static Bit[] PacketContentBits = null!;
 
@@ -278,7 +280,8 @@ public partial class MainWindow
             var start = StartTextPointer;
             var end = EndTextPointer;
             var enumName = dialog.EnumName;
-            AddNewDefinedPacketPart(CreatePacketPart(name, enumName, type, start, end,
+            var lengthFromPrevious = dialog.PacketPartType == PacketPartType.STRING && dialog.LengthFromPreviousField;
+            AddNewDefinedPacketPart(CreatePacketPart(name, enumName, type, lengthFromPrevious, start, end,
                 new SolidColorBrush(color)));
         }
     }
@@ -461,8 +464,7 @@ public partial class MainWindow
     }
 
     private PacketPart CreatePacketPart (string name, string? enumName, PacketPartType packetPartType,
-        TextPointer start,
-        TextPointer end, Brush highlightColor)
+        bool lengthFromPrevious, TextPointer start, TextPointer end, Brush highlightColor)
     {
         var bitOffsetStart = start.GetCharOffset();
         var bitOffsetEnd = end.GetCharOffset();
@@ -486,8 +488,8 @@ public partial class MainWindow
         var bits = CurrentContentBitStream.ReadBits(bitLength).ToList();
         bits.Reverse();
         var streamValueLength = (long) bits.Count;
-        return new PacketPart(streamValueLength, highlightColor, name, enumName, packetPartType, actualStart, actualEnd,
-            bits);
+        return new PacketPart(streamValueLength, highlightColor, name, enumName, lengthFromPrevious, packetPartType,
+            actualStart, actualEnd, bits);
     }
 
     private void UpdateDefinedPackets ()
@@ -639,6 +641,16 @@ public partial class MainWindow
         sb.AppendLine($"Text:\t {displayText.Text}");
         sb.AppendLine($"Int64:\t {displayText.Long}");
         sb.AppendLine($"UInt64: {displayText.Ulong}");
+        if (displayText.CoordsClient is not null)
+        {
+            sb.AppendLine($"CLI coords:\t {displayText.CoordsClient}");
+        }
+
+        if (displayText.CoordsServer is not null)
+        {
+            sb.AppendLine($"SRV coords:\t {displayText.CoordsServer}");
+        }
+
         PacketSelectedValueDisplay.Text = sb.ToString();
     }
 
@@ -767,10 +779,24 @@ public partial class MainWindow
 
     private void UpdatePacketPartValues ()
     {
-        foreach (var packetPart in PacketParts)
+        for (var i = 0; i < PacketParts.Count; i++)
         {
+            var packetPart = PacketParts[i];
             CurrentContentBitStream.Seek(packetPart.StreamPositionStart.Offset, packetPart.StreamPositionStart.Bit);
-            packetPart.Value = CurrentContentBitStream.ReadBits(packetPart.BitLength).Reverse().ToList();
+            var length = packetPart.BitLength;
+            if (packetPart.LengthFromPreviousField)
+            {
+                var byteValue = BitStream.BitArrayToBytes(PacketParts[i - 1].Value.ToArray().Reverse().ToArray()) ??
+                                new byte[4];
+                Array.Resize(ref byteValue, 4);
+                // last byte is always \0?
+                length = BitConverter.ToUInt32(byteValue) - 1;
+                packetPart.StreamPositionEnd.ChangeOffsetAndBit(length, 0);
+                length *= 8;
+                packetPart.BitLength = length;
+            }
+
+            packetPart.Value = CurrentContentBitStream.ReadBits(length).Reverse().ToList();
             packetPart.UpdateValueDisplayText();
         }
     }
@@ -797,41 +823,50 @@ public partial class MainWindow
         {
             Owner = this
         };
-        if (dialog.ShowDialog() == true)
+        if (dialog.ShowDialog() != true)
         {
-            var name = dialog.Name;
-            var startOffset = dialog.StartOffset;
-            var startBit = StreamPosition.FlipBitOffset(dialog.StartBit);
-            var endOffset = dialog.EndOffset;
-            var endBit = StreamPosition.FlipBitOffset(dialog.EndBit);
+            return;
+        }
 
-            SavePacketDefinition(name, startOffset * 8 + startBit, endOffset * 8 + endBit, true);
-            if (Subpackets.All(x => x.Name != name))
+        var name = dialog.Name;
+        var startOffset = dialog.StartOffset;
+        var startBit = StreamPosition.FlipBitOffset(dialog.StartBit);
+        var endOffset = dialog.EndOffset;
+        var endBit = StreamPosition.FlipBitOffset(dialog.EndBit);
+
+        SavePacketDefinition(name, startOffset * 8 + startBit, endOffset * 8 + endBit, true);
+        if (Subpackets.All(x => x.Name != name))
+        {
+            Subpackets.Add(new Subpacket
             {
-                Subpackets.Add(new Subpacket
-                {
-                    Name = name,
-                    FilePath = Path.Combine(PacketDefinitionPath, name + ExportedPartExtension)
-                });
-            }
+                Name = name,
+                FilePath = Path.Combine(PacketDefinitionPath, name + ExportedPartExtension)
+            });
         }
     }
 
     private void DeletePacketPartInCurrentDefinition_OnClick (object sender, RoutedEventArgs e)
     {
-        if (PacketPartsInDefinitionListBox.SelectedItem is not PacketPart packetPart)
+        if (PacketPartsInDefinitionListBox.SelectedItems.Count == 0)
         {
             return;
         }
 
-        if (MessageBox.Show("Delete selected part?", "Delete selected part?",
+        if (MessageBox.Show("Delete selected parts?", "Delete selected parts?",
                 MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) !=
             MessageBoxResult.Yes)
         {
             return;
         }
 
-        PacketParts.Remove(packetPart);
+        var listToRemove = PacketPartsInDefinitionListBox.SelectedItems.Cast<PacketPart>().ToList();
+        PacketPartsInDefinitionListBox.UnselectAll();
+
+        foreach (var selectedItem in listToRemove)
+        {
+            PacketParts.Remove(selectedItem);
+        }
+
         UpdatePacketPartValues();
         UpdateDefinedPackets();
         CreateFlowDocumentWithHighlights();
@@ -893,5 +928,13 @@ public partial class MainWindow
             .Split(new[] { "_" }, StringSplitOptions.RemoveEmptyEntries)
             .Select(s => char.ToUpperInvariant(s[0]) + s.Substring(1, s.Length - 1))
             .Aggregate(string.Empty, (s1, s2) => s1 + s2);
+    }
+
+    private void PacketPartsInDefinitionListBox_OnSelectionChanged (object sender, SelectionChangedEventArgs e)
+    {
+    }
+
+    private void EditPacketPart_OnClick (object sender, RoutedEventArgs e)
+    {
     }
 }
