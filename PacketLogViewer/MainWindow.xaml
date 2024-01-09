@@ -228,15 +228,31 @@
                 <RowDefinition Height="5*" />
                 <RowDefinition Height="*" />
             </Grid.RowDefinitions>
-            <CheckBox Name="IsFavorite" Grid.Row="0" Grid.Column="0" Margin="2 4 4 2" Background="White"
-                      VerticalAlignment="Center"
-                      HorizontalAlignment="Left" Checked="FavoriteToggleButton_OnChecked"
-                      Unchecked="FavoriteToggleButton_OnUnchecked">
-                <CheckBox.LayoutTransform>
-                    <ScaleTransform ScaleX="1.5" ScaleY="1.5" />
-                </CheckBox.LayoutTransform>
-                Bookmark
-            </CheckBox>
+            <Grid Grid.Row="0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="140" />
+                    <ColumnDefinition Width="70" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <CheckBox Name="IsFavorite" Grid.Row="0" Grid.Column="0" Margin="2 4 4 2" Background="White"
+                          Padding="2"
+                          VerticalAlignment="Center" FontFamily="Hack" FontSize="16" HorizontalContentAlignment="Left"
+                          VerticalContentAlignment="Center"
+                          HorizontalAlignment="Left" Checked="FavoriteToggleButton_OnChecked"
+                          Unchecked="FavoriteToggleButton_OnUnchecked">
+                    Bookmark
+                </CheckBox>
+                <Label Grid.Column="1" VerticalAlignment="Center" FontFamily="Hack" FontSize="16" Margin="2 4 4 2"
+                       HorizontalContentAlignment="Left" VerticalContentAlignment="Center"
+                       HorizontalAlignment="Left" Padding="2">
+                    Search
+                </Label>
+                <TextBox Name="SearchInPacketTextBox" Grid.Column="2" Width="200" Padding="2" Margin="0 4 4 2"
+                         VerticalAlignment="Center"
+                         HorizontalContentAlignment="Left" VerticalContentAlignment="Center" FontFamily="Hack"
+                         FontSize="16" HorizontalAlignment="Left" TextChanged="SearchInPacketTextBox_OnTextChanged"
+                         KeyUp="SearchInPacketTextBox_OnKeyUp" />
+            </Grid>
             <Grid Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0">
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="100" />
@@ -252,13 +268,14 @@
                     <RowDefinition Height="4" />
                     <RowDefinition Height="*" />
                 </Grid.RowDefinitions>
-                <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5" BorderBrush="Black" BorderThickness="0.5" Padding="4">
+                <Border Grid.Row="0" Grid.Column="0" Grid.ColumnSpan="5" BorderBrush="Black" BorderThickness="0.5"
+                        Padding="4">
                     <ScrollViewer
                         Name="PacketReadableDisplayTextScrollViewer"
                         VerticalScrollBarVisibility="Auto" HorizontalScrollBarVisibility="Auto">
                         <TextBlock Name="PacketReadableDisplayText" FontFamily="Hack" FontSize="16" LineHeight="16"
                                    LineStackingStrategy="BlockLineHeight" TextAlignment="Left"
-                                   TextWrapping="NoWrap"/>
+                                   TextWrapping="NoWrap" />
                     </ScrollViewer>
                 </Border>
                 <GridSplitter Grid.Row="1" Grid.Column="0" Grid.ColumnSpan="5" ResizeBehavior="PreviousAndNext"

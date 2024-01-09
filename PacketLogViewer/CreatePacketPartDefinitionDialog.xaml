@@ -5,13 +5,13 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:ColorPickerWPF="clr-namespace:ColorPickerWPF;assembly=ColorPickerWPF"
         mc:Ignorable="d" WindowStartupLocation="CenterOwner"
-        Title="New packet part" Width="600" Height="540">
+        Title="New packet part" Width="600" Height="640">
     <Grid Margin="8" VerticalAlignment="Top">
         <Grid.ColumnDefinitions>
             <ColumnDefinition Width="50" />
-            <ColumnDefinition Width="110" />
+            <ColumnDefinition Width="150" />
             <ColumnDefinition Width="50" />
-            <ColumnDefinition Width="110" />
+            <ColumnDefinition Width="150" />
             <ColumnDefinition Width="*" />
         </Grid.ColumnDefinitions>
         <Grid.RowDefinitions>

@@ -15,6 +15,7 @@ using System.Windows.Threading;
 using BitStreams;
 using LiteDB;
 using PacketLogViewer.Models;
+using SphereHelpers.Extensions;
 using SpherePacketVisualEditor;
 using SphServer.Helpers;
 
@@ -330,10 +331,13 @@ public partial class MainWindow
     {
         try
         {
-            var bytes = selected.ContentBytes;  
+            var bytes = selected.ContentBytes;
+            CurrentContentBytes = bytes;
+            CurrentContentBitStream = new BitStream(CurrentContentBytes);
+            AddNewDefinedPacketPartBulk(new List<PacketPart>());
             UpdatePacketPartValues();
             UpdateDefinedPackets();
-            CreateFlowDocumentWithHighlights(false, true);     
+            CreateFlowDocumentWithHighlights(false, true);
             ClearSelection();
             var packetContents = PacketAnalyzer.GetTextOutputForPacket(bytes);
             ContentPreview.Text = packetContents + "\n";
@@ -1323,5 +1327,210 @@ public partial class MainWindow
 
     private void EditPacketPart_OnClick (object sender, RoutedEventArgs e)
     {
+    }
+
+    private void SearchInPacketTextBox_OnTextChanged (object sender, TextChangedEventArgs e)
+    {
+        StartTextPointer = null;
+        EndTextPointer = null;
+        SearchText();
+    }
+
+    private static TextPointer MoveByCharOffset (TextPointer textPointer, int countChars)
+    {
+        var targetOffset = textPointer.GetCharOffset() + countChars;
+        while (textPointer.GetCharOffset() != targetOffset)
+        {
+            if (countChars > 0)
+            {
+                textPointer = textPointer.GetPositionAtOffset(1);
+            }
+            else if (countChars < 0)
+            {
+                textPointer = textPointer.GetPositionAtOffset(-1);
+            }
+            else
+            {
+                return textPointer;
+            }
+        }
+
+        return textPointer;
+    }
+
+    private void SearchText ()
+    {
+        var text = SearchInPacketTextBox.Text;
+        if (text.Length == 0)
+        {
+            return;
+        }
+
+        if (text.StartsWith("0"))
+        {
+            // integers, 0x 0d 0b
+            if (text.Length < 3)
+            {
+                return;
+            }
+
+            var intBase = text[1] == 'x' ? 16 : text[1] == 'd' ? 10 : text[1] == 'b' ? 2 : 0;
+            if (intBase == 0 || text[2..].Any(x => !char.IsAsciiHexDigit(x)))
+            {
+                return;
+            }
+
+            try
+            {
+                var value = Convert.ToInt64(text[2..], intBase);
+                var charPosition = 0;
+                if (EndTextPointer is not null)
+                {
+                    charPosition = EndTextPointer.GetCharOffset() + 1;
+                }
+
+                CurrentContentBitStream.Seek(charPosition / 8, charPosition % 8);
+                var bitsToRead = GetMinimumBitsToEncodeValue(value);
+                var startOffset = -1;
+                var startBit = 0;
+                while (CurrentContentBitStream.ValidPosition)
+                {
+                    var test = CurrentContentBitStream.ReadInt64(bitsToRead);
+                    if (!CurrentContentBitStream.ValidPosition)
+                    {
+                        break;
+                    }
+
+                    CurrentContentBitStream.SeekBack(bitsToRead);
+
+                    if (test == value)
+                    {
+                        startOffset = (int) CurrentContentBitStream.Offset;
+                        startBit = CurrentContentBitStream.Bit;
+                        break;
+                    }
+
+                    CurrentContentBitStream.ReadBit();
+                }
+
+                if (startOffset != -1)
+                {
+                    // found something
+                    var range = new TextRange(PacketVisualizerControl.Document.ContentStart,
+                        PacketVisualizerControl.Document.ContentEnd);
+
+                    var startOffsetPointer = MoveByCharOffset(range.Start, startOffset * 8 + startBit);
+
+                    var endOffsetPointer = MoveByCharOffset(startOffsetPointer, bitsToRead);
+                    StartTextPointer = endOffsetPointer;
+                    EndTextPointer = startOffsetPointer;
+
+                    CreateFlowDocumentWithHighlights();
+                }
+                else
+                {
+                    StartTextPointer = null;
+                    EndTextPointer = null;
+                    CreateFlowDocumentWithHighlights();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+        else
+        {
+            // assuming win1251 string
+            var bytesToFind = Win1251.GetBytes(text);
+            var bitLength = bytesToFind.Length * 8;
+            try
+            {
+                var charPosition = 0;
+                if (EndTextPointer is not null)
+                {
+                    charPosition = EndTextPointer.GetCharOffset() + 1;
+                }
+
+                CurrentContentBitStream.Seek(charPosition / 8, charPosition % 8);
+                var startOffset = -1;
+                var startBit = 0;
+                while (CurrentContentBitStream.ValidPosition)
+                {
+                    var test = CurrentContentBitStream.ReadBytes(bitLength);
+                    if (!CurrentContentBitStream.ValidPosition)
+                    {
+                        break;
+                    }
+
+                    CurrentContentBitStream.SeekBack(bitLength);
+
+                    if (ObjectPacketTools.ByteArrayCompare(test, bytesToFind))
+                    {
+                        startOffset = (int) CurrentContentBitStream.Offset;
+                        startBit = CurrentContentBitStream.Bit;
+                        break;
+                    }
+
+                    CurrentContentBitStream.ReadBit();
+                }
+
+                if (startOffset != -1)
+                {
+                    // found something
+                    var range = new TextRange(PacketVisualizerControl.Document.ContentStart,
+                        PacketVisualizerControl.Document.ContentEnd);
+                    var endOffset = startOffset + bytesToFind.Length;
+                    var endBit = startBit;
+
+                    var startOffsetPointer = MoveByCharOffset(range.Start, startOffset * 8 + startBit);
+
+                    var endOffsetPointer = MoveByCharOffset(startOffsetPointer, bitLength);
+                    StartTextPointer = endOffsetPointer;
+                    EndTextPointer = startOffsetPointer;
+
+                    CreateFlowDocumentWithHighlights();
+                    PacketVisualizerControl.ScrollToVerticalOffset(16 * startOffset);
+                }
+                else
+                {
+                    StartTextPointer = null;
+                    EndTextPointer = null;
+                    CreateFlowDocumentWithHighlights();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+        }
+    }
+
+    private int GetMinimumBitsToEncodeValue (long value)
+    {
+        if (value == 0)
+        {
+            return 1;
+        }
+
+        var test = value;
+        var bitCount = 0;
+        while (test > 0)
+        {
+            test >>= 1;
+            bitCount += 1;
+        }
+
+        return bitCount;
+    }
+
+    private void SearchInPacketTextBox_OnKeyUp (object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.Enter)
+        {
+            return;
+        }
+
+        SearchText();
     }
 }

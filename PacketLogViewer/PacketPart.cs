@@ -47,7 +47,7 @@ public record StreamPosition (long Offset, int Bit)
 
     public override string ToString ()
     {
-        return $"{Offset} ({FlipBitOffset(Bit)})";
+        return $"{Offset} ({Bit})";
     }
 
     public static int FlipBitOffset (int bit)
@@ -183,9 +183,9 @@ public class PacketPart
             case PacketPartType.STRING:
                 return DisplayText.Text;
             case PacketPartType.COORDS_CLIENT:
-                return DisplayText.CoordsClient;
+                return DisplayText.CoordsClient ?? string.Empty;
             case PacketPartType.COORDS_SERVER:
-                return DisplayText.CoordsServer;
+                return DisplayText.CoordsServer ?? string.Empty;
             default:
                 return string.Empty;
         }
@@ -231,7 +231,7 @@ public class PacketPart
         stream.Seek(0, 0);
         var coordsServer = bytes.Length >= 4 ? CoordsHelper.DecodeServerCoordinate(bytes) : (double?) null;
         var coordsServerStr = coordsServer is null ? null : $"{coordsServer:F2}";
-        var coordsClient = bytes.Length >= 5 ? CoordsHelper.DecodeClientCoordinate(bytes) : (double?) null;
+        var coordsClient = bytes.Length >= 4 ? CoordsHelper.DecodeClientCoordinateWithoutShift(bytes) : (double?) null;
         var coordsClientStr = coordsClient is null ? null : $"{coordsClient:F2}";
 
         var enumValueStr = enumName is null ? null : "(undef)";
