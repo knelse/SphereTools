@@ -8,9 +8,9 @@
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\BitStream\BitStream.csproj" />
-      <ProjectReference Include="..\LiteDB\LiteDB\LiteDB.csproj" />
-      <ProjectReference Include="..\SphObjectDb\SphObjectDb.csproj" />
+        <ProjectReference Include="..\BitStream\BitStream.csproj"/>
+        <ProjectReference Include="..\LiteDB\LiteDB\LiteDB.csproj"/>
+        <ProjectReference Include="..\SphObjectDb\SphObjectDb.csproj"/>
     </ItemGroup>
 
 </Project>

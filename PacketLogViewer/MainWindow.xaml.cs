@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
 using System.Linq;
-using System.Numerics;
 using System.Reflection;
 using System.Text;
 using System.Windows;
@@ -13,20 +12,21 @@ using System.Windows.Documents;
 using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
-using System.Xml;
-using ICSharpCode.AvalonEdit.Highlighting;
-using ICSharpCode.AvalonEdit.Highlighting.Xshd;
+using BitStreams;
 using LiteDB;
 using PacketLogViewer.Models;
-using SimpleKaitaiParser;
+using SpherePacketVisualEditor;
 using SphServer.Helpers;
 
 namespace PacketLogViewer;
 
 public partial class MainWindow
 {
-    private const string KaitaiPath = @"c:\source\SphereKaitaiPackets\";
-    private static Encoding Win1251 = null!;
+    private const string PacketDefinitionPath = @"C:\\source\\sphPacketDefinitions";
+    private const string PacketDefinitionExtension = ".spd";
+    private const string ExportedPartExtension = ".spdp";
+    private const string EnumExtension = ".sphenum";
+    public static Encoding Win1251 = null!;
 
     public static readonly LiteDatabase PacketDatabase =
         new (@"Filename=C:\_sphereStuff\sph_packets.db;Connection=shared;");
@@ -37,19 +37,31 @@ public partial class MainWindow
     public static readonly ILiteCollection<StoredPacket> SplittedPacketCollection =
         PacketDatabase.GetCollection<StoredPacket>("SplittedPackets");
 
-    public readonly Dictionary<string, string> KaitaiDefinitions = new ();
-    private readonly SimpleKaitaiParser.SimpleKaitaiParser KaitaiParser = new ();
+    private static Bit[] PacketContentBits = null!;
+
+    private static BitStream? CurrentContentBitStream;
+
+    private static SolidColorBrush SelectionBrush = null!;
+
+    public static readonly Dictionary<string, Dictionary<int, string>> DefinedEnums = new ();
+    private readonly List<string> DefinedEnumNames = new ();
 
     public readonly PacketCapture PacketCapture;
+    public readonly ObservableCollection<PacketDefinition> PacketDefinitions = new ();
+
+    public readonly ObservableCollection<PacketPart> PacketParts = new ();
     public readonly DispatcherTimer SphereTimeUpdateTimer;
+    public readonly ObservableCollection<Subpacket> Subpackets = new ();
+
+    private TextPointer? EndTextPointer;
+    private int? LastCaretOffset;
+    private double LastVerticalOffset;
+    private ScrollViewer? PacketDisplayScrollViewer;
+    private TextPointer? StartTextPointer;
 
     public MainWindow ()
     {
         InitializeComponent();
-        KaitaiScriptCompileOutputText.Document = new FlowDocument
-        {
-            PagePadding = new Thickness(0)
-        };
         LoadContent();
         PacketCapture = new PacketCapture
         {
@@ -117,6 +129,55 @@ public partial class MainWindow
         fullPacketView.Filter = filterFunc;
         splitPacketView.Filter = filterFunc;
 
+        PacketVisualizerControl.KeyDown += PacketVisualizerControlAddPacketPart;
+        PacketVisualizerControl.KeyDown += PacketVisualizerControlHandlePartSelection;
+        SelectionBrush = new SolidColorBrush
+        {
+            Color = ((SolidColorBrush) PacketVisualizerControl.SelectionBrush).Color,
+            Opacity = PacketVisualizerControl.SelectionOpacity
+        };
+        PacketVisualizerControl.SelectionBrush = Brushes.Transparent;
+        PacketVisualizerControl.PreviewMouseWheel += (_, _) => { };
+        var scrollViewerProperty =
+            typeof (RichTextBox).GetProperty("ScrollViewer", BindingFlags.NonPublic | BindingFlags.Instance)!;
+
+        LoadEnums();
+
+        Loaded += (_, _) =>
+        {
+            PacketDisplayScrollViewer = (ScrollViewer) scrollViewerProperty.GetValue(PacketVisualizerControl)!;
+
+            PacketDisplayScrollViewer!.ScrollChanged += (sender, _) => { SynchronizeScrollValues(sender); };
+
+            PacketVisualizerDefinedPacketValuesScrollViewer.ScrollChanged += (sender, _) =>
+            {
+                SynchronizeScrollValues(sender);
+            };
+
+            PacketVisualizerLineNumbersAndValuesScrollViewer.ScrollChanged +=
+                (sender, _) => { SynchronizeScrollValues(sender); };
+        };
+
+        KeyUp += (_, e) =>
+        {
+            if (e.KeyboardDevice.Modifiers != ModifierKeys.Control || e.Key != Key.S)
+            {
+                return;
+            }
+
+            if (DefinedPacketsListBox.SelectedItem is null)
+            {
+                return;
+            }
+
+            SaveSelectedPacketDefinition();
+        };
+
+        CreateFlowDocumentWithHighlights(false, true);
+        LoadPacketDefinitions();
+
+        PacketPartsInDefinitionListBox.ItemsSource = PacketParts;
+
         SphereTimeUpdateTimer = new DispatcherTimer
         {
             Interval = TimeSpan.FromSeconds(1.0 / 24)
@@ -125,43 +186,13 @@ public partial class MainWindow
         SphereTimeUpdateTimer.Start();
 
         ScrollIntoViewIfSelectionExists();
-        Loaded += OnLoaded;
-        LoadKaitaiDefinitions();
-
-        KaitaiScriptText.KeyDown += (_, args) =>
-        {
-            if (args.KeyboardDevice.Modifiers != ModifierKeys.Control || args.Key != Key.S)
-            {
-                return;
-            }
-
-            var selectedItem = KaitaiDefitionsTreeView.SelectedItem;
-            if (selectedItem is null)
-            {
-                return;
-            }
-
-            SaveCurrentKaitaiDefinition(selectedItem);
-            KaitaiCompile();
-        };
     }
 
-    public BigInteger CurrentContent { get; set; }
-    public byte[] CurrentContentBytes { get; set; }
-    public int StartByteLine { get; set; }
-    public int CurrentShift { get; set; }
+    public byte[]? CurrentContentBytes { get; set; }
     public ObservableCollection<LogRecord> LogRecords { get; } = new ();
     public ObservableCollection<LogRecord> LogRecordsSplitted { get; } = new ();
     public bool ShowFavoritesOnly { get; set; }
     public bool HideUninteresting { get; set; } = true;
-
-    private void OnLoaded (object o, RoutedEventArgs routedEventArgs)
-    {
-        using var yamlDefinitionStream = Assembly.GetExecutingAssembly()
-            .GetManifestResourceStream("PacketLogViewer.AvalonEdit.YAML-Mode.xshd")!;
-        using var reader = new XmlTextReader(yamlDefinitionStream);
-        KaitaiScriptText.SyntaxHighlighting = HighlightingLoader.Load(reader, HighlightingManager.Instance);
-    }
 
     private void OnPacketProcessed (StoredPacket storedPacket)
     {
@@ -299,10 +330,13 @@ public partial class MainWindow
     {
         try
         {
-            ContentPreview.Text = "";
-            var bytes = selected.ContentBytes;
+            var bytes = selected.ContentBytes;  
+            UpdatePacketPartValues();
+            UpdateDefinedPackets();
+            CreateFlowDocumentWithHighlights(false, true);     
+            ClearSelection();
             var packetContents = PacketAnalyzer.GetTextOutputForPacket(bytes);
-            ContentPreview.Text += packetContents + "\n";
+            ContentPreview.Text = packetContents + "\n";
             var sphObjects = ObjectPacketTools.GetObjectsFromPacket(bytes);
             ContentPreview.Text += sphObjects.Count > 0 ? ObjectPacketTools.GetTextOutput(sphObjects) : "";
         }
@@ -324,156 +358,14 @@ public partial class MainWindow
 
             var selected = args.AddedItems[0] as LogRecord;
             CurrentContentBytes = selected.ContentBytes;
-            CurrentContent = new BigInteger(selected.ContentBytes, true);
-            CurrentShift = 0;
 
-            TrySetCurrentTextContent();
             IsFavorite.IsChecked = selected.Favorite;
             LogListFullPackets.ScrollIntoView(selected);
             UpdateContentPreview(selected);
-            KaitaiCompile();
         }
         catch
         {
-            LogRecordTextDisplay.Text = "Selected value is not a hex string!";
             IsFavorite.IsChecked = false;
-        }
-    }
-
-    private void TrySetCurrentTextContent ()
-    {
-        try
-        {
-            LogRecordTextDisplay.Text = ToReadableBinaryString();
-        }
-        catch
-        {
-            LogRecordTextDisplay.Text = "Selected value is not a hex string!";
-        }
-    }
-
-    public static string GetBinaryPaddedString (byte b)
-    {
-        return Convert.ToString(b, 2).PadLeft(8, '0');
-    }
-
-// 0xAD is a soft hyphen and doesn't render, but it's not a control/whitespace/separator
-    public static char GetVisibleChar (char c)
-    {
-        return (c >= 0x20 && c <= 0x7E) || c is >= 'А' and <= 'я' ? c : '·';
-    }
-// char.IsControl(c) || char.IsWhiteSpace(c) || char.IsSeparator(c) || c == 0xAD ? '·' : c;
-
-    public static char GetEncoded1251Char (byte b)
-    {
-        var char1251 = Win1251.GetChars(new[] { b })[0];
-        return GetVisibleChar(char1251);
-    }
-
-    public static char GetEncodedLoginChar (byte b)
-    {
-        var loginChar = b % 2 == 0 ? (char) (b / 4 - 1 + 'A') : (char) (b / 4 - 48 + '0');
-        return GetVisibleChar(loginChar);
-    }
-
-    public static string GetFormattedBinaryOutput (byte b)
-    {
-        return $"{GetBinaryPaddedString(b),9}{b.ToString(),7}{b,7:X}h" +
-               $"{GetEncoded1251Char(b).ToString(),7}{GetEncodedLoginChar(b).ToString(),7}";
-    }
-
-    public string ToReadableBinaryString ()
-    {
-        var shiftedBigInt = CurrentShift switch
-        {
-            0 => CurrentContent,
-            < 0 => CurrentContent << -CurrentShift,
-            _ => CurrentContent >> CurrentShift
-        };
-        var shiftedValue = shiftedBigInt.ToByteArray();
-        // zero bytes would be lost here, so we have to resize
-        Array.Resize(ref shiftedValue, CurrentContentBytes.Length);
-
-        var shiftedValueBytes = new List<byte[]>();
-        for (var i = 0; i <= 7; i++)
-        {
-            shiftedValueBytes.Add((CurrentContent >> i).ToByteArray());
-        }
-
-        var sb = new StringBuilder();
-        var sbText = new StringBuilder();
-        var sb1251 = new StringBuilder();
-        var sbLogin = new StringBuilder();
-        sbText.AppendLine("-------------------------------------------------");
-        sbText.AppendLine("  #   Binary      Dec\tHex\t1251\tLogin");
-        sbText.AppendLine("-------------------------------------------------");
-
-        for (var i = 0; i <= 7; i++)
-        {
-            sb1251.Append($"[{i}] ");
-            for (var j = StartByteLine; j < shiftedValueBytes[i].Length; j++)
-            {
-                sb1251.Append(GetEncoded1251Char(shiftedValueBytes[i][j]));
-            }
-
-            sb1251.AppendLine();
-        }
-
-        for (var i = StartByteLine; i < shiftedValue.Length; i++)
-        {
-            sbLogin.Append(GetEncodedLoginChar(shiftedValue[i]));
-            sbText.Append($"{i,3:D}: ");
-            sbText.AppendLine(GetFormattedBinaryOutput(shiftedValue[i]));
-        }
-
-        sb.AppendLine(Convert.ToHexString(shiftedValue));
-        sb.Append(sb1251);
-        sb.AppendLine(sbLogin.ToString());
-        sb.Append(sbText);
-        return sb.ToString();
-    }
-
-    private void Shift_OnClick (object sender, RoutedEventArgs e)
-    {
-        var button = e.Source as Button;
-        var shift = 0;
-        switch (button!.Name)
-        {
-            case "ShiftLeft1":
-            case "ShiftLeft2":
-            case "ShiftLeft3":
-            case "ShiftLeft4":
-            case "ShiftLeft5":
-            case "ShiftLeft6":
-            case "ShiftLeft7":
-                shift = -(button.Name[^1] - '0');
-                break;
-            case "ShiftRight1":
-            case "ShiftRight2":
-            case "ShiftRight3":
-            case "ShiftRight4":
-            case "ShiftRight5":
-            case "ShiftRight6":
-            case "ShiftRight7":
-                shift = button.Name[^1] - '0';
-                break;
-        }
-
-        CurrentShift = shift;
-        TrySetCurrentTextContent();
-    }
-
-    private void StartByte_OnTextChanged (object sender, TextChangedEventArgs e)
-    {
-        if (int.TryParse(StartByte.Text, out var startByte))
-        {
-            StartByteLine = startByte - 1;
-            TrySetCurrentTextContent();
-        }
-        else if (string.IsNullOrWhiteSpace(StartByte.Text))
-        {
-            StartByteLine = 0;
-            TrySetCurrentTextContent();
         }
     }
 
@@ -592,207 +484,829 @@ public partial class MainWindow
         logList.ScrollIntoView(selected);
     }
 
-    private void KaitaiCompile_OnClick (object sender, RoutedEventArgs e)
+    private void LoadEnums ()
     {
-        KaitaiCompile();
+        var enumFiles = Directory.EnumerateFiles(PacketDefinitionPath, $"*{EnumExtension}");
+        foreach (var enumFile in enumFiles)
+        {
+            var enumName = Path.GetFileNameWithoutExtension(enumFile);
+            DefinedEnums.Add(enumName, new Dictionary<int, string>());
+            DefinedEnumNames.Add(enumName);
+            var enumEntryLines = File.ReadAllLines(enumFile).Select(x =>
+                x.Split(':', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries)).ToList();
+            foreach (var enumEntryLine in enumEntryLines)
+            {
+                var id = int.Parse(enumEntryLine[0]);
+                var name = enumEntryLine[1];
+                DefinedEnums[enumName].Add(id, name);
+            }
+        }
     }
 
-    public void KaitaiCompile ()
+    private void LoadPacketDefinitions ()
     {
-        var selectedItem = KaitaiDefitionsTreeView.SelectedItem;
-        KaitaiScriptCompileOutputText.Document.Blocks.Clear();
-        if (selectedItem is null)
+        DefinedPacketsListBox.ItemsSource = PacketDefinitions;
+        if (!Path.Exists(PacketDefinitionPath))
+        {
+            MessageBox.Show($"Cannot load packet definitions.\nDirectory not found: {PacketDefinitionPath}");
+            return;
+        }
+
+        var definitionFiles = Directory.EnumerateFiles(PacketDefinitionPath, $"*{PacketDefinitionExtension}");
+        foreach (var definitionFile in definitionFiles)
+        {
+            PacketDefinitions.Add(new PacketDefinition
+            {
+                Name = Path.GetFileNameWithoutExtension(definitionFile),
+                FilePath = definitionFile
+            });
+        }
+
+        SubpacketsListBox.ItemsSource = Subpackets;
+
+        var subpacketFiles = Directory.EnumerateFiles(PacketDefinitionPath, $"*{ExportedPartExtension}");
+        foreach (var subpacketFile in subpacketFiles)
+        {
+            Subpackets.Add(new Subpacket
+            {
+                Name = Path.GetFileNameWithoutExtension(subpacketFile),
+                FilePath = subpacketFile
+            });
+        }
+
+        if (Subpackets.Any())
+        {
+            SubpacketsListBox.SelectedItem = Subpackets.First();
+        }
+    }
+
+    private void SynchronizeScrollValues (object source)
+    {
+        var scrollViewer = (ScrollViewer) source;
+        if (scrollViewer != PacketVisualizerLineNumbersAndValuesScrollViewer &&
+            Math.Abs(PacketVisualizerLineNumbersAndValuesScrollViewer.VerticalOffset - scrollViewer.VerticalOffset) >
+            double.Epsilon)
+        {
+            PacketVisualizerLineNumbersAndValuesScrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset);
+        }
+
+        if (scrollViewer != PacketVisualizerDefinedPacketValuesScrollViewer &&
+            Math.Abs(PacketVisualizerDefinedPacketValuesScrollViewer.VerticalOffset - scrollViewer.VerticalOffset) >
+            double.Epsilon)
+        {
+            PacketVisualizerDefinedPacketValuesScrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset);
+        }
+
+        if (scrollViewer != PacketDisplayScrollViewer &&
+            Math.Abs(PacketDisplayScrollViewer!.VerticalOffset - scrollViewer.VerticalOffset) > double.Epsilon)
+        {
+            PacketDisplayScrollViewer.ScrollToVerticalOffset(scrollViewer.VerticalOffset);
+        }
+    }
+
+    private void PacketVisualizerControlHandlePartSelection (object sender, KeyEventArgs e)
+    {
+        if (e.Key != Key.S && e.Key != Key.E && e.Key != Key.Escape)
         {
             return;
         }
 
-        SaveCurrentKaitaiDefinition(selectedItem);
-        var selectedKaitai = (string) ((TreeViewItem) selectedItem).Header;
-        var logList = GetActivePacketLog();
-        var currentPacket = (LogRecord) logList.SelectedItem;
-        if (currentPacket is null)
+        if (e.Key == Key.Escape)
+        {
+            ClearSelection();
+        }
+
+        var caretPosition = PacketVisualizerControl.CaretPosition;
+        if (caretPosition is null)
+        {
+            ClearSelection();
+            LastVerticalOffset = 0;
+            return;
+        }
+
+        LastCaretOffset = PacketVisualizerControl.Document.ContentStart.GetOffsetToPosition(caretPosition);
+        LastVerticalOffset = PacketVisualizerControl.VerticalOffset;
+
+        if (e.Key == Key.S)
+        {
+            StartTextPointer = caretPosition;
+        }
+
+        if (e.Key == Key.E)
+        {
+            EndTextPointer = caretPosition;
+        }
+
+        CreateFlowDocumentWithHighlights();
+    }
+
+    private void ClearSelection ()
+    {
+        StartTextPointer = null;
+        EndTextPointer = null;
+        LastCaretOffset = null;
+    }
+
+    private void UpdateScrolling ()
+    {
+        if (LastCaretOffset.HasValue)
+        {
+            var newCaretPosition = LastCaretOffset.Value <= 2
+                ? PacketVisualizerControl.Document.ContentStart.GetLineStartPosition(0)
+                : PacketVisualizerControl.Document.ContentStart.GetPositionAtOffset(LastCaretOffset.Value);
+            if (newCaretPosition is not null)
+            {
+                PacketVisualizerControl.CaretPosition = newCaretPosition;
+            }
+        }
+
+        PacketVisualizerControl.ScrollToVerticalOffset(LastVerticalOffset);
+        PacketVisualizerLineNumbersAndValuesScrollViewer.ScrollToVerticalOffset(LastVerticalOffset);
+        PacketVisualizerDefinedPacketValuesScrollViewer.ScrollToVerticalOffset(LastVerticalOffset);
+    }
+
+    private void PacketVisualizerControlAddPacketPart (object sender, KeyEventArgs e)
+    {
+        if (e.KeyboardDevice.Modifiers != ModifierKeys.Control || e.Key != Key.D)
         {
             return;
         }
 
-        var currentDefinition = KaitaiDefinitions[selectedKaitai];
-        try
+        if (StartTextPointer is null || EndTextPointer is null)
         {
-            var parsedOutput = KaitaiParser.ParseByteArray(currentDefinition, currentPacket.ContentBytes);
-            PrettifyKaitaiCompileOutput(parsedOutput);
+            return;
         }
-        catch (Exception ex)
+
+        var color = new Color
         {
-            KaitaiScriptCompileOutputText.Document.Blocks.Clear();
-            KaitaiScriptCompileOutputText.Document.Blocks.Add(new Paragraph(
-                new Run(ex.Message)));
+            A = 150,
+            R = (byte) Random.Shared.Next(0, 255),
+            G = (byte) Random.Shared.Next(0, 255),
+            B = (byte) Random.Shared.Next(0, 255)
+        };
+
+        var dialog = new CreatePacketPartDefinitionDialog(color, DefinedEnumNames)
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            var name = dialog.Name;
+            color = dialog.Color;
+            var type = dialog.PacketPartType ?? PacketPartType.BITS;
+            var start = StartTextPointer;
+            var end = EndTextPointer;
+            var enumName = dialog.EnumName;
+            var lengthFromPrevious = dialog.PacketPartType == PacketPartType.STRING && dialog.LengthFromPreviousField;
+            AddNewDefinedPacketPart(CreatePacketPart(name, enumName, type, lengthFromPrevious, start, end,
+                new SolidColorBrush(color)));
         }
     }
 
-    public void PrettifyKaitaiCompileOutput (List<KaitaiParsedEntry> parsedEntries)
+    public void CreateFlowDocumentWithHighlights (bool keepSelection = true, bool firstUpdateOnLoad = false)
     {
-        KaitaiScriptCompileOutputText.Document.Blocks.Clear();
-        var flowDocument = KaitaiScriptCompileOutputText.Document;
-        foreach (var parsedEntry in parsedEntries)
+        PacketVisualizerLineNumbersAndValues.Inlines.Clear();
+        PacketVisualizerDefinedPacketValues.Inlines.Clear();
+        if (CurrentContentBytes is null)
         {
-            var paragraph = new Paragraph
+            return;
+        }
+
+        CurrentContentBitStream = new BitStream(CurrentContentBytes);
+        var document = new FlowDocument
+        {
+            FontFamily = new FontFamily("Hack"),
+            FontSize = 14,
+            LineHeight = 16,
+            LineStackingStrategy = LineStackingStrategy.BlockLineHeight,
+            PageWidth = 80,
+            TextAlignment = TextAlignment.Right,
+            PagePadding = new Thickness(10, 4, 0, 4)
+        };
+        var paragraph = new Paragraph
+        {
+            Margin = new Thickness(0)
+        };
+        var selectionBits = new List<Bit>();
+        var sb = new StringBuilder();
+        var selectionStartOffset = StartTextPointer?.GetCharOffset();
+        var selectionEndOffset = EndTextPointer?.GetCharOffset();
+
+        var actualStart = selectionStartOffset;
+        var actualEnd = selectionEndOffset;
+        if (actualStart > actualEnd)
+        {
+            actualEnd = selectionStartOffset;
+            actualStart = selectionEndOffset;
+        }
+
+        PacketContentBits = CurrentContentBitStream.ReadBits(int.MaxValue);
+        var wasInSelection = false;
+        PacketPart? previousPacketPart = null;
+        Brush? textBrush = null;
+
+        var linesSb = new StringBuilder();
+        var valueDisplayDict = new Dictionary<int, PacketPart>();
+        var lineByte = 0;
+
+        for (var i = 0; i < PacketContentBits.Length; i++)
+        {
+            var currentPacketPart = PacketParts.FirstOrDefault(x => x.ContainsBitPosition(i));
+            var inSelection = keepSelection && actualStart <= i && actualEnd > i;
+
+            var textBlockChanged = (inSelection && !wasInSelection) || (wasInSelection && !inSelection) ||
+                                   (currentPacketPart != null && currentPacketPart != previousPacketPart) ||
+                                   (currentPacketPart == null && previousPacketPart != null);
+            if (inSelection)
             {
-                FontFamily = new FontFamily("Hack"),
-                FontSize = 13,
-                Margin = new Thickness(0),
-                Padding = new Thickness(8, 0, 8, 0),
-                LineHeight = 20,
-                TextAlignment = TextAlignment.Left,
-                BreakColumnBefore = false,
-                BreakPageBefore = false
-            };
-            if (!string.IsNullOrWhiteSpace(parsedEntry.Comment))
-            {
-                paragraph.Inlines.Add(new Run($"// {parsedEntry.Comment}\n")
-                {
-                    Foreground = Brushes.DarkOliveGreen
-                });
+                selectionBits.Add(PacketContentBits[i]);
             }
 
-            var splitPath = parsedEntry.Path.Split('/', StringSplitOptions.RemoveEmptyEntries);
-            var indentLevel = (splitPath.Length - 1) * 2;
-            var entryName = splitPath[^1];
-            var padding = string.Empty.PadLeft(indentLevel, '·');
-            paragraph.Inlines.Add(new Run(padding) { Foreground = Brushes.LightGray, FontSize = 12 });
-            if (parsedEntry.IsTrivialType)
+            if (textBlockChanged)
             {
-                paragraph.Inlines.Add(new Run($"{entryName}") { Foreground = Brushes.Blue });
-                paragraph.Inlines.Add(new Run(" = "));
-
-                switch (parsedEntry.Type)
+                var newTextBrush = inSelection ? SelectionBrush : currentPacketPart?.HighlightColor;
+                if (textBrush is null)
                 {
-                    case "str":
-                        paragraph.Inlines.Add(
-                            new Run($"\"{(string) parsedEntry.Value}\"") { FontWeight = FontWeights.Bold });
-                        break;
-                    case "f4":
-                    case "f8":
-                        paragraph.Inlines.Add(
-                            new Run(((double) parsedEntry.Value).ToString()) { FontWeight = FontWeights.Bold });
-                        break;
-                    case SimpleKaitaiParser.SimpleKaitaiParser.ByteArrayTypeName:
-                        var byteArray = parsedEntry.Value as byte[];
-                        var stringValues = byteArray.Select(b => $"0x{b:X2}").ToList();
-
-                        paragraph.Inlines.Add(
-                            new Run($"[{string.Join(", ", stringValues)}]") { FontWeight = FontWeights.Bold });
-                        paragraph.Inlines.Add(new Run($" = [{string.Join(", ", byteArray)}]")
-                            { Foreground = Brushes.Gray });
-                        break;
-                    case SimpleKaitaiParser.SimpleKaitaiParser.EnumEntryValueType:
-                        paragraph.Inlines.Add(new Run(parsedEntry.EnumValue.ToUpper())
-                            { FontWeight = FontWeights.Bold });
-
-                        var enumValueBytes = parsedEntry.Value as byte[];
-                        var enumBytesCopy = new byte[enumValueBytes.Length];
-                        Array.Copy(enumValueBytes, enumBytesCopy, enumValueBytes.Length);
-                        Array.Reverse(enumValueBytes);
-                        Array.Resize(ref enumValueBytes, 8);
-                        var enumBytesStr = Convert.ToHexString(enumBytesCopy).TrimStart('0');
-                        if (enumBytesStr.Length == 0)
-                        {
-                            enumBytesStr = "0";
-                        }
-
-                        var padWidth = enumBytesStr.Length % 2 == 0 ? enumBytesStr.Length : enumBytesStr.Length + 1;
-                        enumBytesStr = enumBytesStr.PadLeft(padWidth, '0');
-
-                        var enumValue = BitConverter.ToInt64(enumValueBytes);
-                        var enumValueStr = $"{enumValue}";
-
-                        if (parsedEntry.EnumName == "localizable" &&
-                            SphObjectDb.GameObjectDataDb.TryGetValue((int) enumValue, out var gameObject))
-                        {
-                            enumValueStr = gameObject.Localisation[Locale.Russian];
-                        }
-
-                        paragraph.Inlines.Add(
-                            new Run(
-                                    $" ({SnakeCaseToCamelCase(parsedEntry.EnumName)}::{parsedEntry.EnumValue.ToUpper()} " +
-                                    $"= 0x{enumBytesStr} = {enumValueStr})")
-                                { Foreground = Brushes.Gray });
-                        break;
-                    default:
-                        var byteValue = parsedEntry.Value as byte[];
-                        paragraph.Inlines.Add(
-                            new Run("0x") { FontWeight = FontWeights.Bold });
-                        var zeroBytesToSkip = 0;
-
-                        foreach (var b in byteValue)
-                        {
-                            if (b != 0)
-                            {
-                                break;
-                            }
-
-                            zeroBytesToSkip++;
-                        }
-
-                        if (zeroBytesToSkip == byteValue.Length)
-                        {
-                            paragraph.Inlines.Add(
-                                new Run("00") { FontWeight = FontWeights.Bold });
-                        }
-                        else
-                        {
-                            for (var i = zeroBytesToSkip; i < byteValue.Length; i++)
-                            {
-                                if (i != zeroBytesToSkip)
-                                {
-                                    paragraph.Inlines.Add(
-                                        new Run("·") { Foreground = Brushes.LightGray });
-                                }
-
-                                paragraph.Inlines.Add(
-                                    new Run($"{byteValue[i]:X2}") { FontWeight = FontWeights.Bold });
-                            }
-                        }
-
-                        if (byteValue.Length <= 8)
-                        {
-                            Array.Reverse(byteValue);
-                            Array.Resize(ref byteValue, 8);
-                            var longValue = BitConverter.ToInt64(byteValue);
-
-                            paragraph.Inlines.Add(new Run($" = {longValue}")
-                                { Foreground = Brushes.Gray });
-                        }
-
-                        break;
+                    if (sb.Length > 0)
+                    {
+                        paragraph.Inlines.Add(sb.ToString());
+                    }
+                }
+                else
+                {
+                    paragraph.Inlines.Add(new Run(sb.ToString())
+                    {
+                        Background = textBrush
+                    });
                 }
 
-                paragraph.Inlines.Add(
-                    new Run($" [{parsedEntry.StreamOffset}, {parsedEntry.StreamBit}]")
-                    {
-                        Foreground = new SolidColorBrush(new Color
-                        {
-                            R = 166,
-                            G = 166,
-                            B = 166,
-                            A = 255
-                        }),
-                        FontSize = 12
-                    });
+                sb.Clear();
+                textBrush = newTextBrush;
+
+                if (currentPacketPart is not null && previousPacketPart != currentPacketPart)
+                {
+                    valueDisplayDict.Add(i, currentPacketPart);
+                }
+
+                previousPacketPart = currentPacketPart;
+            }
+
+            wasInSelection = inSelection;
+            var bit = PacketContentBits[i].AsInt();
+            sb.Append(bit);
+            lineByte <<= 1;
+            lineByte += bit;
+
+            if (i % 8 == 7)
+            {
+                // flip bits
+                lineByte = (int) ((((ulong) lineByte * 0x0202020202UL) & 0x010884422010UL) % 1023);
+                linesSb.Append($"[{lineByte:X2} ")
+                    .Append($"{lineByte}".PadLeft(3, ' ')).Append("] ").AppendLine($"{i / 8} ".PadLeft(5, ' '));
+                lineByte = 0;
+            }
+        }
+
+        if (sb.Length > 0)
+        {
+            if (textBrush is null)
+            {
+                paragraph.Inlines.Add(sb.ToString());
             }
             else
             {
-                paragraph.Inlines.Add(new Run($"{entryName} "));
-                paragraph.Inlines.Add(new Run("[") { FontSize = 12 });
-                paragraph.Inlines.Add(new Run($"{parsedEntry.Type}")
-                    { Foreground = Brushes.ForestGreen, FontSize = 12 });
-                paragraph.Inlines.Add(new Run("]") { FontSize = 12 });
+                paragraph.Inlines.Add(new Run(sb.ToString())
+                {
+                    Background = textBrush
+                });
             }
-
-            // paragraph.Inlines.Add(new Run("\n"));
-            flowDocument.Blocks.Add(paragraph);
         }
 
-        KaitaiScriptCompileOutputText.Document = flowDocument;
+        PacketVisualizerLineNumbersAndValues.Text = linesSb.ToString();
+        var packetDisplaySb = new StringBuilder();
+
+        for (var i = 0; i < PacketContentBits.Length; i++)
+        {
+            var addedLineBreak = false;
+            if (valueDisplayDict.ContainsKey(i))
+            {
+                var part = valueDisplayDict[i];
+                if (part.StreamPositionStart.Bit == 0)
+                {
+                    PacketVisualizerDefinedPacketValues.Inlines.Add("\n");
+                    addedLineBreak = true;
+                }
+
+                PacketVisualizerDefinedPacketValues.Inlines.Add(packetDisplaySb.ToString());
+                AddPacketPartInlines(PacketVisualizerDefinedPacketValues.Inlines, part);
+                packetDisplaySb.Clear();
+            }
+
+            if (i % 8 == 0 && i > 0 && !addedLineBreak)
+            {
+                packetDisplaySb.AppendLine();
+            }
+        }
+
+        CurrentContentBitStream.Seek(0, 0);
+        if (packetDisplaySb.Length > 0)
+        {
+            PacketVisualizerDefinedPacketValues.Inlines.Add(packetDisplaySb.ToString());
+        }
+
+        document.Blocks.Add(paragraph);
+
+        if (firstUpdateOnLoad)
+        {
+            PacketReadableDisplayText.Inlines.Clear();
+            PacketReadableDisplayText.Inlines.Add(Convert.ToHexString(BitStream.BitArrayToBytes(PacketContentBits)) +
+                                                  "\n");
+            var toShift = PacketContentBits.ToList();
+            for (var i = 0; i < 8; i++)
+            {
+                var shiftedBytes = BitStream.BitArrayToBytes(toShift.ToArray());
+                var shiftedChars = Win1251.GetString(shiftedBytes).ToCharArray();
+                var shiftedString = new string(shiftedChars.Select(GetVisibleChar).ToArray());
+                PacketReadableDisplayText.Inlines.Add(new Run($"\n[{i}] {shiftedString}")
+                {
+                    FontSize = 14
+                });
+                toShift.RemoveAt(0);
+            }
+        }
+
+        PacketVisualizerControl.Document = document;
+        UpdateSelectedValueDisplay(selectionBits);
+        UpdateScrolling();
+    }
+
+    private void PacketVisualizerControl_OnSelectionChanged (object o, RoutedEventArgs e)
+    {
+        e.Handled = true;
+    }
+
+    private PacketPart CreatePacketPart (string name, string? enumName, PacketPartType packetPartType,
+        bool lengthFromPrevious, TextPointer start, TextPointer end, Brush highlightColor)
+    {
+        var bitOffsetStart = start.GetCharOffset();
+        var bitOffsetEnd = end.GetCharOffset();
+        var offsetStart = bitOffsetStart / 8;
+        var bitStart = bitOffsetStart % 8;
+        var offsetEnd = bitOffsetEnd / 8;
+        var bitEnd = bitOffsetEnd % 8;
+
+        var positionStart = new StreamPosition(offsetStart, bitStart);
+        var positionEnd = new StreamPosition(offsetEnd, bitEnd);
+        var actualStart = positionStart;
+        var actualEnd = positionEnd;
+        if (positionStart.CompareTo(positionEnd) > 0)
+        {
+            actualStart = positionEnd;
+            actualEnd = positionStart;
+        }
+
+        var bitLength = Math.Abs(bitOffsetEnd - bitOffsetStart);
+        CurrentContentBitStream.Seek(actualStart.Offset, actualStart.Bit);
+        var bits = CurrentContentBitStream.ReadBits(bitLength).ToList();
+        bits.Reverse();
+        var streamValueLength = (long) bits.Count;
+        return new PacketPart(streamValueLength, highlightColor, name, enumName, lengthFromPrevious, packetPartType,
+            actualStart, actualEnd, bits);
+    }
+
+    private void UpdateDefinedPackets ()
+    {
+        DefinedPacketPartsControl.Document.Blocks.Clear();
+        var toSort = PacketParts.ToList();
+        toSort.Sort((a, b) => a.StreamPositionStart.CompareTo(b.StreamPositionStart));
+        PacketParts.Clear();
+        toSort.ForEach(x => PacketParts.Add(x));
+        foreach (var part in PacketParts)
+        {
+            var paragraph = new Paragraph();
+            if (part.Name == "entity_id")
+            {
+                // it's a hack for now
+                paragraph.Inlines.Add(
+                    $"=============================================== {part.DisplayText.Ulong} ===============================================\n\n");
+            }
+
+            AddPacketPartInlines(paragraph.Inlines, part);
+
+            DefinedPacketPartsControl.Document.Blocks.Add(paragraph);
+        }
+    }
+
+    private void AddPacketPartInlines (InlineCollection inlineCollection, PacketPart part)
+    {
+        inlineCollection.Add(new Run($"{part.Name}")
+        {
+            Background = part.HighlightColor
+        });
+        inlineCollection.Add(": ");
+        var valueStr = part.GetDisplayTextForValueType();
+
+        if (part.EnumName is not null)
+        {
+            var enumValue = part.DisplayText.EnumValue?.ToUpper() ?? string.Empty;
+            inlineCollection.Add(new Run(enumValue) { FontWeight = FontWeights.Bold });
+            var enumName = SnakeCaseToCamelCase(part.EnumName);
+            inlineCollection.Add(new Run($" ({enumName}::{enumValue} = {valueStr})") { Foreground = Brushes.Gray });
+        }
+        else
+        {
+            var valueStrSplit = valueStr
+                .Split('=', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
+            if (valueStrSplit.Count > 1)
+            {
+                // hex = dec, like 0x17B0 = 6064
+                inlineCollection.Add(new Run(valueStrSplit[0]) { FontWeight = FontWeights.Bold });
+                inlineCollection.Add(new Run($" = {valueStrSplit[1]}") { Foreground = Brushes.Gray });
+            }
+
+            else
+            {
+                var valueTypeStr = part.PacketPartType == PacketPartType.BITS ? "0b" :
+                    part.PacketPartType == PacketPartType.BYTES ? "0x" : string.Empty;
+                inlineCollection.Add(new Run(valueTypeStr + valueStr) { FontWeight = FontWeights.Bold });
+            }
+        }
+
+        inlineCollection.Add(
+            new Run(
+                $" [{Enum.GetName(part.PacketPartType) ?? string.Empty}] [{part.StreamPositionEnd} to {part.StreamPositionStart}, {part.BitLength} bits] ")
+            {
+                Foreground = Brushes.Gray
+            });
+    }
+
+    private void AddNewDefinedPacketPartBulk (List<PacketPart> packetParts)
+    {
+        packetParts.ForEach(x => AddNewDefinedPacketPart(x, true));
+        UpdatePacketPartValues();
+        UpdateDefinedPackets();
+        CreateFlowDocumentWithHighlights(false);
+        ClearSelection();
+    }
+
+    private void AddNewDefinedPacketPart (PacketPart packetPart, bool isBulk = false)
+    {
+        var newPacketParts = new List<PacketPart>();
+        foreach (var definedPacketPart in PacketParts)
+        {
+            if (packetPart.Overlaps(definedPacketPart))
+            {
+                // remove old one
+                continue;
+            }
+
+            if (packetPart.ContainedWithin(definedPacketPart))
+            {
+                // split old and make it: old_start new old_end
+                var oldStart = definedPacketPart.GetPiece(definedPacketPart.StreamPositionStart,
+                    packetPart.StreamPositionStart, definedPacketPart.Name + "_1");
+                var oldEnd = definedPacketPart.GetPiece(packetPart.StreamPositionEnd,
+                    definedPacketPart.StreamPositionEnd, definedPacketPart.Name + "_2");
+                newPacketParts.Add(oldStart);
+                newPacketParts.Add(oldEnd);
+                continue;
+            }
+
+            if (packetPart.StreamPositionStart.CompareTo(definedPacketPart.StreamPositionStart) <= 0 &&
+                packetPart.StreamPositionEnd.CompareTo(definedPacketPart.StreamPositionEnd) < 0)
+            {
+                // leave a chunk of old when new part intersects the beginning of old
+                var oldChunk = definedPacketPart.GetPiece(packetPart.StreamPositionEnd,
+                    definedPacketPart.StreamPositionEnd);
+                newPacketParts.Add(oldChunk);
+                continue;
+            }
+
+            if (packetPart.StreamPositionStart.CompareTo(definedPacketPart.StreamPositionStart) > 0 &&
+                packetPart.StreamPositionStart.CompareTo(definedPacketPart.StreamPositionEnd) < 0 &&
+                packetPart.StreamPositionEnd.CompareTo(definedPacketPart.StreamPositionEnd) >= 0)
+            {
+                // leave a chunk of old when new part intersects the end of old
+                var oldChunk = definedPacketPart.GetPiece(definedPacketPart.StreamPositionStart,
+                    packetPart.StreamPositionStart);
+                newPacketParts.Add(oldChunk);
+                continue;
+            }
+
+            newPacketParts.Add(definedPacketPart);
+        }
+
+        newPacketParts.Add(packetPart);
+        newPacketParts.Sort((a, b) => a.StreamPositionStart.CompareTo(b.StreamPositionStart));
+        PacketParts.Clear();
+        newPacketParts.ForEach(x => PacketParts.Add(x));
+        if (!isBulk)
+        {
+            UpdateDefinedPackets();
+            CreateFlowDocumentWithHighlights(false);
+            ClearSelection();
+        }
+    }
+
+    private void UpdateSelectedValueDisplay (List<Bit> bits)
+    {
+        if (!bits.Any())
+        {
+            PacketSelectedValueDisplay.Text = "Select bits to show value preview";
+            return;
+        }
+
+        var displayText = PacketPart.GetValueDisplayText(bits, null);
+        var sb = new StringBuilder();
+        sb.AppendLine($"Bits:\t {displayText.Bits} ({displayText.Bits.Length})");
+        sb.AppendLine($"Bytes:\t {displayText.Bytes}");
+        sb.AppendLine($"Text:\t {displayText.Text}");
+        sb.AppendLine($"Int64:\t {displayText.Long}");
+        sb.AppendLine($"UInt64: {displayText.Ulong}");
+        if (displayText.CoordsClient is not null)
+        {
+            sb.AppendLine($"CLI coords:\t {displayText.CoordsClient}");
+        }
+
+        if (displayText.CoordsServer is not null)
+        {
+            sb.AppendLine($"SRV coords:\t {displayText.CoordsServer}");
+        }
+
+        PacketSelectedValueDisplay.Text = sb.ToString();
+    }
+
+    public static char GetVisibleChar (char c)
+    {
+        return (c >= 0x20 && c <= 0x7E) || c is >= 'А' and <= 'я' ? c : '·';
+    }
+
+    private void CreateNewPacketDefinitionButton_OnClick (object sender, RoutedEventArgs e)
+    {
+        CreatePacketDefinition();
+    }
+
+    private void CreatePacketDefinition ()
+    {
+        var dialog = new SaveNewPacketDefinitionDialog
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() == true)
+        {
+            var path = Path.Combine(PacketDefinitionPath, dialog.Name + PacketDefinitionExtension);
+            var definition = new PacketDefinition
+            {
+                Name = dialog.Name,
+                FilePath = path
+            };
+
+            PacketDefinitions.Add(definition);
+            SavePacketDefinition(dialog.Name, 0, 0);
+            DefinedPacketsListBox.SelectedItem = definition;
+        }
+    }
+
+    private void SavePacketDefinition_OnClick (object sender, RoutedEventArgs e)
+    {
+        SaveSelectedPacketDefinition();
+    }
+
+    private void SaveSelectedPacketDefinition ()
+    {
+        if (DefinedPacketsListBox.SelectedItem is not PacketDefinition selectedDefinition)
+        {
+            CreatePacketDefinition();
+            selectedDefinition = (PacketDefinition) DefinedPacketsListBox.SelectedItem;
+        }
+
+        SavePacketDefinition(selectedDefinition.Name, 0, PacketContentBits.Length);
+    }
+
+    private void SavePacketDefinition (string definitionName, int startBitOffset, int endBitOffset,
+        bool exportedPart = false)
+    {
+        var fileContentsSb = new StringBuilder();
+        var currentIndex = startBitOffset;
+        var nextPacketPartIndex =
+            PacketParts.ToList().FindIndex(x => x.StreamPositionStart.GetBitPosition() >= startBitOffset);
+        while (currentIndex < endBitOffset)
+        {
+            var nextPacketPart = nextPacketPartIndex == -1
+                ? null
+                : PacketParts.Count > nextPacketPartIndex
+                    ? PacketParts[nextPacketPartIndex]
+                    : null;
+
+            var name = PacketPart.UndefinedFieldValue;
+            var partType = PacketPartType.BITS;
+            var enumName = PacketPart.UndefinedFieldValue;
+            Brush highlightColor = Brushes.Transparent;
+            Bit[] bits;
+            var startPosition = currentIndex;
+            if (nextPacketPart is null)
+            {
+                // only undef until end of packet
+                var endBitIndex = endBitOffset > PacketContentBits.Length
+                    ? PacketContentBits.Length
+                    : endBitOffset;
+                bits = PacketContentBits[currentIndex..endBitIndex];
+            }
+            else
+            {
+                var nextPartStartIndex = (int) nextPacketPart.StreamPositionStart.GetBitPosition();
+                nextPartStartIndex = nextPartStartIndex > endBitOffset ? endBitOffset : nextPartStartIndex;
+                if (currentIndex < nextPartStartIndex)
+                {
+                    // undef between packet parts
+                    bits = PacketContentBits[currentIndex..nextPartStartIndex];
+                    currentIndex = nextPartStartIndex;
+                }
+                else
+                {
+                    var nextPartEndIndex = (int) nextPacketPart.StreamPositionEnd.GetBitPosition();
+                    nextPartEndIndex = nextPartEndIndex > endBitOffset ? endBitOffset : nextPartEndIndex;
+                    bits = PacketContentBits[nextPartStartIndex..nextPartEndIndex];
+                    partType = nextPacketPart.PacketPartType;
+                    name = nextPacketPart.Name;
+                    enumName = nextPacketPart.EnumName ?? PacketPart.UndefinedFieldValue;
+                    highlightColor = nextPacketPart.HighlightColor;
+                    currentIndex = nextPartEndIndex;
+                    nextPacketPartIndex++;
+                }
+            }
+
+            var solidColor = ((SolidColorBrush) highlightColor).Color;
+
+            if (exportedPart)
+            {
+                startPosition -= startBitOffset;
+            }
+
+            fileContentsSb.AppendLine(
+                $"{name}\t{Enum.GetName(partType)}\t{startPosition}\t{bits.Length}\t{enumName}\t{solidColor.R}\t{solidColor.G}" +
+                $"\t{solidColor.B}\t{solidColor.A}\t{string.Join(null, bits.Reverse().Select(x => x.AsInt()))}");
+
+            if (nextPacketPart is null)
+            {
+                break;
+            }
+        }
+
+        var fileName = Path.Combine(PacketDefinitionPath,
+            definitionName + (exportedPart ? ExportedPartExtension : PacketDefinitionExtension));
+
+        File.WriteAllText(fileName, fileContentsSb.ToString());
+    }
+
+    private void UpdatePacketPartValues ()
+    {
+        if (CurrentContentBitStream is null)
+        {
+            return;
+        }
+
+        for (var i = 0; i < PacketParts.Count; i++)
+        {
+            var packetPart = PacketParts[i];
+            CurrentContentBitStream.Seek(packetPart.StreamPositionStart.Offset, packetPart.StreamPositionStart.Bit);
+            var length = packetPart.BitLength;
+            if (packetPart.LengthFromPreviousField)
+            {
+                var byteValue = BitStream.BitArrayToBytes(PacketParts[i - 1].Value.ToArray().Reverse().ToArray()) ??
+                                new byte[4];
+                Array.Resize(ref byteValue, 4);
+                // last byte is always \0?
+                length = BitConverter.ToUInt32(byteValue) - 1;
+                packetPart.StreamPositionEnd.ChangeOffsetAndBit(length, 0);
+                length *= 8;
+                packetPart.BitLength = length;
+            }
+
+            packetPart.Value = CurrentContentBitStream.ReadBits(length).Reverse().ToList();
+            packetPart.UpdateValueDisplayText();
+        }
+    }
+
+    private void DefinedPacketsListBox_OnSelectionChanged (object sender, SelectionChangedEventArgs e)
+    {
+        if (DefinedPacketsListBox.SelectedItem is not PacketDefinition packetDefinition)
+        {
+            return;
+        }
+
+        packetDefinition.LoadFromFile();
+        PacketParts.Clear();
+        packetDefinition.PacketParts.ForEach(x => PacketParts.Add(x));
+        LastVerticalOffset = PacketDisplayScrollViewer?.VerticalOffset ?? 0;
+        UpdatePacketPartValues();
+        UpdateDefinedPackets();
+        CreateFlowDocumentWithHighlights();
+    }
+
+    private void ExportSubpacket_OnClick (object sender, RoutedEventArgs e)
+    {
+        var dialog = new ExportSubpacketDialog
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var name = dialog.Name;
+        var startOffset = dialog.StartOffset;
+        var startBit = StreamPosition.FlipBitOffset(dialog.StartBit);
+        var endOffset = dialog.EndOffset;
+        var endBit = StreamPosition.FlipBitOffset(dialog.EndBit);
+
+        SavePacketDefinition(name, startOffset * 8 + startBit, endOffset * 8 + endBit, true);
+        if (Subpackets.All(x => x.Name != name))
+        {
+            Subpackets.Add(new Subpacket
+            {
+                Name = name,
+                FilePath = Path.Combine(PacketDefinitionPath, name + ExportedPartExtension)
+            });
+        }
+    }
+
+    private void DeletePacketPartInCurrentDefinition_OnClick (object sender, RoutedEventArgs e)
+    {
+        if (PacketPartsInDefinitionListBox.SelectedItems.Count == 0)
+        {
+            return;
+        }
+
+        if (MessageBox.Show("Delete selected parts?", "Delete selected parts?",
+                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) !=
+            MessageBoxResult.Yes)
+        {
+            return;
+        }
+
+        var listToRemove = PacketPartsInDefinitionListBox.SelectedItems.Cast<PacketPart>().ToList();
+        PacketPartsInDefinitionListBox.UnselectAll();
+
+        foreach (var selectedItem in listToRemove)
+        {
+            PacketParts.Remove(selectedItem);
+        }
+
+        UpdatePacketPartValues();
+        UpdateDefinedPackets();
+        CreateFlowDocumentWithHighlights();
+    }
+
+    private void ImportFromSubpacket_OnClick (object sender, RoutedEventArgs e)
+    {
+        if (SubpacketsListBox.SelectedItem is not Subpacket subpacket)
+        {
+            return;
+        }
+
+        var dialog = new ImportFromSubpacketDialog
+        {
+            Owner = this
+        };
+        if (dialog.ShowDialog() != true)
+        {
+            return;
+        }
+
+        var startOffset = dialog.StartOffset;
+        var startBit = StreamPosition.FlipBitOffset(dialog.StartBit);
+
+        subpacket.LoadFromFile();
+
+        AddNewDefinedPacketPartBulk(subpacket.PacketParts.Select(x => x.ChangeOffsetAndBit(startOffset, startBit))
+            .ToList());
+    }
+
+    private void DeletePacketDefinition_OnClick (object sender, RoutedEventArgs e)
+    {
+        if (DefinedPacketsListBox.SelectedItem is not PacketDefinition packetDefinition)
+        {
+            return;
+        }
+
+        if (MessageBox.Show("Delete selected definition?", "Delete selected definition?",
+                MessageBoxButton.YesNo, MessageBoxImage.Question, MessageBoxResult.No) ==
+            MessageBoxResult.Yes)
+        {
+            DeletePacketDefinition(packetDefinition);
+        }
+    }
+
+    private void DeletePacketDefinition (PacketDefinition packetDefinition)
+    {
+        PacketDefinitions.Remove(packetDefinition);
+        File.Delete(packetDefinition.FilePath);
+        if (PacketDefinitions.Any())
+        {
+            DefinedPacketsListBox.SelectedItem = PacketDefinitions.First();
+        }
     }
 
     public static string SnakeCaseToCamelCase (string input)
@@ -803,128 +1317,11 @@ public partial class MainWindow
             .Aggregate(string.Empty, (s1, s2) => s1 + s2);
     }
 
-    public void LoadKaitaiDefinitions ()
+    private void PacketPartsInDefinitionListBox_OnSelectionChanged (object sender, SelectionChangedEventArgs e)
     {
-        var kaitaiFiles = Directory.EnumerateFiles(KaitaiPath, "*.ksy");
-        foreach (var definitionFile in kaitaiFiles)
-        {
-            var contents = File.ReadAllText(definitionFile);
-            var name = Path.GetFileNameWithoutExtension(definitionFile);
-            KaitaiDefinitions.Add(name, contents);
-            CreateKaitaiDefinitionItem(name);
-        }
-
-        KaitaiDefitionsTreeView.SelectedItemChanged += (_, args) =>
-        {
-            if (args.NewValue == args.OldValue)
-            {
-                return;
-            }
-
-            if (args.NewValue is null)
-            {
-                KaitaiScriptText.Document.Text = "";
-                return;
-            }
-
-            var header = (string) (args.NewValue as TreeViewItem).Header;
-            if (!KaitaiDefinitions.ContainsKey(header))
-            {
-                KaitaiScriptText.Document.Text = "";
-                return;
-            }
-
-            var kaitaiScript = KaitaiDefinitions[header];
-            KaitaiScriptText.Document.Text = kaitaiScript;
-            KaitaiCompile();
-        };
-
-        KaitaiDefitionsTreeView.ContextMenu = new ContextMenu();
-        var createItem = new MenuItem
-        {
-            Header = "Create new definition"
-        };
-        createItem.Click += (_, _) =>
-        {
-            var dialog = new CreateKaitaiDialog();
-            var name = "";
-            if (dialog.ShowDialog() == true)
-            {
-                name = dialog.Name;
-            }
-
-            if (string.IsNullOrWhiteSpace(name))
-            {
-                MessageBox.Show("Please input name to create a new definition");
-                return;
-            }
-
-            CreateKaitaiDefinitionItem(name, true);
-            KaitaiDefitionsTreeView.UpdateLayout();
-        };
-
-        KaitaiDefitionsTreeView.ContextMenu.Items.Add(createItem);
-        SelectFirstDefinitionItem();
     }
 
-    public void SelectFirstDefinitionItem ()
+    private void EditPacketPart_OnClick (object sender, RoutedEventArgs e)
     {
-        var firstItem = (TreeViewItem) KaitaiDefitionsTreeView.Items.GetItemAt(0);
-        firstItem.IsSelected = true;
-        KaitaiScriptCompileOutputText.Document.Blocks.Clear();
-    }
-
-    public void CreateKaitaiDefinitionItem (string header, bool isSelected = false)
-    {
-        var item = new TreeViewItem
-        {
-            Header = header,
-            IsExpanded = true,
-            IsSelected = isSelected,
-            ContextMenu = new ContextMenu()
-        };
-
-        var deleteMenuItem = new MenuItem
-        {
-            Header = "Delete definition"
-        };
-        deleteMenuItem.Click += (_, _) =>
-        {
-            var confirmDialogResult = MessageBox.Show(
-                $"Do you really want to delete definition \"{header}\"?",
-                "Confirm deletion?",
-                MessageBoxButton.YesNo);
-            if (confirmDialogResult == MessageBoxResult.Yes)
-            {
-                var path = GetKaitaiPath(header);
-                File.Delete(path);
-                KaitaiDefitionsTreeView.Items.Remove(item);
-                SelectFirstDefinitionItem();
-            }
-        };
-        item.ContextMenu.Items.Add(deleteMenuItem);
-        KaitaiDefitionsTreeView.Items.Add(item);
-        KaitaiScriptCompileOutputText.Document.Blocks.Clear();
-    }
-
-    public string GetKaitaiPath (string name)
-    {
-        return Path.Combine(KaitaiPath, name + ".ksy");
-    }
-
-    public void SaveCurrentKaitaiDefinition (object selectedItem)
-    {
-        if (selectedItem is null)
-        {
-            return;
-        }
-
-        var selectedScriptItem = selectedItem as TreeViewItem;
-        KaitaiScriptText.Document.Text = KaitaiScriptText.Document.Text.Replace("\t", "    ");
-        var contents = KaitaiScriptText.Document.Text;
-        var header = (string) selectedScriptItem.Header;
-        var outputFile = GetKaitaiPath(header);
-        File.WriteAllText(outputFile, contents);
-        KaitaiDefinitions[header] = contents;
     }
 }

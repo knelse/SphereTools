@@ -104,16 +104,16 @@ public static class SavedCoords
         {
             [Hyperion] = new Dictionary<Cities, Dictionary<KarmaTypes, WorldCoords>>
             {
-                [Shipstone] = new()
+                [Shipstone] = new ()
                 {
                     [VeryBad] = new WorldCoords(1194, 159.9, -2194, -4)
                 },
-                [Sunpool] = new()
+                [Sunpool] = new ()
                 {
                     [Bad] = new WorldCoords(3648, 155, -3455),
                     [VeryBad] = new WorldCoords(1194, 159.9, -2194, -4)
                 },
-                [Torweal] = new()
+                [Torweal] = new ()
                 {
                     [Bad] = new WorldCoords(2489, 159.7, -2181, 0),
                     [VeryBad] = new WorldCoords(1194, 159.9, -2194, -4)
@@ -378,6 +378,22 @@ public static class CoordsHelper
         var baseCoord = Math.Pow(2, scale - 58);
 
         return sign * (1 + (double) numToEncode / 0b100000000000000000000000) * baseCoord;
+    }
+
+    public static double DecodeClientCoordinateWithoutShift (byte[] a)
+    {
+        var x_scale = ((a[4] & 0b11111) << 3) + ((a[3] & 0b11100000) >> 5);
+
+        if (x_scale == 126)
+        {
+            return 0.0;
+        }
+
+        var baseCoord = Math.Pow(2, x_scale - 127);
+        var sign = (a[4] & 0b100000) > 0 ? -1 : 1;
+
+        return (1 + (float) (((a[3] & 0b11111) << 18) + (a[2] << 10) + (a[1] << 2) +
+                             ((a[0] & 0b11000000) >> 6)) / 0b100000000000000000000000) * baseCoord * sign;
     }
 
     public static double DecodeClientCoordinate (byte[] a)

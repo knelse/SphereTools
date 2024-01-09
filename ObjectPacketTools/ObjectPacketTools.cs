@@ -1,12 +1,10 @@
-﻿
-using System.Text;
+﻿using System.Text;
 using BitStreams;
 using LiteDB;
 
 public struct ObjectPacket
 {
-    [BsonId]
-    public int DbId { get; set; }
+    [BsonId] public int DbId { get; set; }
     public ushort Id { get; set; }
     public Bit[] _skip1 { get; set; }
     public ushort Type { get; set; }
@@ -37,11 +35,13 @@ public struct ObjectPacket
 
     private static readonly byte[] premiumByteMarker = { 0x05, 0x0F, 0x08 };
     private const int premiumIntMarker = 0x050F08;
+
     private bool shorterObjectSeparator =>
         EncodingGroup is ObjectPacketEncodingGroup.WeaponArmor;
+
     private bool noObjectSeparator => EncodingGroup is ObjectPacketEncodingGroup.FourSlotBag;
 
-    public static ObjectPacket FromStream(BitStream stream, Locale localeForFriendlyName = Locale.Russian)
+    public static ObjectPacket FromStream (BitStream stream, Locale localeForFriendlyName = Locale.Russian)
     {
         var result = new ObjectPacket
         {
@@ -70,7 +70,7 @@ public struct ObjectPacket
         }
 
         result.ObjectType = ObjectType.Unknown;
-        if (Enum.IsDefined(typeof(ObjectType), result.Type))
+        if (Enum.IsDefined(typeof (ObjectType), result.Type))
         {
             result.ObjectType = (ObjectType) result.Type;
         }
@@ -84,7 +84,7 @@ public struct ObjectPacket
             case ObjectType.MantraBookLarge:
             case ObjectType.MantraBookGreat:
                 result.GetStreamDataAsMantraBook(stream);
-                break; 
+                break;
             case ObjectType.MantraWhite:
             case ObjectType.MantraBlack:
                 result.GetStreamDataAsMantra(stream);
@@ -127,7 +127,7 @@ public struct ObjectPacket
             // case 0: // TBD: figure out, some chests get there
             // case 210: // chest, container
             case ObjectType.Chest: // chest
-            // case 415: // container with different shift
+                // case 415: // container with different shift
                 result.GetStreamDataAsChestContainer(stream);
                 break;
             // case 407:
@@ -164,13 +164,13 @@ public struct ObjectPacket
             case ObjectType.QuestWeaponCrossbow:
             case ObjectType.QuestWeaponSword:
             case ObjectType.ArmorHelmetPremium:
-            
+
             case ObjectType.Unknown:
             default:
                 result.GetStreamDataAsWeaponArmor(stream, hasLongTail);
                 break;
         }
-        
+
         // no support for seeking forth from the current position?
         try
         {
@@ -212,7 +212,7 @@ public struct ObjectPacket
         return result;
     }
 
-    public void ToStream(BitStream stream, bool withSeparator = false)
+    public void ToStream (BitStream stream, bool withSeparator = false)
     {
         stream.WriteUInt16(Id);
         stream.WriteBits(_skip1);
@@ -223,7 +223,7 @@ public struct ObjectPacket
         stream.WriteBytes(Z, 4, true);
         stream.WriteBytes(T, 4, true);
         stream.WriteUInt16(GameId, 14);
-        
+
         if (FourBitShiftedSuffix)
         {
             stream.WriteUInt16(SuffixMod, 12);
@@ -232,7 +232,7 @@ public struct ObjectPacket
         {
             stream.WriteByte((byte) SuffixMod);
         }
-        
+
         stream.WriteBits(_skip3);
         stream.WriteUInt16(BagId);
         stream.WriteBits(_skip4);
@@ -256,7 +256,7 @@ public struct ObjectPacket
         // }
     }
 
-    private void GetSuffixModSkip3BagId(BitStream stream)
+    private void GetSuffixModSkip3BagId (BitStream stream)
     {
         SuffixMod = FourBitShiftedSuffix ? stream.ReadUInt16(12) : stream.ReadByte();
 
@@ -277,11 +277,11 @@ public struct ObjectPacket
             SuffixMod = FourBitShiftedSuffix ? stream.ReadUInt16(12) : stream.ReadByte();
         }
 
-        _skip3 = stream.ReadBits(17);
+        _skip3 = stream.ReadBits(21);
         BagId = stream.ReadUInt16();
     }
 
-    private void GetStreamDataAsMantra(BitStream stream)
+    private void GetStreamDataAsMantra (BitStream stream)
     {
         GetSuffixModSkip3BagId(stream);
         _skip4 = stream.ReadBits(27);
@@ -289,7 +289,7 @@ public struct ObjectPacket
         EncodingGroup = ObjectPacketEncodingGroup.Mantra;
     }
 
-    private void GetStreamDataAsMaterialPowderElixir(BitStream stream)
+    private void GetStreamDataAsMaterialPowderElixir (BitStream stream)
     {
         GetSuffixModSkip3BagId(stream);
         _skip4 = stream.ReadBits(86);
@@ -308,17 +308,18 @@ public struct ObjectPacket
         {
             stream.SeekBack(1);
         }
+
         EncodingGroup = ObjectPacketEncodingGroup.MatPowderEli;
     }
 
-    private void GetStreamDataAsRing(BitStream stream)
+    private void GetStreamDataAsRing (BitStream stream)
     {
         GetSuffixModSkip3BagId(stream);
         _skip4 = stream.ReadBits(197);
         EncodingGroup = ObjectPacketEncodingGroup.Ring;
     }
 
-    private void GetStreamDataAsMantraBook(BitStream stream)
+    private void GetStreamDataAsMantraBook (BitStream stream)
     {
         SuffixMod = stream.ReadByte();
         _skip3 = stream.ReadBits(6);
@@ -327,7 +328,7 @@ public struct ObjectPacket
         EncodingGroup = ObjectPacketEncodingGroup.MantraBook;
     }
 
-    private void GetStreamDataAs4SlotBag(BitStream stream)
+    private void GetStreamDataAs4SlotBag (BitStream stream)
     {
         SuffixMod = stream.ReadByte();
 
@@ -338,13 +339,14 @@ public struct ObjectPacket
             GameId = stream.ReadUInt16(14);
             SuffixMod = stream.ReadByte();
         }
+
         _skip3 = stream.ReadBits(6);
         BagId = stream.ReadUInt16();
         EncodingGroup = ObjectPacketEncodingGroup.FourSlotBag;
         _skip4 = stream.ReadBits(int.MaxValue);
     }
 
-    private void GetStreamDataAsBrushwoodFood(BitStream stream)
+    private void GetStreamDataAsBrushwoodFood (BitStream stream)
     {
         SuffixMod = stream.ReadByte();
         _skip3 = stream.ReadBits(6);
@@ -354,7 +356,7 @@ public struct ObjectPacket
         EncodingGroup = ObjectPacketEncodingGroup.BrushwoodFood;
     }
 
-    private void GetStreamDataAsToken(BitStream stream)
+    private void GetStreamDataAsToken (BitStream stream)
     {
         SuffixMod = stream.ReadByte();
         _skip3 = stream.ReadBits(6);
@@ -365,7 +367,7 @@ public struct ObjectPacket
         EncodingGroup = ObjectPacketEncodingGroup.Token;
     }
 
-    private void GetStreamDataAsWeaponArmor(BitStream stream, bool hasLongTail)
+    private void GetStreamDataAsWeaponArmor (BitStream stream, bool hasLongTail)
     {
         GetSuffixModSkip3BagId(stream);
         //         _skip4 = stream.ReadBits(isPremium ? 86 : 71),
@@ -387,10 +389,11 @@ public struct ObjectPacket
             skipList.AddRange(_skip);
             _skip4 = skipList.ToArray();
         }
+
         EncodingGroup = ObjectPacketEncodingGroup.WeaponArmor;
     }
 
-    private void GetStreamDataAsCraftFormula(BitStream stream)
+    private void GetStreamDataAsCraftFormula (BitStream stream)
     {
         SuffixMod = stream.ReadByte();
         _skip3 = stream.ReadBits(6);
@@ -399,7 +402,7 @@ public struct ObjectPacket
         EncodingGroup = ObjectPacketEncodingGroup.CraftFormula;
     }
 
-    private void GetStreamDataAsChestContainer(BitStream stream)
+    private void GetStreamDataAsChestContainer (BitStream stream)
     {
         SuffixMod = stream.ReadByte(5);
 
@@ -417,10 +420,11 @@ public struct ObjectPacket
             // happens with Type = 415, TBD
             _skip3 = stream.ReadBits(64);
         }
+
         EncodingGroup = ObjectPacketEncodingGroup.ChestContainer;
     }
 
-    private void GetStreamDataAsScroll(BitStream stream)
+    private void GetStreamDataAsScroll (BitStream stream)
     {
         SuffixMod = stream.ReadByte();
         _skip3 = stream.ReadBits(6);
@@ -429,7 +433,7 @@ public struct ObjectPacket
         EncodingGroup = ObjectPacketEncodingGroup.Scroll;
     }
 
-    public string ToDebugString()
+    public string ToDebugString ()
     {
         var typeName = $"({Enum.GetName(ObjectType)!})";
         string tier;
@@ -446,6 +450,7 @@ public struct ObjectPacket
         {
             tier = GameObject?.ToRomanTierLiteral() ?? string.Empty;
         }
+
         var suffix = (GameObject?.Suffix ?? ItemSuffix.None) == ItemSuffix.None
             ? string.Empty
             : @$" {GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.ObjectType][GameObject!.Suffix]
@@ -462,7 +467,7 @@ public struct ObjectPacket
 
 public static class ObjectPacketTools
 {
-    public static List<ObjectPacket> GetObjectsFromPacket(byte[] packet)
+    public static List<ObjectPacket> GetObjectsFromPacket (byte[] packet)
     {
         byte[] trimmedPacket;
         if (packet[2] == 0x2C && packet[3] == 0x01 && packet[4] == 0x00)
@@ -475,6 +480,7 @@ public static class ObjectPacketTools
         {
             trimmedPacket = packet;
         }
+
         var containerStream = new BitStream(trimmedPacket);
         var result = new List<ObjectPacket>();
         var offsets = new List<long>();
@@ -485,7 +491,10 @@ public static class ObjectPacketTools
             {
                 var test = containerStream.ReadBytes(4, true);
 
-                if (!containerStream.ValidPosition) break;
+                if (!containerStream.ValidPosition)
+                {
+                    break;
+                }
 
                 containerStream.SeekBack(32);
 
@@ -494,20 +503,17 @@ public static class ObjectPacketTools
                     var pos = (containerStream.Offset - 16) * 8 + containerStream.Bit;
                     var currentOffset = containerStream.Offset;
                     var currentBit = containerStream.Bit;
-                    
+
                     containerStream.Seek(currentOffset - 14, currentBit);
                     containerStream.ReadBits(2);
                     var typeCheck = containerStream.ReadUInt16(10);
 
-                    if (Enum.IsDefined(typeof(ObjectType), typeCheck))
+                    if (Enum.IsDefined(typeof (ObjectType), typeCheck))
                     {
                         offsets.Add(pos);
                     }
-                    else
-                    {
-                        Console.WriteLine($"Unknown: {typeCheck} at {currentOffset} {currentBit}");
-                    }
-                    
+
+                    // Console.WriteLine($"Unknown: {typeCheck} at {currentOffset} {currentBit}");
                     containerStream.Seek(currentOffset, currentBit);
                 }
 
@@ -516,7 +522,6 @@ public static class ObjectPacketTools
         }
         catch (IOException)
         {
-            
         }
         finally
         {
@@ -525,7 +530,7 @@ public static class ObjectPacketTools
                 containerStream.Seek(offsets[0] / 8, (int) (offsets[0] % 8));
             }
         }
-        
+
         offsets.Add(containerStream.Length * 8);
 
         var packets = new List<byte[]>();
@@ -537,7 +542,7 @@ public static class ObjectPacketTools
             var objectPacket = BitStream.BitArrayToBytes(bits);
             packets.Add(objectPacket);
         }
-        
+
         foreach (var objectPacket in packets)
         {
             var packetStream = new BitStream(objectPacket);
@@ -545,23 +550,24 @@ public static class ObjectPacketTools
             obj.Packet = objectPacket;
             result.Add(obj);
         }
-        
+
         containerStream.GetStream().Dispose();
-        
+
         return result;
     }
 
-    public static string GetTextOutput(List<ObjectPacket> objectPackets, bool writePacketsToConsole = false)
+    public static string GetTextOutput (List<ObjectPacket> objectPackets, bool writePacketsToConsole = false)
     {
         if (objectPackets.Count == 0)
         {
             return string.Empty;
         }
+
         objectPackets.Sort((a, b) => a.BagId.CompareTo(b.BagId));
 
         var currentBagId = -1;
         var sb = new StringBuilder();
-        
+
         foreach (var objectPacket in objectPackets)
         {
             if (objectPacket.BagId != currentBagId)
@@ -578,7 +584,7 @@ public static class ObjectPacketTools
 
             if (writePacketsToConsole)
             {
-                Console.WriteLine(objectPacket.BitsRead + " " +  Convert.ToHexString(objectPacket.Packet));
+                Console.WriteLine(objectPacket.BitsRead + " " + Convert.ToHexString(objectPacket.Packet));
             }
 
             sb.AppendLine(objectPacket.ToDebugString());
@@ -586,7 +592,8 @@ public static class ObjectPacketTools
 
         return sb.ToString();
     }
-    public static void SeekBack(this BitStream bitStream, int countBits)
+
+    public static void SeekBack (this BitStream bitStream, int countBits)
     {
         for (var i = 0; i < countBits; i++)
         {
@@ -594,17 +601,22 @@ public static class ObjectPacketTools
         }
     }
 
-    public static ushort ReadUInt16(this BitStream bitStream, int countBits)
+    public static ushort ReadUInt16 (this BitStream bitStream, int countBits)
     {
         return (ushort) BitsToInt(bitStream.ReadBits(countBits));
     }
 
-    public static void WriteUInt16(this BitStream bitStream, ushort val, int countBits)
+    public static uint ReadUInt32 (this BitStream bitStream, int countBits)
+    {
+        return (uint) BitsToInt(bitStream.ReadBits(countBits));
+    }
+
+    public static void WriteUInt16 (this BitStream bitStream, ushort val, int countBits)
     {
         bitStream.WriteBits(IntToBits(val, countBits));
     }
 
-    public static int BitsToInt(Bit[] bits)
+    public static int BitsToInt (Bit[] bits)
     {
         var result = 0;
 
@@ -617,7 +629,7 @@ public static class ObjectPacketTools
         return result;
     }
 
-    public static Bit[] IntToBits(int val, int length)
+    public static Bit[] IntToBits (int val, int length)
     {
         var result = new List<Bit>();
 
@@ -634,17 +646,18 @@ public static class ObjectPacketTools
 
         return result.ToArray();
     }
-    public static string ToByteString(this Bit[]? bits)
+
+    public static string ToByteString (this Bit[]? bits)
     {
         return Convert.ToHexString(BitStream.BitArrayToBytes(bits));
     }
 
-    public static string RemainderToByteString(this BitStream bitStream)
+    public static string RemainderToByteString (this BitStream bitStream)
     {
         return Convert.ToHexString(bitStream.GetStreamDataFromCurrentOffsetAndBit());
     }
 
-    public static string BitArrayToString(Bit[] bits)
+    public static string BitArrayToString (Bit[] bits)
     {
         var sb = new StringBuilder();
 
@@ -655,8 +668,8 @@ public static class ObjectPacketTools
 
         return sb.ToString();
     }
-    
-    public static bool ByteArrayCompare(byte[] what, byte[] to, int fromIndex = 0)
+
+    public static bool ByteArrayCompare (byte[] what, byte[] to, int fromIndex = 0)
     {
         if (to.Length > what.Length - fromIndex)
         {
@@ -674,25 +687,24 @@ public static class ObjectPacketTools
         return true;
     }
 
-    public static bool IsObjectPacket(byte[] test)
+    public static bool IsObjectPacket (byte[] test)
     {
-        return ((test[0] & 0b1111) is 0x8 or 0x9 or 0x0)// or 0xF9 or 0x08 or 0xF8 or 0x78 or 0x98)
-                && ((test[1] >> 4) is 0x4 or 0x5) //0 or 0x4F or 0x5F or 0x5E or 0x5C or 0x58 or 0x47 or 0x50)
-                && (test[2] & 0b1) is 0x1
-                && (test[3] is 0x44 or 0x45);
+        return (test[0] & 0b1111) is 0x8 or 0x9 or 0x0 // or 0xF9 or 0x08 or 0xF8 or 0x78 or 0x98)
+               && test[1] >> 4 is 0x4 or 0x5 //0 or 0x4F or 0x5F or 0x5E or 0x5C or 0x58 or 0x47 or 0x50)
+               && (test[2] & 0b1) is 0x1
+               && test[3] is 0x44 or 0x45;
     }
 
-    public static void RegisterBsonMapperForBit()
+    public static void RegisterBsonMapperForBit ()
     {
         BsonMapper.Global.RegisterType
         (
-            serialize: (bit) => (int) bit,
-            deserialize: (bson) => new Bit((int)bson)
+            bit => (int) bit,
+            bson => new Bit((int) bson)
         );
-
     }
 
-    public static string GetFriendlyNameByObjectType(ObjectType objectType)
+    public static string GetFriendlyNameByObjectType (ObjectType objectType)
     {
         return (objectType switch
         {
