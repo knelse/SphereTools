@@ -4,6 +4,7 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using SphServer.Helpers.Enums;
 
 namespace SpherePacketVisualEditor;
 
@@ -27,7 +28,6 @@ public partial class CreatePacketPartDefinitionDialog
         }
 
         var enumNames = definedEnums.Select(x => new ComboBoxItemWithName { Name = x });
-        PacketPartName.Text = $"new_part_{Random.Shared.Next(0, 1000)}";
         EnumNameComboBox.ItemsSource = enumNames;
         EnumNameComboBox.SelectedIndex = 0;
         PacketPartTypeComboBox.ItemsSource = partTypeNames;

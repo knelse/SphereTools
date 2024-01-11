@@ -4,21 +4,12 @@ using System.IO;
 using System.Linq;
 using System.Windows.Media;
 using BitStreams;
+using LiteDB;
 using PacketLogViewer;
 using SphServer.Helpers;
+using SphServer.Helpers.Enums;
 
 namespace SpherePacketVisualEditor;
-
-public enum PacketPartType
-{
-    BITS,
-    BYTES,
-    INT64,
-    UINT64,
-    STRING,
-    COORDS_CLIENT,
-    COORDS_SERVER
-}
 
 public record PacketPartDisplayText (
     string bitsStr,
@@ -30,20 +21,20 @@ public record PacketPartDisplayText (
     string? coordsClientStr,
     string? coordsServerStr)
 {
-    public readonly string Bits = bitsStr;
-    public readonly string Bytes = bytesStr;
-    public readonly string? CoordsClient = coordsClientStr;
-    public readonly string? CoordsServer = coordsServerStr;
-    public readonly string? EnumValue = enumValueStr;
-    public readonly string Long = longStr;
-    public readonly string Text = textStr;
-    public readonly string Ulong = ulongStr;
+    public string Bits { get; set; } = bitsStr;
+    public string Bytes { get; set; } = bytesStr;
+    public string? CoordsClient { get; set; } = coordsClientStr;
+    public string? CoordsServer { get; set; } = coordsServerStr;
+    public string? EnumValue { get; set; } = enumValueStr;
+    public string Long { get; set; } = longStr;
+    public string Text { get; set; } = textStr;
+    public string Ulong { get; set; } = ulongStr;
 }
 
-public record StreamPosition (long Offset, int Bit)
+public record StreamPosition (long offset, int bit)
 {
-    public int Bit = Bit;
-    public long Offset = Offset;
+    public int Bit { get; set; } = bit;
+    public long Offset { get; set; } = offset;
 
     public override string ToString ()
     {
@@ -102,33 +93,48 @@ public class PacketPart
 {
     public const string UndefinedFieldValue = "__undef";
     public const string LengthFromPreviousFieldValue = "__fromPrevious";
-    public readonly string? EnumName;
-    public readonly Brush HighlightColor;
-    public readonly bool LengthFromPreviousField;
-    public readonly PacketPartType PacketPartType;
-    public readonly StreamPosition StreamPositionEnd;
-    public readonly StreamPosition StreamPositionStart;
-    public long BitLength;
-    public PacketPartDisplayText DisplayText;
-    public List<Bit> Value;
+    public string? EnumName { get; set; }
+    public SolidColorBrush HighlightColor { get; set; } = Brushes.Transparent;
+    public bool LengthFromPreviousField { get; set; }
+    public PacketPartType PacketPartType { get; set; }
+    public StreamPosition StreamPositionEnd { get; set; }
+    public StreamPosition StreamPositionStart { get; set; }
+    public long BitLength { get; set; }
+    [BsonIgnore] public PacketPartDisplayText DisplayText;
+    [BsonIgnore] public List<Bit> Value { get; set; }
+    public string Comment { get; set; }
 
     public PacketPart (long length, Brush highlightColor, string name, string? enumName, bool lengthFromPreviousField,
-        PacketPartType packetPartType,
-        StreamPosition streamPositionStart, StreamPosition streamPositionEnd, List<Bit> value)
+        PacketPartType packetPartType, StreamPosition streamPositionStart, StreamPosition streamPositionEnd,
+        List<Bit> value, string comment = "")
     {
         BitLength = length;
         LengthFromPreviousField = lengthFromPreviousField;
-        HighlightColor = highlightColor;
+        HighlightColor = (SolidColorBrush) highlightColor;
         Name = name;
         EnumName = enumName;
         StreamPositionEnd = streamPositionEnd;
         StreamPositionStart = streamPositionStart;
         Value = value;
         PacketPartType = packetPartType;
+        Comment = comment;
         UpdateValueDisplayText();
     }
 
-    public string PartListDisplayText { get; set; }
+    public PacketPart ()
+    {
+        // required for litedb
+    }
+
+    public PacketPart Clone ()
+    {
+        var value = new List<Bit>(Value);
+        return new PacketPart(BitLength, HighlightColor, Name, EnumName, LengthFromPreviousField, PacketPartType,
+            new StreamPosition(StreamPositionStart.Offset, StreamPositionStart.Bit),
+            new StreamPosition(StreamPositionEnd.Offset, StreamPositionEnd.Bit), value, Comment);
+    }
+
+    [BsonIgnore] public string PartListDisplayText { get; set; }
 
     public string Name { get; set; }
 
@@ -215,8 +221,8 @@ public class PacketPart
 
         var bytes = BitStream.BitArrayToBytes(bits.ToArray());
         var stream = new BitStream(bytes);
-        var textChars = MainWindow.Win1251.GetString(bytes).ToCharArray();
-        var visibleChars = textChars.Select(MainWindow.GetVisibleChar).ToArray();
+        var textChars = PacketLogViewerMainWindow.Win1251.GetString(bytes).ToCharArray();
+        var visibleChars = textChars.Select(PacketLogViewerMainWindow.GetVisibleChar).ToArray();
         var textString = new string(visibleChars);
         Array.Reverse(bytes);
         var bytesString = Convert.ToHexString(bytes);
@@ -235,10 +241,10 @@ public class PacketPart
         var coordsClientStr = coordsClient is null ? null : $"{coordsClient:F2}";
 
         var enumValueStr = enumName is null ? null : "(undef)";
-        if (bytes.Length <= 8 && enumName is not null && MainWindow.DefinedEnums.ContainsKey(enumName) &&
-            MainWindow.DefinedEnums[enumName].ContainsKey((int) ulongValue))
+        if (bytes.Length <= 8 && enumName is not null && PacketLogViewerMainWindow.DefinedEnums.ContainsKey(enumName) &&
+            PacketLogViewerMainWindow.DefinedEnums[enumName].ContainsKey((int) ulongValue))
         {
-            enumValueStr = MainWindow.DefinedEnums[enumName][(int) ulongValue];
+            enumValueStr = PacketLogViewerMainWindow.DefinedEnums[enumName][(int) ulongValue];
         }
 
         return new PacketPartDisplayText(bitsString, bytesString, textString, longValueStr, ulongValueStr,
@@ -272,8 +278,14 @@ public class PacketPart
             var start = int.Parse(fieldValues[2]);
             var length = 0;
             var lengthFromPrevious = false;
-            if (fieldValues[3] == LengthFromPreviousFieldValue)
+            if (fieldValues[3].StartsWith(LengthFromPreviousFieldValue))
             {
+                var startOffset = LengthFromPreviousFieldValue.Length;
+                if (fieldValues[3].Length > startOffset)
+                {
+                    length = int.Parse(fieldValues[3][startOffset..]);
+                }
+
                 lengthFromPrevious = true;
             }
             else

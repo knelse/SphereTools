@@ -8,8 +8,9 @@ public class Subpacket
     public string Name { get; set; }
     public string FilePath { get; set; }
 
-    public void LoadFromFile ()
+    public Subpacket LoadFromFile ()
     {
         PacketParts = PacketPart.LoadFromFile(FilePath, Name);
+        return this;
     }
 }

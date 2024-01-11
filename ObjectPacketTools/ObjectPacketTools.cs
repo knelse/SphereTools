@@ -1,4 +1,5 @@
 ﻿using System.Text;
+using System.Windows.Media;
 using BitStreams;
 using LiteDB;
 
@@ -92,7 +93,7 @@ public struct ObjectPacket
             case ObjectType.AlchemyMineral:
             case ObjectType.AlchemyPlant:
             case ObjectType.AlchemyMetal:
-            case ObjectType.PowderTarget:
+            case ObjectType.PowderSingleTarget:
             case ObjectType.PowderAoE:
             case ObjectType.ElixirCastle:
             case ObjectType.ElixirTrap:
@@ -242,7 +243,7 @@ public struct ObjectPacket
             or ObjectType.AlchemyPlant or ObjectType.ElixirCastle or ObjectType.ElixirTrap or ObjectType.FoodApple
             or ObjectType.FoodBread or ObjectType.FoodFish or ObjectType.FoodMeat or ObjectType.FoodPear
             or ObjectType.MantraBlack or ObjectType.MantraWhite or ObjectType.MonsterPart or ObjectType.PowderAmilus
-            or ObjectType.PowderFinale or ObjectType.PowderTarget or ObjectType.RingDiamond or ObjectType.RingRuby
+            or ObjectType.PowderFinale or ObjectType.PowderSingleTarget or ObjectType.RingDiamond or ObjectType.RingRuby
             or ObjectType.SeedCastle or ObjectType.TokenIsland or ObjectType.PowderAoE)
         {
             stream.WriteUInt16(Count);
@@ -669,24 +670,6 @@ public static class ObjectPacketTools
         return sb.ToString();
     }
 
-    public static bool ByteArrayCompare (byte[] what, byte[] to, int fromIndex = 0)
-    {
-        if (to.Length > what.Length - fromIndex)
-        {
-            return false;
-        }
-
-        for (var i = 0; i < to.Length; i++)
-        {
-            if (what[i + fromIndex] != to[i])
-            {
-                return false;
-            }
-        }
-
-        return true;
-    }
-
     public static bool IsObjectPacket (byte[] test)
     {
         return (test[0] & 0b1111) is 0x8 or 0x9 or 0x0 // or 0xF9 or 0x08 or 0xF8 or 0x78 or 0x98)
@@ -702,6 +685,27 @@ public static class ObjectPacketTools
             bit => (int) bit,
             bson => new Bit((int) bson)
         );
+        BsonMapper.Global.RegisterType<List<Bit>>
+        (
+            list => new BsonArray(list.Select(x => new BsonValue(x.AsInt())).ToArray()),
+            bson => bson.AsArray.Select(x => new Bit((int) x)).ToList()
+        );
+        BsonMapper.Global.RegisterType<SolidColorBrush>(
+            brush => $"{brush.Color.R},{brush.Color.G},{brush.Color.B},{brush.Color.A}",
+            bson =>
+            {
+                var colors = ((string) bson).Split(',').Select(byte.Parse).ToArray();
+                return new SolidColorBrush()
+                {
+                    Color = new Color
+                    {
+                        R = colors[0],
+                        G = colors[1],
+                        B = colors[2],
+                        A = colors[3]
+                    }
+                };
+            });
     }
 
     public static string GetFriendlyNameByObjectType (ObjectType objectType)

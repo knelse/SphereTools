@@ -6,10 +6,21 @@ public static class BitStreamExtensions
 {
     public static void SeekBack (this BitStream bitStream, int countBits)
     {
-        for (var i = 0; i < countBits; i++)
-        {
-            bitStream.ReturnBit();
-        }
+        var newBitOffset = bitStream.BitOffsetFromStart - countBits;
+        bitStream.SeekBitOffset(newBitOffset);
+    }
+
+    public static void SeekBitOffset (this BitStream bitStream, long bitOffset)
+    {
+        var newOffset = bitOffset / 8;
+        var newBit = (int) bitOffset % 8;
+        bitStream.Seek(newOffset, newBit);
+    }
+
+    public static void SeekForward (this BitStream bitStream, int countBits)
+    {
+        var newBitOffset = bitStream.BitOffsetFromStart + countBits;
+        bitStream.SeekBitOffset(newBitOffset);
     }
 
     public static ushort ReadUInt16 (this BitStream bitStream, int countBits)
@@ -32,6 +43,19 @@ public static class BitStreamExtensions
         var result = 0;
 
         for (var i = bits.Length - 1; i >= 0; i--)
+        {
+            result <<= 1;
+            result += bits[i];
+        }
+
+        return result;
+    }
+
+    public static int BitsToInt (List<Bit> bits)
+    {
+        var result = 0;
+
+        for (var i = bits.Count - 1; i >= 0; i--)
         {
             result <<= 1;
             result += bits[i];

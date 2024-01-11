@@ -1,3 +1,5 @@
+0: despawn
+2: update_state
 4: player
 8: token
 30: mutator
@@ -5,6 +7,7 @@
 47: xp_pill_degree
 66: token_multiuse
 68: trade_license
+70: mob_spawner
 90: scroll_legend
 91: scroll_recipe
 95: mission
@@ -72,7 +75,7 @@
 761: armor_robe
 762: ring_golem
 800: alchemy_pot
-803: alchemy_oven
+803: alchemy_furnace
 804: blueprint
 949: quest_armor_chest
 950: quest_armor_amulet
