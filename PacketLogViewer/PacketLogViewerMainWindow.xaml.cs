@@ -64,6 +64,7 @@ public partial class PacketLogViewerMainWindow
     public PacketLogViewerMainWindow ()
     {
         InitializeComponent();
+        RegisterBsonMapperForBrush();
 
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         Win1251 = Encoding.GetEncoding(1251);
@@ -749,7 +750,17 @@ public partial class PacketLogViewerMainWindow
 
             if (textBlockChanged)
             {
-                var newTextBrush = inSelection ? SelectionBrush : currentPacketPart?.HighlightColor;
+                var newTextBrush = inSelection ? SelectionBrush :
+                    currentPacketPart is null ? null : new SolidColorBrush
+                    {
+                        Color = new Color
+                        {
+                            R = currentPacketPart.HighlightColorR,
+                            G = currentPacketPart.HighlightColorG,
+                            B = currentPacketPart.HighlightColorB,
+                            A = currentPacketPart.HighlightColorA
+                        }
+                    };
                 if (textBrush is null)
                 {
                     if (sb.Length > 0)
@@ -901,9 +912,10 @@ public partial class PacketLogViewerMainWindow
         CurrentContentBitStream.Seek(actualStart.Offset, actualStart.Bit);
         var bits = CurrentContentBitStream.ReadBits(bitLength).ToList();
         bits.Reverse();
+        var color = ((SolidColorBrush) highlightColor).Color;
         var streamValueLength = (long) bits.Count;
-        return new PacketPart(streamValueLength, highlightColor, name, enumName, lengthFromPrevious, packetPartType,
-            actualStart, actualEnd, bits);
+        return new PacketPart(streamValueLength, name, enumName, lengthFromPrevious, packetPartType,
+            actualStart, actualEnd, bits, color.R, color.G, color.B, color.A);
     }
 
     private void UpdateDefinedPackets ()
@@ -928,10 +940,11 @@ public partial class PacketLogViewerMainWindow
                 var comment = $" {part.Comment} ";
                 var paddingLength = (lineWidth - comment.Length) / 2;
                 var padding = new string('=', paddingLength);
+                var commentColor = part.Comment == "NEXT PACKET" ? Brushes.SlateGray : Brushes.Honeydew;
                 paragraph.Inlines.Add(new Run(
                     $"{padding}{comment}{padding}\n\n")
                 {
-                    Background = Brushes.Honeydew
+                    Background = commentColor
                 });
             }
 
@@ -943,9 +956,16 @@ public partial class PacketLogViewerMainWindow
 
     private void AddPacketPartInlines (InlineCollection inlineCollection, PacketPart part)
     {
+        var color = new Color
+        {
+            R = part.HighlightColorR,
+            G = part.HighlightColorG,
+            B = part.HighlightColorB,
+            A = part.HighlightColorA
+        };
         inlineCollection.Add(new Run($"{part.Name}")
         {
-            Background = part.HighlightColor
+            Background = new SolidColorBrush { Color = color }
         });
         inlineCollection.Add(": ");
         var valueStr = part.GetDisplayTextForValueType();
@@ -1153,7 +1173,10 @@ public partial class PacketLogViewerMainWindow
             var partType = PacketPartType.BITS;
             var lengthFromPrevious = false;
             var enumName = PacketPart.UndefinedFieldValue;
-            Brush highlightColor = Brushes.Transparent;
+            var colorR = 0;
+            var colorG = 0;
+            var colorB = 0;
+            var colorA = 0;
             Bit[] bits;
             var startPosition = currentIndex;
             if (nextPacketPart is null)
@@ -1179,14 +1202,15 @@ public partial class PacketLogViewerMainWindow
                     partType = nextPacketPart.PacketPartType;
                     name = nextPacketPart.Name;
                     enumName = nextPacketPart.EnumName ?? PacketPart.UndefinedFieldValue;
-                    highlightColor = nextPacketPart.HighlightColor;
+                    colorR = nextPacketPart.HighlightColorR;
+                    colorG = nextPacketPart.HighlightColorG;
+                    colorB = nextPacketPart.HighlightColorB;
+                    colorA = nextPacketPart.HighlightColorA;
                     currentIndex = nextPartEndIndex;
                     nextPacketPartIndex++;
                     lengthFromPrevious = nextPacketPart.LengthFromPreviousField;
                 }
             }
-
-            var solidColor = ((SolidColorBrush) highlightColor).Color;
 
             if (exportedPart)
             {
@@ -1200,8 +1224,8 @@ public partial class PacketLogViewerMainWindow
             }
 
             fileContentsSb.AppendLine(
-                $"{name}\t{Enum.GetName(partType)}\t{startPosition}\t{lengthText}\t{enumName}\t{solidColor.R}\t{solidColor.G}" +
-                $"\t{solidColor.B}\t{solidColor.A}\t{string.Join(null, bits.Reverse().Select(x => x.AsInt()))}");
+                $"{name}\t{Enum.GetName(partType)}\t{startPosition}\t{lengthText}\t{enumName}\t{colorR}\t{colorG}" +
+                $"\t{colorB}\t{colorA}\t{string.Join(null, bits.Reverse().Select(x => x.AsInt()))}");
 
             if (nextPacketPart is null)
             {
@@ -1592,5 +1616,26 @@ public partial class PacketLogViewerMainWindow
         }
 
         SearchText();
+    }
+
+    public static void RegisterBsonMapperForBrush ()
+    {
+        BsonMapper.Global.RegisterType<SolidColorBrush>(
+            brush => Dispatcher.CurrentDispatcher.Invoke(() =>
+                $"{brush.Color.R},{brush.Color.G},{brush.Color.B},{brush.Color.A}"),
+            bson =>
+            {
+                var colors = ((string) bson).Split(',').Select(byte.Parse).ToArray();
+                return new SolidColorBrush()
+                {
+                    Color = new Color
+                    {
+                        R = colors[0],
+                        G = colors[1],
+                        B = colors[2],
+                        A = colors[3]
+                    }
+                };
+            });
     }
 }

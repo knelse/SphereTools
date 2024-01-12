@@ -1,2 +1,5 @@
-6: partial
-124: full
+6: partial_spawn
+10: death
+20: unknown
+42: attack
+124: full_spawn

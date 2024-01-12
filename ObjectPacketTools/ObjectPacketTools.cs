@@ -678,36 +678,6 @@ public static class ObjectPacketTools
                && test[3] is 0x44 or 0x45;
     }
 
-    public static void RegisterBsonMapperForBit ()
-    {
-        BsonMapper.Global.RegisterType
-        (
-            bit => (int) bit,
-            bson => new Bit((int) bson)
-        );
-        BsonMapper.Global.RegisterType<List<Bit>>
-        (
-            list => new BsonArray(list.Select(x => new BsonValue(x.AsInt())).ToArray()),
-            bson => bson.AsArray.Select(x => new Bit((int) x)).ToList()
-        );
-        BsonMapper.Global.RegisterType<SolidColorBrush>(
-            brush => $"{brush.Color.R},{brush.Color.G},{brush.Color.B},{brush.Color.A}",
-            bson =>
-            {
-                var colors = ((string) bson).Split(',').Select(byte.Parse).ToArray();
-                return new SolidColorBrush()
-                {
-                    Color = new Color
-                    {
-                        R = colors[0],
-                        G = colors[1],
-                        B = colors[2],
-                        A = colors[3]
-                    }
-                };
-            });
-    }
-
     public static string GetFriendlyNameByObjectType (ObjectType objectType)
     {
         return (objectType switch

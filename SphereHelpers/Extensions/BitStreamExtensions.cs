@@ -1,4 +1,6 @@
+using System.Windows.Media;
 using BitStreams;
+using LiteDB;
 
 namespace SphereHelpers.Extensions;
 
@@ -98,5 +100,19 @@ public static class BitStreamExtensions
     public static string ToByteString (this Bit[]? bits)
     {
         return Convert.ToHexString(BitStream.BitArrayToBytes(bits));
+    }
+
+    public static void RegisterBsonMapperForBit ()
+    {
+        BsonMapper.Global.RegisterType
+        (
+            bit => (int) bit,
+            bson => new Bit((int) bson)
+        );
+        BsonMapper.Global.RegisterType<List<Bit>>
+        (
+            list => new BsonArray(list.Select(x => new BsonValue(x.AsInt())).ToArray()),
+            bson => bson.AsArray.Select(x => new Bit((int) x)).ToList()
+        );
     }
 }

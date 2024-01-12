@@ -9,6 +9,7 @@ using PacketDotNet;
 using PacketLogViewer.Extensions;
 using PacketLogViewer.Models;
 using SharpPcap;
+using SphereHelpers.Extensions;
 
 namespace PacketLogViewer;
 
@@ -50,7 +51,7 @@ public class PacketCapture
         var time = DateTime.Now;
         // prewarm
         _ = SphObjectDb.GameObjectDataDb;
-        ObjectPacketTools.RegisterBsonMapperForBit();
+        BitStreamExtensions.RegisterBsonMapperForBit();
         var timeAfterLoad = DateTime.Now;
         ConsoleExtensions.WriteLineColored(
             $"Ready for packets. Load time: {(timeAfterLoad - time).TotalMilliseconds} msec", ConsoleColor.Yellow);

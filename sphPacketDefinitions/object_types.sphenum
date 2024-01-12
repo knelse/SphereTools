@@ -5,6 +5,8 @@
 30: mutator
 40: seed_castle
 47: xp_pill_degree
+60: door_entrance
+61: door_exit
 66: token_multiuse
 68: trade_license
 70: mob_spawner
@@ -16,6 +18,7 @@
 205: npc_quest_title
 209: npc_quest_degree
 210: monster
+211: monster_flyer
 213: npc_trade
 225: npc_banker
 236: bead
@@ -29,6 +32,7 @@
 411: mantrabook_large
 412: mantrabook_great
 413: mapbook
+417: chest_in_dungeon
 418: key_barn
 451: powder_finale
 453: powder_single_target

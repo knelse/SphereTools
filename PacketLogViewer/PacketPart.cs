@@ -94,7 +94,10 @@ public class PacketPart
     public const string UndefinedFieldValue = "__undef";
     public const string LengthFromPreviousFieldValue = "__fromPrevious";
     public string? EnumName { get; set; }
-    public SolidColorBrush HighlightColor { get; set; } = Brushes.Transparent;
+    public byte HighlightColorR { get; set; }
+    public byte HighlightColorG { get; set; }
+    public byte HighlightColorB { get; set; }
+    public byte HighlightColorA { get; set; }
     public bool LengthFromPreviousField { get; set; }
     public PacketPartType PacketPartType { get; set; }
     public StreamPosition StreamPositionEnd { get; set; }
@@ -104,13 +107,16 @@ public class PacketPart
     [BsonIgnore] public List<Bit> Value { get; set; }
     public string Comment { get; set; }
 
-    public PacketPart (long length, Brush highlightColor, string name, string? enumName, bool lengthFromPreviousField,
+    public PacketPart (long length, string name, string? enumName, bool lengthFromPreviousField,
         PacketPartType packetPartType, StreamPosition streamPositionStart, StreamPosition streamPositionEnd,
-        List<Bit> value, string comment = "")
+        List<Bit> value, byte r, byte g, byte b, byte a, string comment = "")
     {
         BitLength = length;
         LengthFromPreviousField = lengthFromPreviousField;
-        HighlightColor = (SolidColorBrush) highlightColor;
+        HighlightColorR = r;
+        HighlightColorG = g;
+        HighlightColorB = b;
+        HighlightColorA = a;
         Name = name;
         EnumName = enumName;
         StreamPositionEnd = streamPositionEnd;
@@ -129,9 +135,10 @@ public class PacketPart
     public PacketPart Clone ()
     {
         var value = new List<Bit>(Value);
-        return new PacketPart(BitLength, HighlightColor, Name, EnumName, LengthFromPreviousField, PacketPartType,
+        return new PacketPart(BitLength, Name, EnumName, LengthFromPreviousField, PacketPartType,
             new StreamPosition(StreamPositionStart.Offset, StreamPositionStart.Bit),
-            new StreamPosition(StreamPositionEnd.Offset, StreamPositionEnd.Bit), value, Comment);
+            new StreamPosition(StreamPositionEnd.Offset, StreamPositionEnd.Bit), value, HighlightColorR,
+            HighlightColorG, HighlightColorB, HighlightColorA, Comment);
     }
 
     [BsonIgnore] public string PartListDisplayText { get; set; }
@@ -170,8 +177,8 @@ public class PacketPart
 
         var newValue = Value.Skip(skipEnd > 0 ? skipEnd : 0).SkipLast(skipStart > 0 ? skipStart : 0).ToList();
 
-        return new PacketPart(newLength, HighlightColor, name ?? Name, EnumName, false, PacketPartType,
-            newStart, newEnd, newValue);
+        return new PacketPart(newLength, name ?? Name, EnumName, false, PacketPartType,
+            newStart, newEnd, newValue, HighlightColorR, HighlightColorG, HighlightColorB, HighlightColorA);
     }
 
     public string GetDisplayTextForValueType ()
@@ -303,25 +310,13 @@ public class PacketPart
             var g = byte.Parse(fieldValues[6]);
             var b = byte.Parse(fieldValues[7]);
             var a = byte.Parse(fieldValues[8]);
-            var color = new Color
-            {
-                A = a,
-                R = r,
-                G = g,
-                B = b
-            };
 
             var startPosition = new StreamPosition(start / 8, start % 8);
             var end = start + length;
             var endPosition = new StreamPosition(end / 8, end % 8);
 
-            var highlightColor = new SolidColorBrush
-            {
-                Color = color
-            };
-
-            var part = new PacketPart(length, highlightColor, partName, enumName, lengthFromPrevious, packetPartType,
-                startPosition, endPosition, new List<Bit>());
+            var part = new PacketPart(length, partName, enumName, lengthFromPrevious, packetPartType,
+                startPosition, endPosition, new List<Bit>(), r, g, b, a);
             parts.Add(part);
         }
 

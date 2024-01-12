@@ -11,4 +11,10 @@
         <ProjectReference Include="..\SphGameObject\SphGameObject.csproj"/>
     </ItemGroup>
 
+    <ItemGroup>
+        <Reference Include="PresentationCore">
+            <HintPath>..\..\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App\7.0.5\PresentationCore.dll</HintPath>
+        </Reference>
+    </ItemGroup>
+
 </Project>

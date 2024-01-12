@@ -58,15 +58,27 @@ public enum PacketAnalyzeState
     FULL
 }
 
+public enum EntityActionType
+{
+    PARTIAL_SPAWN = 0x06,
+    FULL_SPAWN = 0x7C,
+    ATTACK = 0x2A,
+    DEATH = 0xA,
+    UNKNOWN = 0x14,
+    UNDEF
+}
+
 internal class SubpacketBytesWithOffset
 {
     public readonly byte[] Content;
     public readonly long ByteOffsetFromFullContentStart;
+    public readonly byte[]? Header;
 
-    public SubpacketBytesWithOffset (byte[] content, long byteOffsetFromFullContentStart)
+    public SubpacketBytesWithOffset (byte[] content, long byteOffsetFromFullContentStart, byte[]? header = null)
     {
         Content = content;
         ByteOffsetFromFullContentStart = byteOffsetFromFullContentStart;
+        Header = header;
     }
 }
 
@@ -87,6 +99,8 @@ internal static class PacketAnalyzer
 {
     private static readonly byte[] packet_04_00_4F_01 = { 0x04, 0x00, 0xF4, 0x01 };
     private static readonly byte[] ok_mark = { 0x2c, 0x01, 0x00 };
+    private static readonly Dictionary<string, Subpacket> SubpacketCache = new ();
+    private static readonly Dictionary<string, PacketDefinition> PacketDefinitionCache = new ();
 
     public static readonly List<Func<byte[], bool>> ServerPacketHideRules = new ()
     {
@@ -166,7 +180,9 @@ internal static class PacketAnalyzer
             var start = offset + 7;
             var end = offset + subspanTotalLength;
 
-            bytesWithoutHeaders.Add(new SubpacketBytesWithOffset(storedPacket.ContentBytes[start..end], start));
+            var header = storedPacket.ContentBytes[offset..start];
+
+            bytesWithoutHeaders.Add(new SubpacketBytesWithOffset(storedPacket.ContentBytes[start..end], start, header));
             offset = end;
         }
 
@@ -559,16 +575,23 @@ internal static class PacketAnalyzer
 
         storedPacket.AnalyzeState = PacketAnalyzeState.NONE;
 
-        var packetsWithoutHeaders = SplitContentIntoPackets(storedPacket, true);
+        var packetsInContent = SplitContentIntoPackets(storedPacket, true);
         var allParts = new List<PacketPart>();
         var undefTypes = false;
         var typesInside = new List<ObjectType>();
         var hpByLevel = new List<KeyValuePair<int, int>>();
 
-        foreach (var packetWithoutHeader in packetsWithoutHeaders)
+        foreach (var packetInContent in packetsInContent)
         {
-            var stream = new BitStream(packetWithoutHeader.Content);
-            var bitOffsetFromFullContent = packetWithoutHeader.ByteOffsetFromFullContentStart * 8;
+            var bitOffsetFromFullContent = packetInContent.ByteOffsetFromFullContentStart * 8;
+            if (packetInContent.Header is not null)
+            {
+                var header = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset("server_packet_header",
+                    bitOffsetFromFullContent - 56, "NEXT PACKET");
+                allParts.AddRange(header);
+            }
+
+            var stream = new BitStream(packetInContent.Content);
             while (stream.ValidPosition)
             {
                 var initialBitOffset = stream.BitOffsetFromStart;
@@ -628,10 +651,18 @@ internal static class PacketAnalyzer
                         typeWithDelimiter = true;
                         break;
                     case ObjectType.MobSpawner:
+                    case ObjectType.SackMobLoot:
                     case ObjectType.Monster:
+                    case ObjectType.MonsterFlyer:
                     case ObjectType.NpcTrade:
+                    case ObjectType.ChestInDungeon:
+                    case ObjectType.DoorEntrance:
+                    case ObjectType.DoorExit:
                         stream.ReadBit();
-                        var actionType = stream.ReadByte();
+                        var actionTypeVal = stream.ReadByte();
+                        var actionType = Enum.IsDefined(typeof (EntityActionType), (int) actionTypeVal)
+                            ? (EntityActionType) actionTypeVal
+                            : EntityActionType.UNDEF;
                         stream.SeekBack(9);
                         var (success, parts) = GetNewEntityPacketParts(objectType,
                             initialBitOffset + bitOffsetFromFullContent,
@@ -639,7 +670,7 @@ internal static class PacketAnalyzer
                         currentParts.AddRange(parts);
                         if (success)
                         {
-                            if (objectType is ObjectType.Monster && actionType == 0x7C)
+                            if (objectType is ObjectType.Monster && actionType == EntityActionType.FULL_SPAWN)
                             {
                                 var levelPart = parts.FirstOrDefault(x => x.Name == "level");
                                 var hpPart = parts.FirstOrDefault(x => x.Name == "hp");
@@ -647,20 +678,20 @@ internal static class PacketAnalyzer
                                 var hp = 0;
                                 if (hpPart is not null)
                                 {
-                                    stream.SeekBitOffset(hpPart.StreamPositionStart.GetBitPosition() - bitOffsetFromFullContent);
+                                    stream.SeekBitOffset(hpPart.StreamPositionStart.GetBitPosition() -
+                                                         bitOffsetFromFullContent);
                                     hp = stream.ReadUInt16((int) hpPart.BitLength);
                                 }
 
                                 var level = 0;
                                 if (levelPart is not null)
                                 {
-                                    stream.SeekBitOffset(levelPart.StreamPositionStart.GetBitPosition() - bitOffsetFromFullContent);
+                                    stream.SeekBitOffset(levelPart.StreamPositionStart.GetBitPosition() -
+                                                         bitOffsetFromFullContent);
                                     hp = stream.ReadUInt16((int) levelPart.BitLength);
                                 }
 
                                 stream.SeekBitOffset(previousPosition);
-
-                                Console.WriteLine($"{level} = {hp} HP");
                             }
 
                             typeWithDelimiter = true;
@@ -697,7 +728,7 @@ internal static class PacketAnalyzer
                         break;
                     }
 
-                    if (delimTest != 0x7E)
+                    if (delimTest != 0x7E && delimTest != 0x7F)
                     {
                         stream.SeekBack(8);
                     }
@@ -728,44 +759,65 @@ internal static class PacketAnalyzer
     }
 
     private static Tuple<bool, List<PacketPart>> GetNewEntityPacketParts (ObjectType objectType, long initialBitOffset,
-        ushort entId,
-        int actionType)
+        ushort entId, EntityActionType actionType)
     {
         var packetName = string.Empty;
         var entityNameForComment = CamelCaseToUpperWithSpaces(objectType.ToString());
-        var success = false;
+        var success = true;
+        var comment = (string?) null;
 
-        if (actionType == 0x06)
+        if (actionType == EntityActionType.PARTIAL_SPAWN)
         {
             packetName = "mob_0x06";
             entityNameForComment += " (PARTIAL)";
-            success = true;
         }
-        else if (actionType == 0x2A)
+        else if (actionType == EntityActionType.ATTACK)
         {
-            packetName = "header_with_action_type";
+            packetName = "change_target_health";
+            comment = $"ENTITY DEALS DAMAGE [{entId:X4}]";
         }
-
+        else if (actionType == EntityActionType.DEATH)
+        {
+            packetName = "entity_killed";
+            comment = $"ENTITY KILLED [{entId:X4}]";
+        }
+        else if (actionType == EntityActionType.UNKNOWN)
+        {
+            packetName = "action_0x14";
+            comment = $"ENTITY DOING 0x14 [{entId:X4}]";
+        }
+        // assuming full
         else
         {
             switch (objectType)
             {
                 case ObjectType.Monster:
+                case ObjectType.MonsterFlyer:
                     packetName = "monster_full";
-                    success = true;
                     break;
                 case ObjectType.MobSpawner:
                     packetName = "mob_spawner";
-                    success = true;
                     break;
                 case ObjectType.NpcTrade:
                     packetName = "npc_trade";
-                    success = true;
+                    break;
+                case ObjectType.DoorEntrance:
+                case ObjectType.DoorExit:
+                    packetName = "door_test";
+                    break;
+                case ObjectType.ChestInDungeon:
+                    packetName = "chest_in_dungeon";
+                    break;
+                case ObjectType.SackMobLoot:
+                    packetName = "sack_mob_loot";
+                    break;
+                default:
+                    success = false;
                     break;
             }
         }
 
-        var comment = $"NEW ENTITY -- {entityNameForComment} [{entId:X4}]";
+        comment ??= $"NEW ENTITY -- {entityNameForComment} [{entId:X4}]";
 
         return packetName == string.Empty
             ? new Tuple<bool, List<PacketPart>>(success, new List<PacketPart>())
@@ -799,12 +851,18 @@ internal static class PacketAnalyzer
                 return new List<PacketPart>();
             }
 
-            if (!subpacket.PacketParts.Any())
+            if (!SubpacketCache.ContainsKey(subpacket.Name))
             {
-                subpacket.LoadFromFile();
+                var subPacketClone = new Subpacket
+                {
+                    Name = subpacket.Name,
+                    FilePath = subpacket.FilePath
+                };
+                subPacketClone.LoadFromFile();
+                SubpacketCache[subpacket.Name] = subPacketClone;
             }
 
-            return subpacket.PacketParts.Select(x => x.Clone()).ToList();
+            return SubpacketCache[subpacket.Name].PacketParts.Select(x => x.Clone()).ToList();
         }
 
         var definition = PacketLogViewerMainWindow.PacketDefinitions.FirstOrDefault(x => x.Name == name);
@@ -813,12 +871,18 @@ internal static class PacketAnalyzer
             return new List<PacketPart>();
         }
 
-        if (!definition.PacketParts.Any())
+        if (!PacketDefinitionCache.ContainsKey(definition.Name))
         {
-            definition.LoadFromFile();
+            var definitionClone = new PacketDefinition()
+            {
+                Name = definition.Name,
+                FilePath = definition.FilePath
+            };
+            definitionClone.LoadFromFile();
+            PacketDefinitionCache[definition.Name] = definitionClone;
         }
 
-        return definition.PacketParts.Select(x => x.Clone()).ToList();
+        return PacketDefinitionCache[definition.Name].PacketParts.Select(x => x.Clone()).ToList();
     }
 
     private static List<PacketPart> FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset (string name,
