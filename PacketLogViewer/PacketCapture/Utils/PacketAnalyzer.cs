@@ -580,7 +580,7 @@ internal static class PacketAnalyzer
         var undefTypes = false;
         var typesInside = new List<ObjectType>();
         var hpByLevel = new List<KeyValuePair<int, int>>();
-
+        var shouldHidePacket = true;
         foreach (var packetInContent in packetsInContent)
         {
             var bitOffsetFromFullContent = packetInContent.ByteOffsetFromFullContentStart * 8;
@@ -670,10 +670,12 @@ internal static class PacketAnalyzer
                         currentParts.AddRange(parts);
                         if (success)
                         {
-                            if (objectType is ObjectType.Monster && actionType == EntityActionType.FULL_SPAWN)
+                            if (objectType is ObjectType.Monster or ObjectType.MonsterFlyer &&
+                                actionType == EntityActionType.FULL_SPAWN)
                             {
+                                shouldHidePacket = false;
                                 var levelPart = parts.FirstOrDefault(x => x.Name == "level");
-                                var hpPart = parts.FirstOrDefault(x => x.Name == "hp");
+                                var hpPart = parts.FirstOrDefault(x => x.Name == "max_hp");
                                 var previousPosition = stream.BitOffsetFromStart;
                                 var hp = 0;
                                 if (hpPart is not null)
@@ -683,12 +685,16 @@ internal static class PacketAnalyzer
                                     hp = stream.ReadUInt16((int) hpPart.BitLength);
                                 }
 
-                                var level = 0;
                                 if (levelPart is not null)
                                 {
+                                    // level looks really strange or I'm missing something
                                     stream.SeekBitOffset(levelPart.StreamPositionStart.GetBitPosition() -
                                                          bitOffsetFromFullContent);
-                                    hp = stream.ReadUInt16((int) levelPart.BitLength);
+                                    var levelVal = stream.ReadInt64((int) levelPart.BitLength);
+                                    var levelVal1 = levelVal & 0b11111;
+                                    var levelVal2 = ((levelVal >> 17) & 0b11111) << 5;
+                                    var level = levelVal == 0x3E840 ? 64 : (int) (levelVal1 + levelVal2 + 1);
+                                    levelPart.ActualIntValue = level;
                                 }
 
                                 stream.SeekBitOffset(previousPosition);
@@ -753,6 +759,11 @@ internal static class PacketAnalyzer
         if (allParts.Any())
         {
             storedPacket.AnalyzeState = undefTypes ? PacketAnalyzeState.UNDEF_TYPE : PacketAnalyzeState.PARTIAL;
+        }
+
+        if (shouldHidePacket)
+        {
+            storedPacket.HiddenByDefault = true;
         }
 
         return storedPacket;

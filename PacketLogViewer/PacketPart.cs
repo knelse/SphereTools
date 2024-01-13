@@ -106,6 +106,7 @@ public class PacketPart
     [BsonIgnore] public PacketPartDisplayText DisplayText;
     [BsonIgnore] public List<Bit> Value { get; set; }
     public string Comment { get; set; }
+    public int? ActualIntValue { get; set; } = null;
 
     public PacketPart (long length, string name, string? enumName, bool lengthFromPreviousField,
         PacketPartType packetPartType, StreamPosition streamPositionStart, StreamPosition streamPositionEnd,

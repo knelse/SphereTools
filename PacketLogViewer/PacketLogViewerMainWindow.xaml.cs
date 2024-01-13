@@ -201,6 +201,11 @@ public partial class PacketLogViewerMainWindow
     private void OnPacketProcessed (StoredPacket storedPacket)
     {
         storedPacket.Id = PacketCollection.Insert(storedPacket);
+        if (storedPacket.Source == PacketSource.CLIENT)
+        {
+            storedPacket.HiddenByDefault = true;
+        }
+
         var splitBytes = storedPacket.Source == PacketSource.CLIENT
             ? new List<byte[]>()
             : PacketAnalyzer.SplitPacketIntoParts(storedPacket);
@@ -982,7 +987,12 @@ public partial class PacketLogViewerMainWindow
         {
             var valueStrSplit = valueStr
                 .Split('=', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
-            if (valueStrSplit.Count > 1)
+            if (part.ActualIntValue is not null)
+            {
+                inlineCollection.Add(new Run(part.ActualIntValue.ToString()) { FontWeight = FontWeights.Bold });
+                // inlineCollection.Add(new Run($" = {valueStrSplit[1]}") { Foreground = Brushes.Gray, FontSize = 12 });
+            }
+            else if (valueStrSplit.Count > 1)
             {
                 // hex = dec, like 0x17B0 = 6064
                 inlineCollection.Add(new Run(valueStrSplit[0]) { FontWeight = FontWeights.Bold });
