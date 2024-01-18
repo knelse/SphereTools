@@ -15,6 +15,7 @@ using System.Windows.Threading;
 using BitStreams;
 using LiteDB;
 using PacketLogViewer.Models;
+using PacketLogViewer.Models.PacketAnalyzeData;
 using SphereHelpers.Extensions;
 using SpherePacketVisualEditor;
 using SphServer.Helpers;
@@ -54,6 +55,7 @@ public partial class PacketLogViewerMainWindow
     public static readonly ObservableCollection<PacketPart> PacketParts = new ();
     public readonly DispatcherTimer SphereTimeUpdateTimer;
     public static readonly ObservableCollection<Subpacket> Subpackets = new ();
+    public static readonly ObservableCollection<PacketAnalyzeData> CurrentClientState = new ();
 
     private TextPointer? EndTextPointer;
     private int? LastCaretOffset;
@@ -92,6 +94,7 @@ public partial class PacketLogViewerMainWindow
 
         LogListFullPackets.SelectionChanged += LogListOnSelectionChanged;
         LogListSplitPackets.SelectionChanged += LogListOnSelectionChanged;
+        CurrentEntityStateForClient.ItemsSource = CurrentClientState;
 
         LogListFullPackets.KeyDown += (_, args) =>
         {
@@ -230,6 +233,8 @@ public partial class PacketLogViewerMainWindow
                 UpdateClientCoordsAndId(storedPacket);
             }
 
+            UpdateClientState(storedPacket);
+
             LogListFullPackets.UpdateLayout();
             LogListSplitPackets.UpdateLayout();
         });
@@ -332,12 +337,10 @@ public partial class PacketLogViewerMainWindow
         for (var i = 0; i < packetsFull.Count; i++)
         {
             var packet = packetsFull[i];
-            var position = (long) 0;
             if (packet.AnalyzeState != PacketAnalyzeState.FULL)
             {
                 packet = packet.UpdatePacketPartsForContent();
                 UpdateStoredPacket(packet, LogListFullPackets);
-                position = packet.PacketParts.FirstOrDefault()?.StreamPositionStart.Offset ?? 0;
             }
 
             LogRecords.Add(packet);
@@ -367,10 +370,11 @@ public partial class PacketLogViewerMainWindow
             CurrentContentBitStream = new BitStream(CurrentContentBytes);
             // TODO: remove
             selected.UpdatePacketPartsForContent();
-            AddNewDefinedPacketPartBulk(selected.PacketParts);
-            UpdatePacketPartValues();
-            UpdateDefinedPackets();
+            PacketParts.Clear();
+            selected.PacketParts.ForEach(x => PacketParts.Add(x));
+
             CreateFlowDocumentWithHighlights(false, true);
+            UpdateDefinedPackets();
             ClearSelection();
             var packetContents = PacketAnalyzer.GetTextOutputForPacket(bytes);
             ContentPreview.Text = packetContents + "\n";
@@ -382,6 +386,81 @@ public partial class PacketLogViewerMainWindow
             Console.WriteLine(ex.Message);
             ContentPreview.Text = "Not an item packet";
         }
+    }
+
+    public void UpdateClientState (StoredPacket storedPacket)
+    {
+        foreach (var result in storedPacket.AnalyzeResult)
+        {
+            if (result.GetType() == typeof (DespawnPacket))
+            {
+                var entsToDespawn = CurrentClientState.Where(x => x.Id == result.Id).ToList();
+                foreach (var ent in entsToDespawn)
+                {
+                    CurrentClientState.Remove(ent);
+                }
+            }
+            else if (result.GetType() == typeof (MobPacket))
+            {
+                var mob = result as MobPacket;
+                if (CurrentClientState.FirstOrDefault(x => x.Id == result.Id) is MobPacket previousState)
+                {
+                    var previousIndex = CurrentClientState.IndexOf(previousState);
+                    if (mob.ActionType == EntityActionType.SET_POSITION)
+                    {
+                        previousState.X = mob.X;
+                        previousState.Y = mob.Y;
+                        previousState.Z = mob.Z;
+                        previousState.Angle = mob.Angle;
+                    }
+                    else if (mob.ActionType == EntityActionType.FULL_SPAWN)
+                    {
+                        CurrentClientState.Remove(previousState);
+                        CurrentClientState.Insert(previousIndex, result);
+                    }
+                    else if (mob.ActionType == EntityActionType.DEATH)
+                    {
+                        CurrentClientState.Remove(previousState);
+                    }
+                }
+
+                if (mob.ActionType == EntityActionType.FULL_SPAWN)
+                {
+                    CurrentClientState.Insert(0, result);
+                }
+            }
+            else if (result.GetType() == typeof (NpcTradePacket))
+            {
+                var npc = result as NpcTradePacket;
+                if (CurrentClientState.FirstOrDefault(x => x.Id == result.Id) is NpcTradePacket previousState)
+                {
+                    var previousIndex = CurrentClientState.IndexOf(previousState);
+                    if (npc.ActionType == EntityActionType.SET_POSITION)
+                    {
+                        previousState.X = npc.X;
+                        previousState.Y = npc.Y;
+                        previousState.Z = npc.Z;
+                        previousState.Angle = npc.Angle;
+                    }
+                    else if (npc.ActionType == EntityActionType.FULL_SPAWN)
+                    {
+                        CurrentClientState.Remove(previousState);
+                        CurrentClientState.Insert(previousIndex, result);
+                    }
+                    else if (npc.ActionType == EntityActionType.DEATH)
+                    {
+                        CurrentClientState.Remove(previousState);
+                    }
+                }
+
+                if (npc.ActionType == EntityActionType.FULL_SPAWN)
+                {
+                    CurrentClientState.Insert(0, result);
+                }
+            }
+        }
+
+        CurrentEntityStateForClient.UpdateLayout();
     }
 
     private void LogListOnSelectionChanged (object sender, SelectionChangedEventArgs args)
@@ -742,7 +821,7 @@ public partial class PacketLogViewerMainWindow
 
         for (var i = 0; i < PacketContentBits.Length; i++)
         {
-            var currentPacketPart = PacketParts.FirstOrDefault(x => x.ContainsBitPosition(i));
+            var currentPacketPart = PacketParts.FirstOrDefault(x => x.BitOffset <= i && x.BitOffsetEnd > i);
             var inSelection = keepSelection && actualStart <= i && actualEnd > i;
 
             var textBlockChanged = (inSelection && !wasInSelection) || (wasInSelection && !inSelection) ||
@@ -842,7 +921,7 @@ public partial class PacketLogViewerMainWindow
                 continue;
             }
 
-            var lineToReach = (int) part.StreamPositionStart.Offset;
+            var lineToReach = part.BitOffset / 8;
 
             if (lineToReach > previousLineBreakLineIndex)
             {
@@ -898,36 +977,24 @@ public partial class PacketLogViewerMainWindow
     {
         var bitOffsetStart = start.GetCharOffset();
         var bitOffsetEnd = end.GetCharOffset();
-        var offsetStart = bitOffsetStart / 8;
-        var bitStart = bitOffsetStart % 8;
-        var offsetEnd = bitOffsetEnd / 8;
-        var bitEnd = bitOffsetEnd % 8;
-
-        var positionStart = new StreamPosition(offsetStart, bitStart);
-        var positionEnd = new StreamPosition(offsetEnd, bitEnd);
-        var actualStart = positionStart;
-        var actualEnd = positionEnd;
-        if (positionStart.CompareTo(positionEnd) > 0)
-        {
-            actualStart = positionEnd;
-            actualEnd = positionStart;
-        }
+        var length = Math.Abs(bitOffsetEnd - bitOffsetStart);
+        var actualStart = Math.Min(bitOffsetStart, bitOffsetEnd);
 
         var bitLength = Math.Abs(bitOffsetEnd - bitOffsetStart);
-        CurrentContentBitStream.Seek(actualStart.Offset, actualStart.Bit);
-        var bits = CurrentContentBitStream.ReadBits(bitLength).ToList();
+        CurrentContentBitStream.SeekBitOffset(actualStart);
+        var bits = CurrentContentBitStream.ReadBits(bitLength);
         bits.Reverse();
         var color = ((SolidColorBrush) highlightColor).Color;
-        var streamValueLength = (long) bits.Count;
+        var streamValueLength = bits.Length;
         return new PacketPart(streamValueLength, name, enumName, lengthFromPrevious, packetPartType,
-            actualStart, actualEnd, bits, color.R, color.G, color.B, color.A);
+            actualStart, bits, color.R, color.G, color.B, color.A);
     }
 
     private void UpdateDefinedPackets ()
     {
         DefinedPacketPartsControl.Document.Blocks.Clear();
         var toSort = PacketParts.ToList();
-        toSort.Sort((a, b) => a.StreamPositionStart.CompareTo(b.StreamPositionStart));
+        toSort.Sort((a, b) => a.BitOffset.CompareTo(b.BitOffset));
         PacketParts.Clear();
         toSort.ForEach(x => PacketParts.Add(x));
         foreach (var part in PacketParts)
@@ -987,10 +1054,22 @@ public partial class PacketLogViewerMainWindow
         {
             var valueStrSplit = valueStr
                 .Split('=', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries).ToList();
-            if (part.ActualIntValue is not null)
+            if (part.ActualLongValue is not null)
             {
-                inlineCollection.Add(new Run(part.ActualIntValue.ToString()) { FontWeight = FontWeights.Bold });
-                // inlineCollection.Add(new Run($" = {valueStrSplit[1]}") { Foreground = Brushes.Gray, FontSize = 12 });
+                if (part.Name is PacketPartNames.Level or PacketPartNames.CurrentHP or PacketPartNames.MaxHP)
+                {
+                    inlineCollection.Add(new Run($"{part.ActualLongValue.ToString()}")
+                        { FontWeight = FontWeights.Bold });
+                }
+                else
+                {
+                    var actualValueStr = part.ActualLongValue.ToString();
+                    var actualValueStrHex = $"{part.ActualLongValue:X}";
+                    var hexPaddingLength = actualValueStrHex.Length + actualValueStrHex.Length % 2;
+                    inlineCollection.Add(new Run($"0x{actualValueStrHex.PadLeft(hexPaddingLength, '0')}")
+                        { FontWeight = FontWeights.Bold });
+                    inlineCollection.Add(new Run($" = {actualValueStr}") { Foreground = Brushes.Gray, FontSize = 12 });
+                }
             }
             else if (valueStrSplit.Count > 1)
             {
@@ -1009,19 +1088,23 @@ public partial class PacketLogViewerMainWindow
 
         inlineCollection.Add(
             new Run(
-                $" [{Enum.GetName(part.PacketPartType) ?? string.Empty}] [{part.StreamPositionEnd} to {part.StreamPositionStart}, {part.BitLength} bits] ")
+                $" [{Enum.GetName(part.PacketPartType) ?? string.Empty}] [({part.BitOffset / 8}, {part.BitOffset % 8}) to ({part.BitOffsetEnd / 8}, {part.BitOffsetEnd % 8}), {part.BitLength} bits] ")
             {
                 Foreground = Brushes.Gray, FontSize = 12
             });
     }
 
-    private void AddNewDefinedPacketPartBulk (List<PacketPart> packetParts)
+    private void AddNewDefinedPacketPartBulk (List<PacketPart> packetParts, bool updateLayout = true)
     {
         packetParts.ForEach(x => AddNewDefinedPacketPart(x, true));
         UpdatePacketPartValues();
+
         UpdateDefinedPackets();
-        CreateFlowDocumentWithHighlights(false);
-        ClearSelection();
+        if (updateLayout)
+        {
+            CreateFlowDocumentWithHighlights(false);
+            ClearSelection();
+        }
     }
 
     private void AddNewDefinedPacketPart (PacketPart packetPart, bool isBulk = false)
@@ -1037,33 +1120,35 @@ public partial class PacketLogViewerMainWindow
 
             if (packetPart.ContainedWithin(definedPacketPart))
             {
+                var newLengthStart = packetPart.BitOffset - definedPacketPart.BitOffset;
                 // split old and make it: old_start new old_end
-                var oldStart = definedPacketPart.GetPiece(definedPacketPart.StreamPositionStart,
-                    packetPart.StreamPositionStart, definedPacketPart.Name + "_1");
-                var oldEnd = definedPacketPart.GetPiece(packetPart.StreamPositionEnd,
-                    definedPacketPart.StreamPositionEnd, definedPacketPart.Name + "_2");
+                var oldStart = definedPacketPart.GetPiece(definedPacketPart.BitOffset, newLengthStart,
+                    definedPacketPart.Name + "_1");
+                var newLengthEnd = packetPart.BitOffsetEnd - definedPacketPart.BitOffsetEnd;
+                var oldEnd = definedPacketPart.GetPiece(packetPart.BitOffsetEnd - newLengthEnd,
+                    newLengthEnd, definedPacketPart.Name + "_2");
                 newPacketParts.Add(oldStart);
                 newPacketParts.Add(oldEnd);
                 continue;
             }
 
-            if (packetPart.StreamPositionStart.CompareTo(definedPacketPart.StreamPositionStart) <= 0 &&
-                packetPart.StreamPositionEnd.CompareTo(definedPacketPart.StreamPositionEnd) < 0)
+            if (packetPart.BitOffset <= definedPacketPart.BitOffset &&
+                packetPart.BitLength < definedPacketPart.BitLength)
             {
                 // leave a chunk of old when new part intersects the beginning of old
-                var oldChunk = definedPacketPart.GetPiece(packetPart.StreamPositionEnd,
-                    definedPacketPart.StreamPositionEnd);
+                var oldChunk = definedPacketPart.GetPiece(packetPart.BitOffsetEnd,
+                    definedPacketPart.BitOffsetEnd - packetPart.BitOffsetEnd);
                 newPacketParts.Add(oldChunk);
                 continue;
             }
 
-            if (packetPart.StreamPositionStart.CompareTo(definedPacketPart.StreamPositionStart) > 0 &&
-                packetPart.StreamPositionStart.CompareTo(definedPacketPart.StreamPositionEnd) < 0 &&
-                packetPart.StreamPositionEnd.CompareTo(definedPacketPart.StreamPositionEnd) >= 0)
+            if (packetPart.BitOffset > definedPacketPart.BitOffset &&
+                packetPart.BitOffset < definedPacketPart.BitOffsetEnd &&
+                packetPart.BitOffsetEnd >= definedPacketPart.BitOffsetEnd)
             {
                 // leave a chunk of old when new part intersects the end of old
-                var oldChunk = definedPacketPart.GetPiece(definedPacketPart.StreamPositionStart,
-                    packetPart.StreamPositionStart);
+                var oldChunk = definedPacketPart.GetPiece(definedPacketPart.BitOffset,
+                    packetPart.BitOffset - definedPacketPart.BitOffset);
                 newPacketParts.Add(oldChunk);
                 continue;
             }
@@ -1072,7 +1157,7 @@ public partial class PacketLogViewerMainWindow
         }
 
         newPacketParts.Add(packetPart);
-        newPacketParts.Sort((a, b) => a.StreamPositionStart.CompareTo(b.StreamPositionStart));
+        newPacketParts.Sort((a, b) => a.BitOffset.CompareTo(b.BitOffset));
         PacketParts.Clear();
         newPacketParts.ForEach(x => PacketParts.Add(x));
         if (!isBulk)
@@ -1170,7 +1255,8 @@ public partial class PacketLogViewerMainWindow
         var fileContentsSb = new StringBuilder();
         var currentIndex = startBitOffset;
         var nextPacketPartIndex =
-            PacketParts.ToList().FindIndex(x => x.StreamPositionStart.GetBitPosition() >= startBitOffset);
+            PacketParts.ToList().FindIndex(x => x.BitOffset >= startBitOffset);
+        var bitOffsetChangeFromVariableStrings = 0;
         while (currentIndex < endBitOffset)
         {
             var nextPacketPart = nextPacketPartIndex == -1
@@ -1181,14 +1267,14 @@ public partial class PacketLogViewerMainWindow
 
             var name = PacketPart.UndefinedFieldValue;
             var partType = PacketPartType.BITS;
-            var lengthFromPrevious = false;
             var enumName = PacketPart.UndefinedFieldValue;
             var colorR = 0;
             var colorG = 0;
             var colorB = 0;
             var colorA = 0;
             Bit[] bits;
-            var startPosition = currentIndex;
+            var startPosition = currentIndex - bitOffsetChangeFromVariableStrings;
+            var lengthFromPrevious = false;
             if (nextPacketPart is null)
             {
                 // only undef until end of packet
@@ -1196,7 +1282,7 @@ public partial class PacketLogViewerMainWindow
             }
             else
             {
-                var nextPartStartIndex = (int) nextPacketPart.StreamPositionStart.GetBitPosition();
+                var nextPartStartIndex = nextPacketPart.BitOffset;
                 nextPartStartIndex = Math.Min(nextPartStartIndex, endBitOffset);
                 if (currentIndex < nextPartStartIndex)
                 {
@@ -1206,7 +1292,12 @@ public partial class PacketLogViewerMainWindow
                 }
                 else
                 {
-                    var nextPartEndIndex = (int) nextPacketPart.StreamPositionEnd.GetBitPosition();
+                    var nextPartEndIndex = nextPacketPart.BitOffsetEnd;
+                    if (lengthFromPrevious)
+                    {
+                        // previous part was a variable string, we treat everything after it as it its length was 0
+                    }
+
                     nextPartEndIndex = Math.Min(nextPartEndIndex, endBitOffset);
                     bits = PacketContentBits[nextPartStartIndex..nextPartEndIndex];
                     partType = nextPacketPart.PacketPartType;
@@ -1216,9 +1307,9 @@ public partial class PacketLogViewerMainWindow
                     colorG = nextPacketPart.HighlightColorG;
                     colorB = nextPacketPart.HighlightColorB;
                     colorA = nextPacketPart.HighlightColorA;
+                    lengthFromPrevious = nextPacketPart.LengthFromPreviousField;
                     currentIndex = nextPartEndIndex;
                     nextPacketPartIndex++;
-                    lengthFromPrevious = nextPacketPart.LengthFromPreviousField;
                 }
             }
 
@@ -1227,10 +1318,16 @@ public partial class PacketLogViewerMainWindow
                 startPosition -= startBitOffset;
             }
 
-            var lengthText = bits.Length.ToString();
+            string lengthText;
+
             if (lengthFromPrevious)
             {
-                lengthText = PacketPart.LengthFromPreviousFieldValue + lengthText;
+                lengthText = PacketPart.LengthFromPreviousFieldValue;
+                bitOffsetChangeFromVariableStrings += bits.Length;
+            }
+            else
+            {
+                lengthText = bits.Length.ToString();
             }
 
             fileContentsSb.AppendLine(
@@ -1256,34 +1353,7 @@ public partial class PacketLogViewerMainWindow
             return;
         }
 
-        for (var i = 0; i < PacketParts.Count; i++)
-        {
-            var packetPart = PacketParts[i];
-            CurrentContentBitStream.Seek(packetPart.StreamPositionStart.Offset, packetPart.StreamPositionStart.Bit);
-            var length = packetPart.BitLength;
-            if (packetPart.LengthFromPreviousField)
-            {
-                var byteValue = BitStream.BitArrayToBytes(PacketParts[i - 1].Value.ToArray().Reverse().ToArray()) ??
-                                new byte[4];
-                Array.Resize(ref byteValue, 4);
-                // last byte is always \0?
-                length = BitConverter.ToUInt32(byteValue) - 1;
-                var previousLength = packetPart.BitLength / 8;
-                var resizeLength = length - previousLength;
-                packetPart.StreamPositionEnd.ChangeOffsetAndBit(resizeLength, 0);
-                for (var j = i + 1; j < PacketParts.Count; j++)
-                {
-                    PacketParts[j].StreamPositionStart.ChangeOffsetAndBit(resizeLength, 0);
-                    PacketParts[j].StreamPositionEnd.ChangeOffsetAndBit(resizeLength, 0);
-                }
-
-                length *= 8;
-                packetPart.BitLength = length;
-            }
-
-            packetPart.Value = CurrentContentBitStream.ReadBits(length).Reverse().ToList();
-            packetPart.UpdateValueDisplayText();
-        }
+        PacketPart.UpdatePacketPartValues(PacketParts, CurrentContentBitStream, 0);
     }
 
     private void DefinedPacketsListBox_OnSelectionChanged (object sender, SelectionChangedEventArgs e)
@@ -1293,9 +1363,9 @@ public partial class PacketLogViewerMainWindow
             return;
         }
 
-        packetDefinition.LoadFromFile();
+        var parts = packetDefinition.LoadFromFile(CurrentContentBitStream, 0);
         PacketParts.Clear();
-        packetDefinition.PacketParts.ForEach(x => PacketParts.Add(x));
+        parts.ForEach(x => PacketParts.Add(x));
         LastVerticalOffset = PacketDisplayScrollViewer?.VerticalOffset ?? 0;
         UpdatePacketPartValues();
         UpdateDefinedPackets();
@@ -1376,10 +1446,9 @@ public partial class PacketLogViewerMainWindow
         var startOffset = dialog.StartOffset;
         var startBit = dialog.StartBit;
 
-        subpacket.LoadFromFile();
+        var parts = subpacket.LoadFromFile(CurrentContentBitStream, startOffset * 8 + startBit);
 
-        AddNewDefinedPacketPartBulk(subpacket.PacketParts.Select(x => x.ChangeOffsetAndBit(startOffset, startBit))
-            .ToList());
+        AddNewDefinedPacketPartBulk(parts);
     }
 
     private void DeletePacketDefinition_OnClick (object sender, RoutedEventArgs e)

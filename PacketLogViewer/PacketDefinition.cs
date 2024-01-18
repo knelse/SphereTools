@@ -1,15 +1,15 @@
 ﻿using System.Collections.Generic;
+using BitStreams;
 
 namespace SpherePacketVisualEditor;
 
 public class PacketDefinition
 {
-    public List<PacketPart> PacketParts = new ();
     public string Name { get; set; }
     public string FilePath { get; set; }
 
-    public void LoadFromFile ()
+    public List<PacketPart> LoadFromFile (BitStream stream, int bitOffset)
     {
-        PacketParts = PacketPart.LoadFromFile(FilePath, Name);
+        return PacketPart.LoadFromFile(FilePath, Name, stream, bitOffset);
     }
 }

@@ -5,8 +5,10 @@ using System.Linq;
 using System.Text;
 using BitStreams;
 using PacketLogViewer.Models;
+using PacketLogViewer.Models.PacketAnalyzeData;
 using SphereHelpers.Extensions;
 using SpherePacketVisualEditor;
+using SphServer.Helpers.Enums;
 
 namespace PacketLogViewer;
 
@@ -60,7 +62,7 @@ public enum PacketAnalyzeState
 
 public enum EntityActionType
 {
-    PARTIAL_SPAWN = 0x06,
+    SET_POSITION = 0x06,
     FULL_SPAWN = 0x7C,
     ATTACK = 0x2A,
     DEATH = 0xA,
@@ -68,31 +70,40 @@ public enum EntityActionType
     UNDEF
 }
 
+public static class PacketPartNames
+{
+    public const string ID = "entity_id";
+    public const string EntityType = "entity_type";
+    public const string ObjectType = "object_type";
+    public const string MobType = "mob_type";
+    public const string ActionType = "action_type";
+    public const string CoordX = "x";
+    public const string CoordY = "y";
+    public const string CoordZ = "z";
+    public const string Angle = "angle";
+    public const string Delimiter = "delimiter";
+    public const string CurrentHP = "current_hp";
+    public const string MaxHP = "max_hp";
+    public const string Level = "level";
+    public const string NameID = "name_id";
+    public const string TypeNameLength = "entity_type_name_length";
+    public const string TypeName = "entity_type_name";
+    public const string IconNameLength = "entity_name_length";
+    public const string IconName = "entity_name";
+}
+
 internal class SubpacketBytesWithOffset
 {
     public readonly byte[] Content;
-    public readonly long ByteOffsetFromFullContentStart;
+    public readonly int ByteOffsetFromFullContentStart;
     public readonly byte[]? Header;
 
-    public SubpacketBytesWithOffset (byte[] content, long byteOffsetFromFullContentStart, byte[]? header = null)
+    public SubpacketBytesWithOffset (byte[] content, int byteOffsetFromFullContentStart, byte[]? header = null)
     {
         Content = content;
         ByteOffsetFromFullContentStart = byteOffsetFromFullContentStart;
         Header = header;
     }
-}
-
-public class MobInPacket
-{
-    public int Id { get; set; }
-    public ObjectType ObjectType { get; set; } = ObjectType.Monster;
-    public double X { get; set; }
-    public double Y { get; set; }
-    public double Z { get; set; }
-    public int Angle { get; set; }
-    public int Level { get; set; }
-    public int HP { get; set; }
-    public int Type { get; set; }
 }
 
 internal static class PacketAnalyzer
@@ -581,28 +592,32 @@ internal static class PacketAnalyzer
         var typesInside = new List<ObjectType>();
         var hpByLevel = new List<KeyValuePair<int, int>>();
         var shouldHidePacket = true;
+        var subPacketIndex = -1;
+        var fullStream = new BitStream(storedPacket.ContentBytes);
         foreach (var packetInContent in packetsInContent)
         {
-            var bitOffsetFromFullContent = packetInContent.ByteOffsetFromFullContentStart * 8;
+            var bitOffsetFromPreviousSubpackets = 0;
             if (packetInContent.Header is not null)
             {
-                var header = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset("server_packet_header",
-                    bitOffsetFromFullContent - 56, "NEXT PACKET");
+                fullStream.SeekBitOffset((packetInContent.ByteOffsetFromFullContentStart - 7) * 8);
+                var header = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(
+                    fullStream, "server_packet_header", (int) fullStream.BitOffsetFromStart, subPacketIndex + 1,
+                    "NEXT PACKET");
                 allParts.AddRange(header);
             }
 
-            var stream = new BitStream(packetInContent.Content);
-            while (stream.ValidPosition)
+            while (fullStream.ValidPosition)
             {
-                var initialBitOffset = stream.BitOffsetFromStart;
-                var test1 = stream.ReadBytes(4, true);
+                subPacketIndex++;
+                var initialBitOffset = (int) fullStream.BitOffsetFromStart;
+                var test1 = fullStream.ReadBytes(4, true);
                 var breakAfterCurrentTry = false;
                 if (test1.HasEqualElementsAs(packet_04_00_4F_01))
                 {
-                    var parts = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset("0x0400F401",
-                        initialBitOffset + bitOffsetFromFullContent);
+                    var parts = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(fullStream, "0x0400F401",
+                        initialBitOffset, subPacketIndex);
                     allParts.AddRange(parts);
-                    if (!stream.ValidPosition)
+                    if (!fullStream.ValidPosition)
                     {
                         break;
                     }
@@ -610,23 +625,23 @@ internal static class PacketAnalyzer
                     continue;
                 }
 
-                stream.SeekBitOffset(initialBitOffset);
+                fullStream.SeekBitOffset(initialBitOffset);
 
                 // try to find entity id and object type
-                var entId = stream.ReadUInt16();
-                if (!stream.ValidPosition)
+                var entId = fullStream.ReadUInt16();
+                if (!fullStream.ValidPosition)
                 {
                     break;
                 }
 
-                stream.ReadBits(2);
-                if (!stream.ValidPosition)
+                fullStream.ReadBits(2);
+                if (!fullStream.ValidPosition)
                 {
                     break;
                 }
 
-                var objectTypeVal = stream.ReadUInt16(10);
-                if (!stream.ValidPosition)
+                var objectTypeVal = fullStream.ReadUInt16(10);
+                if (!fullStream.ValidPosition)
                 {
                     break;
                 }
@@ -644,9 +659,8 @@ internal static class PacketAnalyzer
                 switch (objectType)
                 {
                     case ObjectType.Despawn:
-                        var despawn = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset("despawn",
-                            initialBitOffset + bitOffsetFromFullContent,
-                            $"DESPAWN: {entId:X4}");
+                        var despawn = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(fullStream, "despawn",
+                            initialBitOffset, subPacketIndex, $"DESPAWN: {entId:X4}");
                         currentParts.AddRange(despawn);
                         typeWithDelimiter = true;
                         break;
@@ -658,46 +672,21 @@ internal static class PacketAnalyzer
                     case ObjectType.ChestInDungeon:
                     case ObjectType.DoorEntrance:
                     case ObjectType.DoorExit:
-                        stream.ReadBit();
-                        var actionTypeVal = stream.ReadByte();
+                        fullStream.ReadBit();
+                        var actionTypeVal = fullStream.ReadByte();
                         var actionType = Enum.IsDefined(typeof (EntityActionType), (int) actionTypeVal)
                             ? (EntityActionType) actionTypeVal
                             : EntityActionType.UNDEF;
-                        stream.SeekBack(9);
-                        var (success, parts) = GetNewEntityPacketParts(objectType,
-                            initialBitOffset + bitOffsetFromFullContent,
-                            entId, actionType);
+                        fullStream.SeekBack(9);
+                        var (success, parts) = GetNewEntityPacketParts(fullStream, objectType,
+                            initialBitOffset, entId, actionType, subPacketIndex);
                         currentParts.AddRange(parts);
                         if (success)
                         {
-                            if (objectType is ObjectType.Monster or ObjectType.MonsterFlyer &&
-                                actionType == EntityActionType.FULL_SPAWN)
+                            if (objectType is ObjectType.Monster or ObjectType.MonsterFlyer or ObjectType.NpcTrade
+                                or ObjectType.NpcQuestDegree or ObjectType.NpcQuestTitle)
                             {
                                 shouldHidePacket = false;
-                                var levelPart = parts.FirstOrDefault(x => x.Name == "level");
-                                var hpPart = parts.FirstOrDefault(x => x.Name == "max_hp");
-                                var previousPosition = stream.BitOffsetFromStart;
-                                var hp = 0;
-                                if (hpPart is not null)
-                                {
-                                    stream.SeekBitOffset(hpPart.StreamPositionStart.GetBitPosition() -
-                                                         bitOffsetFromFullContent);
-                                    hp = stream.ReadUInt16((int) hpPart.BitLength);
-                                }
-
-                                if (levelPart is not null)
-                                {
-                                    // level looks really strange or I'm missing something
-                                    stream.SeekBitOffset(levelPart.StreamPositionStart.GetBitPosition() -
-                                                         bitOffsetFromFullContent);
-                                    var levelVal = stream.ReadInt64((int) levelPart.BitLength);
-                                    var levelVal1 = levelVal & 0b11111;
-                                    var levelVal2 = ((levelVal >> 17) & 0b11111) << 5;
-                                    var level = levelVal == 0x3E840 ? 64 : (int) (levelVal1 + levelVal2 + 1);
-                                    levelPart.ActualIntValue = level;
-                                }
-
-                                stream.SeekBitOffset(previousPosition);
                             }
 
                             typeWithDelimiter = true;
@@ -716,7 +705,6 @@ internal static class PacketAnalyzer
                 }
 
                 allParts.AddRange(currentParts);
-
                 if (breakAfterCurrentTry)
                 {
                     break;
@@ -724,31 +712,30 @@ internal static class PacketAnalyzer
 
                 if (typeWithDelimiter)
                 {
-                    var endOffset = currentParts.Last().StreamPositionEnd
-                        .GetBitOffsetTo(currentParts.First().StreamPositionStart);
-                    stream.SeekBitOffset(initialBitOffset + endOffset);
-                    initialBitOffset = stream.BitOffsetFromStart;
-                    var delimTest = stream.ReadByte();
-                    if (!stream.ValidPosition)
+                    var currentFullStreamPosition = (int) fullStream.BitOffsetFromStart;
+                    var delimTest = fullStream.ReadByte();
+                    if (!fullStream.ValidPosition)
                     {
                         break;
                     }
 
                     if (delimTest != 0x7E && delimTest != 0x7F)
                     {
-                        stream.SeekBack(8);
+                        fullStream.SeekBack(8);
                     }
                     else
                     {
-                        var delimiter = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset("delimiter",
-                            initialBitOffset + bitOffsetFromFullContent, PacketPart.UndefinedFieldValue);
+                        // fullStream.SeekBitOffset(currentFullStreamPosition);
+                        subPacketIndex++;
+                        var delimiter = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(fullStream, "delimiter",
+                            currentFullStreamPosition, subPacketIndex, PacketPart.UndefinedFieldValue);
                         allParts.AddRange(delimiter);
                         continue;
                     }
                 }
 
-                var header = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset("entity_header",
-                    initialBitOffset + bitOffsetFromFullContent,
+                var header = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(fullStream, "entity_header",
+                    initialBitOffset, subPacketIndex,
                     $"UNKNOWN TYPE: {objectType} ({objectTypeVal})");
                 allParts.AddRange(header);
                 break;
@@ -766,21 +753,23 @@ internal static class PacketAnalyzer
             storedPacket.HiddenByDefault = true;
         }
 
+        AddPacketPartAnalyzeData(storedPacket);
+
         return storedPacket;
     }
 
-    private static Tuple<bool, List<PacketPart>> GetNewEntityPacketParts (ObjectType objectType, long initialBitOffset,
-        ushort entId, EntityActionType actionType)
+    private static Tuple<bool, List<PacketPart>> GetNewEntityPacketParts (BitStream stream, ObjectType objectType,
+        int initialBitOffset, ushort entId, EntityActionType actionType, int subpacketIndex)
     {
         var packetName = string.Empty;
         var entityNameForComment = CamelCaseToUpperWithSpaces(objectType.ToString());
         var success = true;
         var comment = (string?) null;
 
-        if (actionType == EntityActionType.PARTIAL_SPAWN)
+        if (actionType == EntityActionType.SET_POSITION)
         {
             packetName = "mob_0x06";
-            entityNameForComment += " (PARTIAL)";
+            comment = $"ENTITY MOVES [{entId:X4}])";
         }
         else if (actionType == EntityActionType.ATTACK)
         {
@@ -833,7 +822,56 @@ internal static class PacketAnalyzer
         return packetName == string.Empty
             ? new Tuple<bool, List<PacketPart>>(success, new List<PacketPart>())
             : new Tuple<bool, List<PacketPart>>(success,
-                FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(packetName, initialBitOffset, comment));
+                FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(stream, packetName, initialBitOffset,
+                    subpacketIndex, comment));
+    }
+
+    private static StoredPacket AddPacketPartAnalyzeData (this StoredPacket storedPacket)
+    {
+        storedPacket.AnalyzeResult.Clear();
+        var partsBySubpacket = new Dictionary<int, List<PacketPart>>();
+        storedPacket.PacketParts.ForEach(part =>
+        {
+            if (!partsBySubpacket.ContainsKey(part.SubpacketIndex))
+            {
+                partsBySubpacket.Add(part.SubpacketIndex, new List<PacketPart>());
+            }
+
+            partsBySubpacket[part.SubpacketIndex].Add(part);
+        });
+
+        foreach (var key in partsBySubpacket.Keys)
+        {
+            if (partsBySubpacket[key].Count == 1 && partsBySubpacket[key].First().Name == PacketPartNames.Delimiter)
+            {
+                continue;
+            }
+
+            storedPacket.AnalyzeResult.Add(GetAnalyzeDataForSubpacket(partsBySubpacket[key]));
+        }
+
+        return storedPacket;
+    }
+
+    private static PacketAnalyzeData GetAnalyzeDataForSubpacket (List<PacketPart> subpacket)
+    {
+        var result = new PacketAnalyzeData(subpacket);
+        if (result.ObjectType is ObjectType.Monster or ObjectType.MonsterFlyer or ObjectType.MobSpawner)
+        {
+            result = new MobPacket(subpacket);
+        }
+
+        if (result.ObjectType is ObjectType.Despawn)
+        {
+            result = new DespawnPacket(subpacket);
+        }
+
+        if (result.ObjectType is ObjectType.NpcTrade)
+        {
+            result = new NpcTradePacket(subpacket);
+        }
+
+        return result;
     }
 
     private static string CamelCaseToUpperWithSpaces (string s)
@@ -852,7 +890,7 @@ internal static class PacketAnalyzer
         return sb.ToString();
     }
 
-    private static List<PacketPart> FindPartsByName (string name, bool isSubpacket)
+    private static List<PacketPart> FindPartsByName (BitStream stream, string name, bool isSubpacket, int bitOffset)
     {
         if (isSubpacket)
         {
@@ -862,18 +900,7 @@ internal static class PacketAnalyzer
                 return new List<PacketPart>();
             }
 
-            if (!SubpacketCache.ContainsKey(subpacket.Name))
-            {
-                var subPacketClone = new Subpacket
-                {
-                    Name = subpacket.Name,
-                    FilePath = subpacket.FilePath
-                };
-                subPacketClone.LoadFromFile();
-                SubpacketCache[subpacket.Name] = subPacketClone;
-            }
-
-            return SubpacketCache[subpacket.Name].PacketParts.Select(x => x.Clone()).ToList();
+            return subpacket.LoadFromFile(stream, bitOffset);
         }
 
         var definition = PacketLogViewerMainWindow.PacketDefinitions.FirstOrDefault(x => x.Name == name);
@@ -882,29 +909,13 @@ internal static class PacketAnalyzer
             return new List<PacketPart>();
         }
 
-        if (!PacketDefinitionCache.ContainsKey(definition.Name))
-        {
-            var definitionClone = new PacketDefinition()
-            {
-                Name = definition.Name,
-                FilePath = definition.FilePath
-            };
-            definitionClone.LoadFromFile();
-            PacketDefinitionCache[definition.Name] = definitionClone;
-        }
-
-        return PacketDefinitionCache[definition.Name].PacketParts.Select(x => x.Clone()).ToList();
+        return definition.LoadFromFile(stream, bitOffset);
     }
 
-    private static List<PacketPart> FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset (string name,
-        long bitOffsetFromStart, string? comment = null, bool isSubpacket = true)
+    private static List<PacketPart> FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset (BitStream stream,
+        string name, int bitOffsetFromStart, int subpacketIndex, string? comment = null, bool isSubpacket = true)
     {
-        var parts = FindPartsByName(name, isSubpacket);
-        if (!parts.Any())
-        {
-            return parts;
-        }
-
+        var parts = FindPartsByName(stream, name, isSubpacket, bitOffsetFromStart);
         if (!parts.Any())
         {
             return parts;
@@ -912,11 +923,9 @@ internal static class PacketAnalyzer
 
         comment ??= name;
         parts[0].Comment = comment;
-        foreach (var part in parts)
+        foreach (var t in parts)
         {
-            var newOffset = bitOffsetFromStart / 8;
-            var newBit = (int) bitOffsetFromStart % 8;
-            part.ChangeOffsetAndBit(newOffset, newBit);
+            t.SubpacketIndex = subpacketIndex;
         }
 
         return parts;

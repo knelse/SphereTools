@@ -382,14 +382,19 @@ public static class CoordsHelper
         return sign * (1 + (double) numToEncode / 0b100000000000000000000000) * baseCoord;
     }
 
-    public static double DecodeClientCoordinateWithoutShift (byte[] a)
+    public static double DecodeClientCoordinateWithoutShift (byte[] a, bool shouldReverse = true)
     {
         if (a.Length < 4)
         {
             return 0;
         }
 
-        var stream = new BitStream(a.Reverse().ToArray());
+        if (shouldReverse)
+        {
+            a = a.Reverse().ToArray();
+        }
+
+        var stream = new BitStream(a);
         var fraction = stream.ReadInt64(23);
         var scale = stream.ReadByte();
         var sign = stream.ReadBit().AsBool() ? -1 : 1;

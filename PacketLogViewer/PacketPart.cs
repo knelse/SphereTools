@@ -2,10 +2,10 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
-using System.Windows.Media;
 using BitStreams;
 using LiteDB;
 using PacketLogViewer;
+using SphereHelpers.Extensions;
 using SphServer.Helpers;
 using SphServer.Helpers.Enums;
 
@@ -31,64 +31,6 @@ public record PacketPartDisplayText (
     public string Ulong { get; set; } = ulongStr;
 }
 
-public record StreamPosition (long offset, int bit)
-{
-    public int Bit { get; set; } = bit;
-    public long Offset { get; set; } = offset;
-
-    public override string ToString ()
-    {
-        return $"{Offset} ({Bit})";
-    }
-
-    public static int FlipBitOffset (int bit)
-    {
-        return bit == 0 ? 0 : 8 - bit;
-    }
-
-    public int CompareTo (StreamPosition other)
-    {
-        if (Offset > other.Offset)
-        {
-            return 1;
-        }
-
-        if (Offset < other.Offset)
-        {
-            return -1;
-        }
-
-        return Bit.CompareTo(other.Bit);
-    }
-
-    public long GetBitPosition ()
-    {
-        return Offset * 8 + Bit;
-    }
-
-    public long GetBitOffsetTo (StreamPosition other)
-    {
-        return Offset * 8 + Bit - (other.Offset * 8 + other.Bit);
-    }
-
-    public void ChangeOffsetAndBit (long byOffset, int byBit)
-    {
-        Offset += byOffset;
-        Bit += byBit;
-        while (Bit >= 8)
-        {
-            Offset += 1;
-            Bit -= 8;
-        }
-
-        while (Bit < 0)
-        {
-            Offset -= 1;
-            Bit += 8;
-        }
-    }
-}
-
 public class PacketPart
 {
     public const string UndefinedFieldValue = "__undef";
@@ -100,17 +42,17 @@ public class PacketPart
     public byte HighlightColorA { get; set; }
     public bool LengthFromPreviousField { get; set; }
     public PacketPartType PacketPartType { get; set; }
-    public StreamPosition StreamPositionEnd { get; set; }
-    public StreamPosition StreamPositionStart { get; set; }
+    public int BitOffset { get; set; }
     public long BitLength { get; set; }
     [BsonIgnore] public PacketPartDisplayText DisplayText;
-    [BsonIgnore] public List<Bit> Value { get; set; }
+    [BsonIgnore] public Bit[] Value { get; set; }
     public string Comment { get; set; }
-    public int? ActualIntValue { get; set; } = null;
+    public long? ActualLongValue { get; set; }
+    public int SubpacketIndex { get; set; }
+    public int BitOffsetEnd => (int) (BitOffset + BitLength);
 
-    public PacketPart (long length, string name, string? enumName, bool lengthFromPreviousField,
-        PacketPartType packetPartType, StreamPosition streamPositionStart, StreamPosition streamPositionEnd,
-        List<Bit> value, byte r, byte g, byte b, byte a, string comment = "")
+    public PacketPart (int length, string name, string? enumName, bool lengthFromPreviousField,
+        PacketPartType packetPartType, int bitOffset, Bit[] value, byte r, byte g, byte b, byte a, string comment = "")
     {
         BitLength = length;
         LengthFromPreviousField = lengthFromPreviousField;
@@ -120,8 +62,7 @@ public class PacketPart
         HighlightColorA = a;
         Name = name;
         EnumName = enumName;
-        StreamPositionEnd = streamPositionEnd;
-        StreamPositionStart = streamPositionStart;
+        BitOffset = bitOffset;
         Value = value;
         PacketPartType = packetPartType;
         Comment = comment;
@@ -133,53 +74,34 @@ public class PacketPart
         // required for litedb
     }
 
-    public PacketPart Clone ()
-    {
-        var value = new List<Bit>(Value);
-        return new PacketPart(BitLength, Name, EnumName, LengthFromPreviousField, PacketPartType,
-            new StreamPosition(StreamPositionStart.Offset, StreamPositionStart.Bit),
-            new StreamPosition(StreamPositionEnd.Offset, StreamPositionEnd.Bit), value, HighlightColorR,
-            HighlightColorG, HighlightColorB, HighlightColorA, Comment);
-    }
-
     [BsonIgnore] public string PartListDisplayText { get; set; }
 
     public string Name { get; set; }
 
     public bool Overlaps (PacketPart other)
     {
-        return StreamPositionStart.CompareTo(other.StreamPositionStart) <= 0 &&
-               StreamPositionEnd.CompareTo(other.StreamPositionEnd) >= 0;
+        return BitOffset <= other.BitOffset && BitOffsetEnd >= other.BitOffsetEnd;
     }
 
     public bool ContainedWithin (PacketPart other)
     {
-        return StreamPositionStart.CompareTo(other.StreamPositionStart) > 0 &&
-               StreamPositionEnd.CompareTo(other.StreamPositionEnd) < 0;
+        return BitOffset > other.BitOffset && BitOffsetEnd < other.BitOffsetEnd;
     }
 
-    public bool ContainsBitPosition (long bitPosition)
+    public PacketPart GetPiece (int newOffset, int newLength, string? name = null)
     {
-        var startBitPosition = StreamPositionStart.GetBitPosition();
-        var endBitPosition = StreamPositionEnd.GetBitPosition();
-        return startBitPosition <= bitPosition && endBitPosition > bitPosition;
-    }
-
-    public PacketPart GetPiece (StreamPosition newStart, StreamPosition newEnd, string? name = null)
-    {
-        if (newStart.CompareTo(StreamPositionStart) < 0 || newEnd.CompareTo(StreamPositionEnd) > 0)
+        if (newOffset < BitOffset || newOffset + newLength > BitOffsetEnd)
         {
             return this;
         }
 
-        var newLength = newEnd.GetBitOffsetTo(newStart);
-        var skipStart = (int) newStart.GetBitOffsetTo(StreamPositionStart);
-        var skipEnd = (int) StreamPositionEnd.GetBitOffsetTo(newEnd);
+        var skipStart = newOffset - BitOffset;
+        var skipEnd = BitOffsetEnd - (newOffset + newLength);
 
-        var newValue = Value.Skip(skipEnd > 0 ? skipEnd : 0).SkipLast(skipStart > 0 ? skipStart : 0).ToList();
+        var newValue = Value.Skip(skipEnd > 0 ? skipEnd : 0).SkipLast(skipStart > 0 ? skipStart : 0).ToArray();
 
-        return new PacketPart(newLength, name ?? Name, EnumName, false, PacketPartType,
-            newStart, newEnd, newValue, HighlightColorR, HighlightColorG, HighlightColorB, HighlightColorA);
+        return new PacketPart(newLength, name ?? Name, EnumName, LengthFromPreviousField, PacketPartType,
+            newOffset, newValue, HighlightColorR, HighlightColorG, HighlightColorB, HighlightColorA);
     }
 
     public string GetDisplayTextForValueType ()
@@ -211,7 +133,7 @@ public class PacketPart
         bits.Reverse();
         DisplayText = GetValueDisplayText(bits, EnumName);
         PartListDisplayText =
-            $"{Name} ({StreamPositionStart.Offset}, {StreamPositionStart.Bit}) to ({StreamPositionEnd.Offset}, {StreamPositionEnd.Bit})";
+            $"{Name} ({BitOffset / 8}, {BitOffset % 8}) to ({BitOffsetEnd / 8}, {BitOffsetEnd % 8})";
     }
 
     public static PacketPartDisplayText GetValueDisplayText (List<Bit> bits, string? enumName)
@@ -259,7 +181,8 @@ public class PacketPart
             enumValueStr, coordsClientStr, coordsServerStr);
     }
 
-    public static List<PacketPart> LoadFromFile (string filePath, string groupName)
+    public static List<PacketPart> LoadFromFile (string filePath, string groupName, BitStream contentStream,
+        int bitOffset)
     {
         var contents = File.ReadAllLines(filePath);
         var parts = new List<PacketPart>();
@@ -286,14 +209,8 @@ public class PacketPart
             var start = int.Parse(fieldValues[2]);
             var length = 0;
             var lengthFromPrevious = false;
-            if (fieldValues[3].StartsWith(LengthFromPreviousFieldValue))
+            if (fieldValues[3] == LengthFromPreviousFieldValue)
             {
-                var startOffset = LengthFromPreviousFieldValue.Length;
-                if (fieldValues[3].Length > startOffset)
-                {
-                    length = int.Parse(fieldValues[3][startOffset..]);
-                }
-
                 lengthFromPrevious = true;
             }
             else
@@ -312,23 +229,66 @@ public class PacketPart
             var b = byte.Parse(fieldValues[7]);
             var a = byte.Parse(fieldValues[8]);
 
-            var startPosition = new StreamPosition(start / 8, start % 8);
-            var end = start + length;
-            var endPosition = new StreamPosition(end / 8, end % 8);
-
             var part = new PacketPart(length, partName, enumName, lengthFromPrevious, packetPartType,
-                startPosition, endPosition, new List<Bit>(), r, g, b, a);
+                start, Array.Empty<Bit>(), r, g, b, a);
             parts.Add(part);
         }
 
+        UpdatePacketPartValues(parts, contentStream, bitOffset);
         return parts;
     }
 
-    public PacketPart ChangeOffsetAndBit (long byOffset, int byBit)
+    public static void UpdatePacketPartValues (IList<PacketPart> parts, BitStream contentStream, int bitOffset)
     {
-        StreamPositionStart.ChangeOffsetAndBit(byOffset, byBit);
-        StreamPositionEnd.ChangeOffsetAndBit(byOffset, byBit);
+        for (var i = 0; i < parts.Count; i++)
+        {
+            var packetPart = parts[i];
+            var currentOffset = bitOffset + packetPart.BitOffset;
+            packetPart.BitOffset = currentOffset;
+            contentStream.SeekBitOffset(currentOffset);
+            var length = packetPart.BitLength;
+            if (packetPart.LengthFromPreviousField)
+            {
+                var byteValue = BitStream.BitArrayToBytes(parts[i - 1].Value.ToArray().Reverse().ToArray()) ??
+                                new byte[4];
+                Array.Resize(ref byteValue, 4);
+                length = Math.Max(BitConverter.ToInt32(byteValue) * 8, 0);
+                for (var j = i + 1; j < parts.Count; j++)
+                {
+                    parts[j].BitOffset += (int) length;
+                }
 
-        return this;
+                packetPart.BitLength = length;
+            }
+
+            if (packetPart.PacketPartType is PacketPartType.INT64 or PacketPartType.UINT64)
+            {
+                // should be good enough
+                packetPart.ActualLongValue = contentStream.ReadInt64(packetPart.BitLength);
+            }
+
+            contentStream.SeekBitOffset(currentOffset);
+
+            if (packetPart.Name == PacketPartNames.Level)
+            {
+                var levelVal = contentStream.ReadInt64(packetPart.BitLength);
+                var levelVal1 = levelVal & 0b11111;
+                var levelVal2 = ((levelVal >> 17) & 0b11111) << 5;
+                var level = levelVal switch
+                {
+                    0x7D080 => 128,
+                    0x3E840 => 64,
+                    0x1F420 => 32,
+                    0xFA10 => 16,
+                    _ => (int) (levelVal1 + levelVal2 + 1)
+                };
+                packetPart.ActualLongValue = level;
+            }
+
+            contentStream.SeekBitOffset(currentOffset);
+
+            packetPart.Value = contentStream.ReadBits(length).Reverse().ToArray();
+            packetPart.UpdateValueDisplayText();
+        }
     }
 }

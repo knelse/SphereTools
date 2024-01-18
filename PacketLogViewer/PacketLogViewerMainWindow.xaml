@@ -445,9 +445,22 @@
                     </Grid>
                 </Grid>
             </Grid>
-            <TextBox Name="ContentPreview" Grid.Column="0" Grid.Row="2" Margin="4 8 4 0"
-                     HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True"
-                     Style="{StaticResource LogRecordContentPreviewTextStyle}" Background="LightGray" />
+            <Grid Grid.Column="0" Grid.Row="2">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="*" />
+                </Grid.ColumnDefinitions>
+                <ListView Margin="4" Name="CurrentEntityStateForClient" Background="AliceBlue">
+                    <ListView.ItemTemplate>
+                        <DataTemplate>
+                            <TextBlock Text="{Binding DisplayValue}" />
+                        </DataTemplate>
+                    </ListView.ItemTemplate>
+                </ListView>
+                <TextBox Name="ContentPreview" Grid.Column="1" Margin="4 8 4 0"
+                         HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True"
+                         Style="{StaticResource LogRecordContentPreviewTextStyle}" Background="LightGray" />
+            </Grid>
         </Grid>
     </Grid>
 </Window>

@@ -23,5 +23,5 @@ public class StoredPacket
     [BsonIgnore] public string SourceStr => new (Source.ToString()[0], 1);
     [BsonIgnore] public string ContentString => Convert.ToHexString(ContentBytes);
 
-    public Dictionary<string, object> AnalyzeResult { get; set; } = new ();
+    [BsonIgnore] public List<PacketAnalyzeData.PacketAnalyzeData> AnalyzeResult { get; set; } = new ();
 }
