@@ -31,27 +31,6 @@
                 </Trigger>
             </Style.Triggers>
         </Style>
-        <Style x:Key="LogRowHighlightStyleSplitted" TargetType="ListViewItem">
-            <Style.Setters>
-                <Setter Property="FontFamily" Value="Hack" />
-                <Setter Property="FontSize" Value="10" />
-                <Setter Property="Height" Value="15" />
-            </Style.Setters>
-            <Style.Triggers>
-                <DataTrigger Binding="{Binding Source}" Value="1"> <!--SERVER = 1-->
-                    <Setter Property="Background" Value="Beige" />
-                    <Setter Property="Foreground" Value="Black" />
-                </DataTrigger>
-                <DataTrigger Binding="{Binding Source}" Value="0"> <!--CLIENT = 0-->
-                    <Setter Property="Background" Value="AliceBlue" />
-                    <Setter Property="Foreground" Value="Black" />
-                </DataTrigger>
-                <Trigger Property="IsSelected" Value="True">
-                    <Setter Property="Background" Value="MidnightBlue" />
-                    <Setter Property="Foreground" Value="White" />
-                </Trigger>
-            </Style.Triggers>
-        </Style>
         <Style x:Key="LogRecordContentPreviewTextStyle" TargetType="TextBox">
             <Style.Setters>
                 <Setter Property="FontFamily" Value="Hack" />
@@ -110,42 +89,19 @@
         <GridSplitter Grid.Row="1" Grid.Column="0" Grid.RowSpan="2" Width="8" Background="White"
                       ResizeBehavior="CurrentAndNext"
                       Margin="10 4 0 4 " />
-        <TabControl Grid.Row="1" Margin="4" Grid.Column="0" Name="LogListTabControl">
-            <TabItem Header="Full Packets">
-                <ListView Margin="4" Name="LogListFullPackets"
-                          ItemContainerStyle="{StaticResource LogRowHighlightStyle}" SelectionMode="Single">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Width="Auto" DisplayMemberBinding="{Binding SourceStr}" />
-                            <GridViewColumn Header="Timestamp" Width="Auto"
-                                            DisplayMemberBinding="{Binding Timestamp, StringFormat='{}{0:dd.MM HH:mm:ss}'}" />
-                            <GridViewColumn Header="Content" Width="Auto"
-                                            DisplayMemberBinding="{Binding ContentString}" />
-                        </GridView>
-                    </ListView.View>
-                </ListView>
-            </TabItem>
-            <TabItem Header="Split Packets">
-                <ListView Margin="4" Name="LogListSplitPackets"
-                          ItemContainerStyle="{StaticResource LogRowHighlightStyleSplitted}" SelectionMode="Single">
-                    <ListView.View>
-                        <GridView>
-                            <GridViewColumn Width="Auto" DisplayMemberBinding="{Binding SourceStr}" />
-                            <GridViewColumn Header="Timestamp" Width="Auto"
-                                            DisplayMemberBinding="{Binding Timestamp, StringFormat='{}{0:dd.MM HH:mm:ss}'}" />
-                            <GridViewColumn Header="Object Type" Width="Auto"
-                                            DisplayMemberBinding="{Binding ObjectType}" />
-                            <GridViewColumn Header="Packet Type" Width="Auto"
-                                            DisplayMemberBinding="{Binding PacketType}" />
-                            <GridViewColumn Header="Target" Width="Auto"
-                                            DisplayMemberBinding="{Binding TargetId, StringFormat='{}{0:X4}'}" />
-                            <GridViewColumn Header="Content" Width="Auto"
-                                            DisplayMemberBinding="{Binding ContentString}" />
-                        </GridView>
-                    </ListView.View>
-                </ListView>
-            </TabItem>
-        </TabControl>
+        <ListView Grid.Row="1" Margin="4" Grid.Column="0" Name="LogListFullPackets"
+                  ItemContainerStyle="{StaticResource LogRowHighlightStyle}" SelectionMode="Single">
+            <ListView.View>
+                <GridView>
+                    <GridViewColumn Width="Auto" DisplayMemberBinding="{Binding SourceStr}" />
+                    <GridViewColumn Width="Auto" Header="#" DisplayMemberBinding="{Binding NumberInSequence}" />
+                    <GridViewColumn Header="Timestamp" Width="Auto"
+                                    DisplayMemberBinding="{Binding Timestamp, StringFormat='{}{0:dd.MM HH:mm:ss}'}" />
+                    <GridViewColumn Header="Content" Width="Auto"
+                                    DisplayMemberBinding="{Binding ContentString}" />
+                </GridView>
+            </ListView.View>
+        </ListView>
         <StackPanel Grid.Row="2" Grid.Column="0" Margin="4 0" Name="GameState" Background="LightGray">
             <Grid>
                 <Grid.RowDefinitions>

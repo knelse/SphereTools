@@ -9,7 +9,6 @@ public class StoredPacket
 {
     [BsonId] public int Id { get; set; }
     public byte[] ContentBytes { get; set; }
-    public string ContentJson { get; set; }
     public PacketSource Source { get; set; }
     public DateTime Timestamp { get; set; }
     public bool HiddenByDefault { get; set; }
@@ -19,6 +18,7 @@ public class StoredPacket
     public ObjectType? ObjectType { get; set; }
     public PacketAnalyzeState AnalyzeState { get; set; } = PacketAnalyzeState.UNDEF;
     public List<PacketPart> PacketParts { get; set; } = new ();
+    public int NumberInSequence { get; set; }
 
     [BsonIgnore] public string SourceStr => new (Source.ToString()[0], 1);
     [BsonIgnore] public string ContentString => Convert.ToHexString(ContentBytes);

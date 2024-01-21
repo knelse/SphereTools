@@ -197,11 +197,6 @@ public class PacketPart
             }
 
             var partName = fieldValues[0];
-            if (partName == UndefinedFieldValue)
-            {
-                // skip undef
-                continue;
-            }
 
             var packetPartType = Enum.TryParse(fieldValues[1], out PacketPartType partType)
                 ? partType
@@ -240,14 +235,18 @@ public class PacketPart
 
     public static void UpdatePacketPartValues (IList<PacketPart> parts, BitStream contentStream, int bitOffset)
     {
+        if (bitOffset != 0)
+        {
+            contentStream.SeekBitOffset(bitOffset);
+        }
+
         for (var i = 0; i < parts.Count; i++)
         {
             var packetPart = parts[i];
-            var currentOffset = bitOffset + packetPart.BitOffset;
+            var currentOffset = (int) contentStream.BitOffsetFromStart;
             packetPart.BitOffset = currentOffset;
-            contentStream.SeekBitOffset(currentOffset);
             var length = packetPart.BitLength;
-            if (packetPart.LengthFromPreviousField)
+            if (packetPart.LengthFromPreviousField && i > 0)
             {
                 var byteValue = BitStream.BitArrayToBytes(parts[i - 1].Value.ToArray().Reverse().ToArray()) ??
                                 new byte[4];

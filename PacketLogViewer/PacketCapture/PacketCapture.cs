@@ -185,16 +185,53 @@ public class PacketCapture
         packetsToProcess[PacketSource.CLIENT].ForEach(ProcessPacketRawData);
     }
 
+    public static List<byte[]> SplitContentIntoPackets (byte[] content)
+    {
+        var offset = 0;
+        var result = new List<byte[]>();
+        while (offset < content.Length)
+        {
+            if (content.HasEqualElementsAs(PacketAnalyzer.packet_04_00_4F_01, offset))
+            {
+                result.Add(PacketAnalyzer.packet_04_00_4F_01);
+
+                offset += 4;
+                continue;
+            }
+
+            if (!content.HasEqualElementsAs(PacketAnalyzer.ok_mark, 2))
+            {
+                // already without header or something is wrong
+                result.Add(content[offset..]);
+                break;
+            }
+
+            var subspanTotalLength = BitConverter.ToInt16(content, offset);
+            var end = offset + subspanTotalLength;
+
+            result.Add(content[offset..end]);
+            offset = end;
+        }
+
+        return result;
+    }
+
     private void ProcessPacketRawData (CapturedPacketRawData packetRawData)
     {
-        var storedPacket = new StoredPacket
+        var subpackets = SplitContentIntoPackets(packetRawData.DecodedBuffer);
+        for (var index = 0; index < subpackets.Count; index++)
         {
-            ContentBytes = packetRawData.DecodedBuffer,
-            ContentJson = "",
-            Source = packetRawData.Source,
-            Timestamp = packetRawData.ArrivalTime
-        };
-        storedPacket.HiddenByDefault = PacketAnalyzer.ShouldBeHiddenByDefault(storedPacket);
-        OnPacketProcessed(storedPacket);
+            var subpacket = subpackets[index];
+            var storedPacket = new StoredPacket
+            {
+                ContentBytes = subpacket,
+                Source = packetRawData.Source,
+                Timestamp = packetRawData.ArrivalTime,
+                NumberInSequence = index
+            };
+            storedPacket.HiddenByDefault = PacketAnalyzer.ShouldBeHiddenByDefault(storedPacket);
+
+            OnPacketProcessed(storedPacket);
+        }
     }
 }

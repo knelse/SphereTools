@@ -37,9 +37,6 @@ public partial class PacketLogViewerMainWindow
     public static readonly ILiteCollection<StoredPacket> PacketCollection =
         PacketDatabase.GetCollection<StoredPacket>("Packets");
 
-    public static readonly ILiteCollection<StoredPacket> SplittedPacketCollection =
-        PacketDatabase.GetCollection<StoredPacket>("SplittedPackets");
-
     private static Bit[] PacketContentBits = null!;
 
     private static BitStream? CurrentContentBitStream;
@@ -82,18 +79,12 @@ public partial class PacketLogViewerMainWindow
         _ = SphObjectDb.GameObjectDataDb;
 
         LogListFullPackets.ItemsSource = LogRecords;
-        LogListSplitPackets.ItemsSource = LogRecordsSplitted;
         LogListFullPackets.ContextMenu = new ContextMenu();
         var menuItem = new MenuItem { Header = "Copy" };
         menuItem.Click += FullPacketsLog_MenuItem_OnClick;
         LogListFullPackets.ContextMenu.Items.Add(menuItem);
-        LogListSplitPackets.ContextMenu = new ContextMenu();
-        var menuItem1 = new MenuItem { Header = "Copy" };
-        menuItem1.Click += SplitPacketsLog_MenuItem_OnClick;
-        LogListSplitPackets.ContextMenu.Items.Add(menuItem1);
 
         LogListFullPackets.SelectionChanged += LogListOnSelectionChanged;
-        LogListSplitPackets.SelectionChanged += LogListOnSelectionChanged;
         CurrentEntityStateForClient.ItemsSource = CurrentClientState;
 
         LogListFullPackets.KeyDown += (_, args) =>
@@ -106,22 +97,11 @@ public partial class PacketLogViewerMainWindow
             CopySelectedRowContent(LogListFullPackets);
         };
 
-        LogListSplitPackets.KeyDown += (_, args) =>
-        {
-            if (args.KeyboardDevice.Modifiers != ModifierKeys.Control || args.Key != Key.C)
-            {
-                return;
-            }
-
-            CopySelectedRowContent(LogListSplitPackets);
-        };
-
         LoadPacketDefinitions();
         LoadEnums();
         LoadContent();
 
         var fullPacketView = CollectionViewSource.GetDefaultView(LogListFullPackets.ItemsSource);
-        var splitPacketView = CollectionViewSource.GetDefaultView(LogListSplitPackets.ItemsSource);
         var filterFunc = new Predicate<object>(o =>
         {
             if (ShowFavoritesOnly)
@@ -137,7 +117,6 @@ public partial class PacketLogViewerMainWindow
             return !((o as StoredPacket)?.HiddenByDefault ?? false);
         });
         fullPacketView.Filter = filterFunc;
-        splitPacketView.Filter = filterFunc;
 
         PacketVisualizerControl.KeyDown += PacketVisualizerControlAddPacketPart;
         PacketVisualizerControl.KeyDown += PacketVisualizerControlHandlePartSelection;
@@ -197,37 +176,18 @@ public partial class PacketLogViewerMainWindow
 
     public byte[]? CurrentContentBytes { get; set; }
     public ObservableCollection<StoredPacket> LogRecords { get; } = new ();
-    public ObservableCollection<StoredPacket> LogRecordsSplitted { get; } = new ();
     public bool ShowFavoritesOnly { get; set; }
     public bool HideUninteresting { get; set; } = true;
 
     private void OnPacketProcessed (StoredPacket storedPacket)
     {
         storedPacket.Id = PacketCollection.Insert(storedPacket);
-        if (storedPacket.Source == PacketSource.CLIENT)
-        {
-            storedPacket.HiddenByDefault = true;
-        }
 
-        var splitBytes = storedPacket.Source == PacketSource.CLIENT
-            ? new List<byte[]>()
-            : PacketAnalyzer.SplitPacketIntoParts(storedPacket);
-        var splitPackets = splitBytes.Select(x => new StoredPacket
-        {
-            ContentBytes = x,
-            Favorite = false,
-            Timestamp = storedPacket.Timestamp,
-            ContentJson = "",
-            Source = storedPacket.Source,
-            HiddenByDefault = storedPacket.HiddenByDefault
-        }.AppendAnalyticsData().UpdatePacketPartsForContent()).ToList();
-        SplittedPacketCollection.InsertBulk(splitPackets);
         storedPacket.UpdatePacketPartsForContent();
 
         Dispatcher.Invoke(() =>
         {
             LogRecords.Add(storedPacket);
-            splitPackets.ForEach(x => LogRecordsSplitted.Add(x));
             if (PacketAnalyzer.IsClientPingPacket(storedPacket))
             {
                 UpdateClientCoordsAndId(storedPacket);
@@ -236,19 +196,7 @@ public partial class PacketLogViewerMainWindow
             UpdateClientState(storedPacket);
 
             LogListFullPackets.UpdateLayout();
-            LogListSplitPackets.UpdateLayout();
         });
-    }
-
-    private ListView GetActivePacketLog ()
-    {
-        if (LogListTabControl.SelectedItem is null)
-        {
-            return LogListFullPackets;
-        }
-
-        var selectedLog = (string) (LogListTabControl.SelectedItem as TabItem).Header;
-        return selectedLog == "Full Packets" ? LogListFullPackets : LogListSplitPackets;
     }
 
     public void UpdateGameTime ()
@@ -295,70 +243,38 @@ public partial class PacketLogViewerMainWindow
         PacketCollection.EnsureIndex(x => x.Source);
         // might not be great
         PacketCollection.EnsureIndex(x => x.Timestamp);
-        SplittedPacketCollection.EnsureIndex(x => x.Source);
-        // might not be great
-        SplittedPacketCollection.EnsureIndex(x => x.Timestamp);
 
-        var packetsFull = PacketCollection.Query().Where(x => x.Favorite).OrderByDescending(x => x.Timestamp)
+        var packets = PacketCollection.Query().Where(x => x.Favorite).OrderByDescending(x => x.Timestamp)
             .Limit(100).ToList();
-        if (packetsFull is null)
+        if (packets is null)
         {
             MessageBox.Show("Packets to load (full) are null");
             return;
         }
 
-        packetsFull.AddRange(PacketCollection.Query().OrderByDescending(x => x.Timestamp)
+        packets.AddRange(PacketCollection.Query().OrderByDescending(x => x.Timestamp)
             .Limit(100).ToList());
 
-        var packetsSplit = SplittedPacketCollection.Query().Where(x => x.Favorite).OrderByDescending(x => x.Timestamp)
-            .Limit(100).ToList();
-        if (packetsSplit is null)
-        {
-            MessageBox.Show("Packets to load (split) are null");
-            return;
-        }
-
-        packetsSplit.AddRange(SplittedPacketCollection.Query().OrderByDescending(x => x.Timestamp)
-            .Limit(100).ToList());
-
-        if (!packetsFull.Any())
+        if (!packets.Any())
         {
             MessageBox.Show("No full packets to load");
         }
 
-        if (!packetsSplit.Any())
-        {
-            MessageBox.Show("No split packets to load");
-        }
+        packets.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
 
-        packetsFull.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
-        packetsSplit.Sort((a, b) => a.Timestamp.CompareTo(b.Timestamp));
-
-        for (var i = 0; i < packetsFull.Count; i++)
+        for (var i = 0; i < packets.Count; i++)
         {
-            var packet = packetsFull[i];
+            var packet = packets[i];
             if (packet.AnalyzeState != PacketAnalyzeState.FULL)
             {
                 packet = packet.UpdatePacketPartsForContent();
-                UpdateStoredPacket(packet, LogListFullPackets);
+                UpdateStoredPacket(packet);
             }
 
             LogRecords.Add(packet);
         }
 
-        packetsSplit.ForEach(x =>
-        {
-            // if (x.AnalyzeState != PacketAnalyzeState.FULL)
-            // {
-            //     // processing old packets
-            //     x.UpdatePacketPartsForContent();
-            //     UpdateStoredPacket(x, LogListSplitPackets);
-            // }
-            LogRecordsSplitted.Add(x);
-        });
-
         LogListFullPackets.UpdateLayout();
-        LogListSplitPackets.UpdateLayout();
     }
 
     public void UpdateContentPreview (StoredPacket selected)
@@ -492,11 +408,6 @@ public partial class PacketLogViewerMainWindow
         CopySelectedRowContent(LogListFullPackets);
     }
 
-    private void SplitPacketsLog_MenuItem_OnClick (object sender, RoutedEventArgs e)
-    {
-        CopySelectedRowContent(LogListSplitPackets);
-    }
-
     private void CopySelectedRowContent (ListView listView)
     {
         var selectedRow = (StoredPacket) listView.SelectedItem;
@@ -507,7 +418,7 @@ public partial class PacketLogViewerMainWindow
 
     private void FavoriteToggleButton_OnChecked (object sender, RoutedEventArgs e)
     {
-        var logList = GetActivePacketLog();
+        var logList = LogListFullPackets;
         if (logList.SelectedItem is null)
         {
             return;
@@ -520,7 +431,7 @@ public partial class PacketLogViewerMainWindow
 
     private void FavoriteToggleButton_OnUnchecked (object sender, RoutedEventArgs e)
     {
-        var logList = GetActivePacketLog();
+        var logList = LogListFullPackets;
         if (logList.SelectedItem is null)
         {
             return;
@@ -542,11 +453,9 @@ public partial class PacketLogViewerMainWindow
         ScrollIntoViewIfSelectionExists();
     }
 
-    private void UpdateStoredPacket (StoredPacket storedPacket, ListView? logList = null)
+    private void UpdateStoredPacket (StoredPacket storedPacket)
     {
-        logList ??= GetActivePacketLog();
-        var collection = logList == LogListFullPackets ? PacketCollection : SplittedPacketCollection;
-        collection.Update(storedPacket);
+        PacketCollection.Update(storedPacket);
     }
 
     private void ShowFavoritesOnlyToggleButton_OnUnchecked (object sender, RoutedEventArgs e)
@@ -574,24 +483,21 @@ public partial class PacketLogViewerMainWindow
 
     private void ScrollIntoViewIfSelectionExists ()
     {
-        var logList = GetActivePacketLog();
         CollectionViewSource.GetDefaultView(LogListFullPackets.ItemsSource).Refresh();
-        CollectionViewSource.GetDefaultView(LogListSplitPackets.ItemsSource).Refresh();
-        if (logList.Items.Count < 1)
+        if (LogListFullPackets.Items.Count < 1)
         {
             return;
         }
 
-        var selected = logList.SelectedItem ?? logList.Items[^1];
-        if (!logList.Items.PassesFilter(selected))
+        var selected = LogListFullPackets.SelectedItem ?? LogListFullPackets.Items[^1];
+        if (!LogListFullPackets.Items.PassesFilter(selected))
         {
             // should only happen when switching to a more restricted view with filtered out item selected
-            selected = logList.Items[^1];
+            selected = LogListFullPackets.Items[^1];
         }
 
-        logList.SelectedItem = selected;
-
-        logList.ScrollIntoView(selected);
+        LogListFullPackets.SelectedItem = selected;
+        LogListFullPackets.ScrollIntoView(selected);
     }
 
     private void LoadEnums ()
@@ -977,17 +883,14 @@ public partial class PacketLogViewerMainWindow
     {
         var bitOffsetStart = start.GetCharOffset();
         var bitOffsetEnd = end.GetCharOffset();
-        var length = Math.Abs(bitOffsetEnd - bitOffsetStart);
         var actualStart = Math.Min(bitOffsetStart, bitOffsetEnd);
 
         var bitLength = Math.Abs(bitOffsetEnd - bitOffsetStart);
-        CurrentContentBitStream.SeekBitOffset(actualStart);
-        var bits = CurrentContentBitStream.ReadBits(bitLength);
-        bits.Reverse();
         var color = ((SolidColorBrush) highlightColor).Color;
-        var streamValueLength = bits.Length;
-        return new PacketPart(streamValueLength, name, enumName, lengthFromPrevious, packetPartType,
-            actualStart, bits, color.R, color.G, color.B, color.A);
+        var part = new PacketPart(bitLength, name, enumName, lengthFromPrevious, packetPartType,
+            actualStart, Array.Empty<Bit>(), color.R, color.G, color.B, color.A);
+        PacketPart.UpdatePacketPartValues(new List<PacketPart> { part }, CurrentContentBitStream, actualStart);
+        return part;
     }
 
     private void UpdateDefinedPackets ()
@@ -1097,7 +1000,6 @@ public partial class PacketLogViewerMainWindow
     private void AddNewDefinedPacketPartBulk (List<PacketPart> packetParts, bool updateLayout = true)
     {
         packetParts.ForEach(x => AddNewDefinedPacketPart(x, true));
-        UpdatePacketPartValues();
 
         UpdateDefinedPackets();
         if (updateLayout)
@@ -1268,10 +1170,10 @@ public partial class PacketLogViewerMainWindow
             var name = PacketPart.UndefinedFieldValue;
             var partType = PacketPartType.BITS;
             var enumName = PacketPart.UndefinedFieldValue;
-            var colorR = 0;
-            var colorG = 0;
-            var colorB = 0;
-            var colorA = 0;
+            var colorR = 100;
+            var colorG = 100;
+            var colorB = 100;
+            var colorA = 100;
             Bit[] bits;
             var startPosition = currentIndex - bitOffsetChangeFromVariableStrings;
             var lengthFromPrevious = false;
@@ -1346,16 +1248,6 @@ public partial class PacketLogViewerMainWindow
         File.WriteAllText(fileName, fileContentsSb.ToString());
     }
 
-    private void UpdatePacketPartValues ()
-    {
-        if (CurrentContentBitStream is null)
-        {
-            return;
-        }
-
-        PacketPart.UpdatePacketPartValues(PacketParts, CurrentContentBitStream, 0);
-    }
-
     private void DefinedPacketsListBox_OnSelectionChanged (object sender, SelectionChangedEventArgs e)
     {
         if (DefinedPacketsListBox.SelectedItem is not PacketDefinition packetDefinition)
@@ -1367,7 +1259,6 @@ public partial class PacketLogViewerMainWindow
         PacketParts.Clear();
         parts.ForEach(x => PacketParts.Add(x));
         LastVerticalOffset = PacketDisplayScrollViewer?.VerticalOffset ?? 0;
-        UpdatePacketPartValues();
         UpdateDefinedPackets();
         CreateFlowDocumentWithHighlights();
     }
@@ -1422,7 +1313,6 @@ public partial class PacketLogViewerMainWindow
             PacketParts.Remove(selectedItem);
         }
 
-        UpdatePacketPartValues();
         UpdateDefinedPackets();
         CreateFlowDocumentWithHighlights();
     }
