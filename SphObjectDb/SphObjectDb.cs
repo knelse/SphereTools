@@ -55,7 +55,7 @@ public static class SphObjectDb
             || File.GetLastWriteTimeUtc(objectLocalizationJsonPath) < DateTime.UtcNow.AddHours(-72))
         {
             // regenerate json every 3 days to be safe
-
+            Directory.CreateDirectory(gameDataJsonFolder);
             Console.WriteLine("Loading game data and generating json");
             LoadGameObjects();
             LoadLocalisationData();
