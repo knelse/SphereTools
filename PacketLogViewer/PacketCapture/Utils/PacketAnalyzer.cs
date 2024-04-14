@@ -88,8 +88,9 @@ public static class PacketPartNames
     public const string NameID = "name_id";
     public const string TypeNameLength = "entity_type_name_length";
     public const string TypeName = "entity_type_name";
-    public const string IconNameLength = "entity_name_length";
-    public const string IconName = "entity_name";
+    public const string IconNameLength = "icon_name_length";
+    public const string IconName = "icon_name";
+    public const string Skip = "skip";
 }
 
 internal class SubpacketBytesWithOffset
@@ -127,6 +128,7 @@ internal static class PacketAnalyzer
 
     public static readonly List<Func<byte[], bool>> ClientPacketHideRules = new ()
     {
+        c => true,
         c => c[0] == 0x26 || c[0] == 0x08 || c[0] == 0x0C || c[0] == 0x12,
         c => c[0] == 0x69 && c[13] == 0x08 && c[14] == 0x40 && c[15] == 0x63
     };
@@ -158,44 +160,6 @@ internal static class PacketAnalyzer
     public static bool IsClientPingPacket (StoredPacket storedPacket)
     {
         return storedPacket.Source == PacketSource.CLIENT && storedPacket.ContentBytes[0] == 0x26;
-    }
-
-    public static List<SubpacketBytesWithOffset> SplitContentIntoPackets (StoredPacket storedPacket,
-        bool includeTrivialPackets = false)
-    {
-        var bytesWithoutHeaders = new List<SubpacketBytesWithOffset>();
-        var offset = 0;
-        while (offset < storedPacket.ContentBytes.Length)
-        {
-            if (storedPacket.ContentBytes.HasEqualElementsAs(packet_04_00_4F_01, offset))
-            {
-                if (includeTrivialPackets)
-                {
-                    bytesWithoutHeaders.Add(new SubpacketBytesWithOffset(packet_04_00_4F_01, offset));
-                }
-
-                offset += 4;
-                continue;
-            }
-
-            if (!storedPacket.ContentBytes.HasEqualElementsAs(ok_mark, 2))
-            {
-                // already without header or something is wrong
-                bytesWithoutHeaders.Add(new SubpacketBytesWithOffset(storedPacket.ContentBytes[offset..], offset + 7));
-                break;
-            }
-
-            var subspanTotalLength = BitConverter.ToInt16(storedPacket.ContentBytes, offset);
-            var start = offset + 7;
-            var end = offset + subspanTotalLength;
-
-            var header = storedPacket.ContentBytes[offset..start];
-
-            bytesWithoutHeaders.Add(new SubpacketBytesWithOffset(storedPacket.ContentBytes[start..end], start, header));
-            offset = end;
-        }
-
-        return bytesWithoutHeaders;
     }
 
     internal static List<byte[]> SplitIntoItemSlots (BitStream stream, int separator, int separatorBitCount)
@@ -355,19 +319,20 @@ internal static class PacketAnalyzer
         var typesInside = new List<ObjectType>();
         var hpByLevel = new List<KeyValuePair<int, int>>();
         var shouldHidePacket = true;
-        var subPacketIndex = -1;
+        var subPacketIndex = 0;
         var fullStream = new BitStream(storedPacket.ContentBytes);
 
         if (storedPacket.ContentBytes.HasEqualElementsAs(ok_mark, 2))
         {
             var header = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(
-                fullStream, "server_packet_header", subPacketIndex + 1,
+                fullStream, "server_packet_header", 0,
                 "NEXT PACKET");
             allParts.AddRange(header);
         }
 
         while (fullStream.ValidPosition)
         {
+            subPacketIndex++;
             var initialBitOffset = (int) fullStream.BitOffsetFromStart;
             var test1 = fullStream.ReadBytes(4, true);
             var breakAfterCurrentTry = false;
@@ -430,9 +395,15 @@ internal static class PacketAnalyzer
                 case ObjectType.Monster:
                 case ObjectType.MonsterFlyer:
                 case ObjectType.NpcTrade:
+                case ObjectType.NpcQuestTitle:
+                case ObjectType.NpcQuestDegree:
+                case ObjectType.NpcBanker:
                 case ObjectType.ChestInDungeon:
                 case ObjectType.DoorEntrance:
                 case ObjectType.DoorExit:
+                case ObjectType.AlchemyMetal:
+                case ObjectType.AlchemyPlant:
+                case ObjectType.AlchemyMineral:
                     fullStream.ReadBit();
                     var actionTypeVal = fullStream.ReadByte();
                     var actionType = Enum.IsDefined(typeof (EntityActionType), (int) actionTypeVal)
@@ -445,7 +416,10 @@ internal static class PacketAnalyzer
                     if (success)
                     {
                         if (objectType is ObjectType.Monster or ObjectType.MonsterFlyer or ObjectType.NpcTrade
-                            or ObjectType.NpcQuestDegree or ObjectType.NpcQuestTitle && actionType != EntityActionType.SET_POSITION)
+                                or ObjectType.DoorEntrance or ObjectType.DoorExit or ObjectType.AlchemyMineral
+                                or ObjectType.AlchemyMetal or ObjectType.AlchemyPlant or ObjectType.NpcBanker
+                                or ObjectType.NpcQuestDegree or ObjectType.NpcQuestTitle &&
+                            actionType != EntityActionType.SET_POSITION)
                         {
                             shouldHidePacket = false;
                         }
@@ -491,12 +465,15 @@ internal static class PacketAnalyzer
                 }
             }
 
-            fullStream.SeekBitOffset(initialBitOffset);
-            var header = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(fullStream, "entity_header",
-                subPacketIndex,
-                $"UNKNOWN TYPE: {objectType} ({objectTypeVal})");
-            allParts.AddRange(header);
-            break;
+            if (undefTypes)
+            {
+                fullStream.SeekBitOffset(initialBitOffset);
+                var header = FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(fullStream, "entity_header",
+                    subPacketIndex,
+                    $"UNKNOWN TYPE: {objectType} ({objectTypeVal})");
+                allParts.AddRange(header);
+                break;
+            }
         }
 
         storedPacket.PacketParts = allParts;
@@ -557,6 +534,10 @@ internal static class PacketAnalyzer
                     break;
                 case ObjectType.NpcTrade:
                     packetName = "npc_trade";
+                    break;
+                case ObjectType.NpcQuestTitle:
+                case ObjectType.NpcQuestDegree:
+                    packetName = "npc_quest_title";
                     break;
                 case ObjectType.DoorEntrance:
                 case ObjectType.DoorExit:
@@ -623,9 +604,16 @@ internal static class PacketAnalyzer
             result = new DespawnPacket(subpacket);
         }
 
-        if (result.ObjectType is ObjectType.NpcTrade)
+        if (result.ObjectType is ObjectType.NpcTrade or ObjectType.NpcQuestTitle or ObjectType.NpcQuestDegree)
         {
-            result = new NpcTradePacket(subpacket);
+            var npcTradePacket = new NpcTradePacket(subpacket);
+            result = npcTradePacket;
+            if (npcTradePacket.ActionType == EntityActionType.FULL_SPAWN)
+            {
+                var output =
+                    $"{npcTradePacket.Id:X4}\t{npcTradePacket.ObjectType}\t{npcTradePacket.ActionType}\t{npcTradePacket.X}\t{npcTradePacket.Y}\t{npcTradePacket.Z}\t{npcTradePacket.Angle}\t{npcTradePacket.NameId}\t{npcTradePacket.TypeNameLength}\t{npcTradePacket.TypeName}\t{npcTradePacket.IconNameLength}\t{npcTradePacket.IconName}\n";
+                File.AppendAllText(@"C:\\_sphereDumps\\npc.txt", output);
+            }
         }
 
         return result;
@@ -649,6 +637,7 @@ internal static class PacketAnalyzer
 
     private static List<PacketPart> FindPartsByName (BitStream stream, string name, bool isSubpacket)
     {
+        var isMob = name == "monster_full";
         if (isSubpacket)
         {
             var subpacket = PacketLogViewerMainWindow.Subpackets.FirstOrDefault(x => x.Name == name);
@@ -657,7 +646,7 @@ internal static class PacketAnalyzer
                 return new List<PacketPart>();
             }
 
-            return subpacket.LoadFromFile(stream, 0);
+            return subpacket.LoadFromFile(stream, 0, isMob);
         }
 
         var definition = PacketLogViewerMainWindow.PacketDefinitions.FirstOrDefault(x => x.Name == name);
@@ -666,7 +655,7 @@ internal static class PacketAnalyzer
             return new List<PacketPart>();
         }
 
-        return definition.LoadFromFile(stream, 0);
+        return definition.LoadFromFile(stream, 0, isMob);
     }
 
     private static List<PacketPart> FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset (BitStream stream,
@@ -683,6 +672,13 @@ internal static class PacketAnalyzer
         foreach (var t in parts)
         {
             t.SubpacketIndex = subpacketIndex;
+        }
+
+        if (name == "monster_full")
+        {
+            // hack until I figure this out
+            // mob packet should end with 001 and 36 bits of zeroes, so we change stream position accordingly
+            var lastSkipPart = parts.Last();
         }
 
         return parts;

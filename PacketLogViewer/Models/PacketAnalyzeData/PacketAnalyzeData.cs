@@ -29,7 +29,7 @@ public class PacketAnalyzeData
             x.Name == PacketPartNames.EntityType || x.Name == PacketPartNames.ObjectType);
         if (objectTypePart is not null)
         {
-            var objTypeVal = (ushort) BitStreamExtensions.BitsToInt(objectTypePart.Value);
+            var objTypeVal = (ushort) (objectTypePart.ActualLongValue ?? ushort.MaxValue);
             ObjectType = Enum.IsDefined(typeof (ObjectType), objTypeVal) ? (ObjectType) objTypeVal : ObjectType.Unknown;
         }
     }
@@ -37,7 +37,7 @@ public class PacketAnalyzeData
     public int GetIntValue (string name)
     {
         var part = Parts.FirstOrDefault(x => x.Name == name);
-        return part is not null ? BitStreamExtensions.BitsToInt(part.Value) : 0;
+        return part is not null ? (int) (part.ActualLongValue ?? 0) : 0;
     }
 
     public double GetClientCoordValue (string name)
@@ -45,7 +45,8 @@ public class PacketAnalyzeData
         var part = Parts.FirstOrDefault(x => x.Name == name);
         if (part is not null)
         {
-            return CoordsHelper.DecodeClientCoordinateWithoutShift(BitStream.BitArrayToBytes(part.Value.ToArray()),
+            return CoordsHelper.DecodeClientCoordinateWithoutShift(
+                BitStream.BitArrayToBytes(part.Value.Reverse().ToArray()),
                 false);
         }
 
@@ -56,7 +57,7 @@ public class PacketAnalyzeData
     {
         var part = Parts.FirstOrDefault(x => x.Name == name);
         return part is not null
-            ? PacketLogViewerMainWindow.Win1251.GetString(BitStream.BitArrayToBytes(part.Value.ToArray()))
+            ? PacketLogViewerMainWindow.Win1251.GetString(BitStream.BitArrayToBytes(part.Value.Reverse().ToArray()))
             : string.Empty;
     }
 }

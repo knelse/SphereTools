@@ -182,7 +182,7 @@ public class PacketPart
     }
 
     public static List<PacketPart> LoadFromFile (string filePath, string groupName, BitStream contentStream,
-        int bitOffset)
+        int bitOffset, bool isMob = false)
     {
         var contents = File.ReadAllLines(filePath);
         var parts = new List<PacketPart>();
@@ -229,16 +229,18 @@ public class PacketPart
             parts.Add(part);
         }
 
-        UpdatePacketPartValues(parts, contentStream, bitOffset);
+        UpdatePacketPartValues(parts, contentStream, bitOffset, isMob);
         return parts;
     }
 
-    public static void UpdatePacketPartValues (IList<PacketPart> parts, BitStream contentStream, int bitOffset)
+    public static void UpdatePacketPartValues (IList<PacketPart> parts, BitStream contentStream, int bitOffset, bool isMob = false)
     {
         if (bitOffset != 0)
         {
             contentStream.SeekBitOffset(bitOffset);
         }
+
+        var reducedFieldLengthForMobs = false;
 
         for (var i = 0; i < parts.Count; i++)
         {
@@ -258,6 +260,18 @@ public class PacketPart
                 }
 
                 packetPart.BitLength = length;
+            }
+
+            if (isMob && packetPart.Name == PacketPartNames.Skip && i > 0 && parts[i - 1].Name == PacketPartNames.Angle)
+            {
+                var val = contentStream.ReadByte((int) length);
+                if (val <= 8)
+                {
+                    length -= 1;
+                    packetPart.BitLength = length;
+                    reducedFieldLengthForMobs = true;
+                }
+                contentStream.SeekBitOffset(currentOffset);
             }
 
             if (packetPart.PacketPartType is PacketPartType.INT64 or PacketPartType.UINT64)

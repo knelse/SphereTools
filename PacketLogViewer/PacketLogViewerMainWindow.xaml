@@ -66,24 +66,24 @@
         </Grid.ColumnDefinitions>
         <Grid>
             <Grid.ColumnDefinitions>
-                <ColumnDefinition Width="2*" />
-                <ColumnDefinition Width="3*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
+                <ColumnDefinition Width="*" />
             </Grid.ColumnDefinitions>
             <CheckBox Grid.Row="0" Grid.Column="0" Margin="2 4 4 2" Background="White" VerticalAlignment="Center"
                       IsChecked="False" HorizontalAlignment="Left" Checked="ShowFavoritesOnlyToggleButton_OnChecked"
                       Unchecked="ShowFavoritesOnlyToggleButton_OnUnchecked">
-                <CheckBox.LayoutTransform>
-                    <ScaleTransform ScaleX="1.5" ScaleY="1.5" />
-                </CheckBox.LayoutTransform>
                 Bookmarked Only
             </CheckBox>
             <CheckBox Grid.Row="0" Grid.Column="1" Margin="2 4 4 2" Background="White" VerticalAlignment="Center"
                       IsChecked="True" HorizontalAlignment="Left" Checked="HideUninteresting_OnChecked"
                       Unchecked="HideUninteresting_OnUnchecked">
-                <CheckBox.LayoutTransform>
-                    <ScaleTransform ScaleX="1.5" ScaleY="1.5" />
-                </CheckBox.LayoutTransform>
                 Hide Less Interesting
+            </CheckBox>
+            <CheckBox Grid.Row="0" Grid.Column="2" Margin="2 4 4 2" Background="White" VerticalAlignment="Center"
+                      IsChecked="True" HorizontalAlignment="Left" Checked="ListenerEnabled_OnChecked"
+                      Unchecked="ListenerEnabled_OnUnchecked">
+                Enable Listener
             </CheckBox>
         </Grid>
         <GridSplitter Grid.Row="1" Grid.Column="0" Grid.RowSpan="2" Width="8" Background="White"

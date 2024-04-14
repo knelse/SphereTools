@@ -177,10 +177,16 @@ public partial class PacketLogViewerMainWindow
     public byte[]? CurrentContentBytes { get; set; }
     public ObservableCollection<StoredPacket> LogRecords { get; } = new ();
     public bool ShowFavoritesOnly { get; set; }
+    public bool ListenerEnabled { get; set; } = true;
     public bool HideUninteresting { get; set; } = true;
 
     private void OnPacketProcessed (StoredPacket storedPacket)
     {
+        if (!ListenerEnabled)
+        {
+            return;
+        }
+
         storedPacket.Id = PacketCollection.Insert(storedPacket);
 
         storedPacket.UpdatePacketPartsForContent();
@@ -479,6 +485,21 @@ public partial class PacketLogViewerMainWindow
     {
         HideUninteresting = false;
         ScrollIntoViewIfSelectionExists();
+    }
+
+    private void ListenerEnabled_OnChecked (object sender, RoutedEventArgs e)
+    {
+        if (ListenerEnabled)
+        {
+            return;
+        }
+
+        ListenerEnabled = true;
+    }
+
+    private void ListenerEnabled_OnUnchecked (object sender, RoutedEventArgs e)
+    {
+        ListenerEnabled = false;
     }
 
     private void ScrollIntoViewIfSelectionExists ()

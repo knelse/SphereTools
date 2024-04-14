@@ -30,10 +30,10 @@ public class MobPacket : PacketAnalyzeData
 
     public MobPacket (List<PacketPart> parts) : base(parts)
     {
-        var actionTypePacket = Parts.FirstOrDefault(x => x.Name == PacketPartNames.ActionType);
-        if (actionTypePacket is not null)
+        var actionTypePart = Parts.FirstOrDefault(x => x.Name == PacketPartNames.ActionType);
+        if (actionTypePart is not null)
         {
-            var actionTypeVal = BitStreamExtensions.BitsToInt(actionTypePacket.Value);
+            var actionTypeVal = (int) (actionTypePart.ActualLongValue ?? int.MaxValue);
             ActionType = Enum.IsDefined(typeof (EntityActionType), actionTypeVal)
                 ? (EntityActionType) actionTypeVal
                 : EntityActionType.UNDEF;
@@ -52,7 +52,7 @@ public class MobPacket : PacketAnalyzeData
             Type = GetIntValue(PacketPartNames.MobType);
             CurrentHP = GetIntValue(PacketPartNames.CurrentHP);
             MaxHP = GetIntValue(PacketPartNames.MaxHP);
-            Level = (int) (Parts.FirstOrDefault(x => x.Name == PacketPartNames.Level)?.ActualLongValue ?? 0);
+            Level = GetIntValue(PacketPartNames.Level);
         }
     }
 }

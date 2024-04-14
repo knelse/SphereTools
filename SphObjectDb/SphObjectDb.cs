@@ -7,22 +7,20 @@ using LocalizationEntryString = System.Collections.Generic.Dictionary<Locale, st
 public static class SphObjectDb
 {
     private static readonly char[] TabCharacter = { '\t' };
-    private const string gameDataPath = "c:\\source\\_sphFilesDecode\\params\\";
-    private const string localeDataPath = "c:\\source\\_sphFilesDecode\\language\\";
-    private const string gameDataJsonPath = "C:\\source\\objectData.json";
-    private const string suffixDataJsonPath = "C:\\source\\suffixData.json";
-    private const string localizationContentJsonPath = "C:\\source\\localizationContent.json";
-    private const string objectLocalizationJsonPath = "C:\\source\\objectLocalization.json";
-    public static readonly Dictionary<int, SphGameObject> GameObjectDataDb = new();
-    public static readonly Dictionary<GameObjectType, Dictionary<ItemSuffix, SphGameObject>> SuffixDataDb = new();
+    public static readonly Dictionary<int, SphGameObject> GameObjectDataDb = new ();
+    public static readonly Dictionary<GameObjectType, Dictionary<ItemSuffix, SphGameObject>> SuffixDataDb = new ();
     private const string langSuffixEnglish = "_e";
     private const string langSuffixItalian = "_i";
     private const string langSuffixPortuguese = "_p";
-    public static readonly Dictionary<string, LocalizationEntryArray> LocalisationContent = new();
+
+    public static readonly Dictionary<string, LocalizationEntryArray> LocalisationContent = new ();
+
+    private static readonly Dictionary<string, string> AppSettings;
+
     public static readonly Dictionary<string, Dictionary<int, LocalizationEntryString>> ObjectNameToLocalizationMap =
-        new();
-    
-    private static readonly Dictionary<string, GameObjectType> prefFiles = new()
+        new ();
+
+    private static readonly Dictionary<string, GameObjectType> prefFiles = new ()
     {
         ["ar_armoru"] = Pref_Castle,
         ["ar_armor"] = Pref_Chestplate,
@@ -36,9 +34,18 @@ public static class SphObjectDb
         ["ar_belt"] = Pref_BeltBootsGlovesHelmetPants
     };
 
-    static SphObjectDb()
+    static SphObjectDb ()
     {
-        if (!File.Exists(gameDataJsonPath) 
+        using var configFile = File.OpenRead("sphdbsettings.json");
+        using var configReader = new StreamReader(configFile);
+        AppSettings = JsonConvert.DeserializeObject<Dictionary<string, string>>(configReader.ReadToEnd());
+
+        var gameDataJsonFolder = AppSettings["GeneratedJsonOutputFolder"];
+        var gameDataJsonPath = Path.Combine(gameDataJsonFolder, AppSettings["ObjectDataFileName"]);
+        var localizationContentJsonPath = Path.Combine(gameDataJsonFolder, AppSettings["LocalizationContentFileName"]);
+        var suffixDataJsonPath = Path.Combine(gameDataJsonFolder, AppSettings["SuffixDataFileName"]);
+        var objectLocalizationJsonPath = Path.Combine(gameDataJsonFolder, AppSettings["ObjectLocalizationFileName"]);
+        if (!File.Exists(gameDataJsonFolder)
             || !File.Exists(localizationContentJsonPath)
             || !File.Exists(objectLocalizationJsonPath)
             || !File.Exists(suffixDataJsonPath)
@@ -54,22 +61,22 @@ public static class SphObjectDb
             LoadLocalisationData();
             GenerateGameObjectLocale();
             LoadGameObjectLocalization();
-            
+
             using var gameDataFile = File.OpenWrite(gameDataJsonPath);
             using var gameDataWriter = new StreamWriter(gameDataFile);
             var gameDataJson = JsonConvert.SerializeObject(GameObjectDataDb, Formatting.Indented);
             gameDataWriter.Write(gameDataJson);
-            
+
             using var localeContentFile = File.OpenWrite(localizationContentJsonPath);
             using var localeContentWriter = new StreamWriter(localeContentFile);
             var localeContentJson = JsonConvert.SerializeObject(LocalisationContent, Formatting.Indented);
             localeContentWriter.Write(localeContentJson);
-            
+
             using var objectLocaleFile = File.OpenWrite(objectLocalizationJsonPath);
             using var objectLocaleWriter = new StreamWriter(objectLocaleFile);
             var objectLocaleJson = JsonConvert.SerializeObject(ObjectNameToLocalizationMap, Formatting.Indented);
             objectLocaleWriter.Write(objectLocaleJson);
-            
+
             using var suffixFile = File.OpenWrite(suffixDataJsonPath);
             using var suffixWriter = new StreamWriter(suffixFile);
             var suffixJson = JsonConvert.SerializeObject(SuffixDataDb, Formatting.Indented);
@@ -81,24 +88,33 @@ public static class SphObjectDb
             Console.WriteLine("Loading game data from preexisting json");
             using var gameDataFile = File.OpenRead(gameDataJsonPath);
             using var gameDataReader = new StreamReader(gameDataFile);
-            GameObjectDataDb = JsonConvert.DeserializeObject<Dictionary<int, SphGameObject>>(gameDataReader.ReadToEnd()) ?? throw new InvalidOperationException();
-            
+            GameObjectDataDb =
+                JsonConvert.DeserializeObject<Dictionary<int, SphGameObject>>(gameDataReader.ReadToEnd()) ??
+                throw new InvalidOperationException();
+
             using var localeContentFile = File.OpenRead(localizationContentJsonPath);
             using var localeContentReader = new StreamReader(localeContentFile);
-            LocalisationContent = JsonConvert.DeserializeObject<Dictionary<string, LocalizationEntryArray>>(localeContentReader.ReadToEnd()) ?? throw new InvalidOperationException();
-            
+            LocalisationContent =
+                JsonConvert.DeserializeObject<Dictionary<string, LocalizationEntryArray>>(
+                    localeContentReader.ReadToEnd()) ?? throw new InvalidOperationException();
+
             using var objectLocaleFile = File.OpenRead(objectLocalizationJsonPath);
             using var objectLocaleReader = new StreamReader(objectLocaleFile);
-            ObjectNameToLocalizationMap = JsonConvert.DeserializeObject<Dictionary<string, Dictionary<int, LocalizationEntryString>>>(objectLocaleReader.ReadToEnd()) ?? throw new InvalidOperationException();
-            
+            ObjectNameToLocalizationMap =
+                JsonConvert.DeserializeObject<Dictionary<string, Dictionary<int, LocalizationEntryString>>>(
+                    objectLocaleReader.ReadToEnd()) ?? throw new InvalidOperationException();
+
             using var suffixFile = File.OpenRead(suffixDataJsonPath);
             using var suffixReader = new StreamReader(suffixFile);
-            SuffixDataDb = JsonConvert.DeserializeObject<Dictionary<GameObjectType, Dictionary<ItemSuffix, SphGameObject>>>(suffixReader.ReadToEnd()) ?? throw new InvalidOperationException();
+            SuffixDataDb =
+                JsonConvert.DeserializeObject<Dictionary<GameObjectType, Dictionary<ItemSuffix, SphGameObject>>>(
+                    suffixReader.ReadToEnd()) ?? throw new InvalidOperationException();
         }
     }
 
-    private static void LoadGameObjects()
+    private static void LoadGameObjects ()
     {
+        var gameDataPath = Path.Combine(AppSettings["DecodedGameDataPath"], AppSettings["DecodedParamsFolderName"]);
         var objectFiles = Directory.EnumerateFiles(gameDataPath, "group*").ToList();
         foreach (var objFile in objectFiles)
         {
@@ -196,7 +212,7 @@ public static class SphObjectDb
                 if (GameObjectDataDb.ContainsKey(gameId))
                 {
                     // 4251: special case, no longer an "old" robe, now it's an event amulet
-                    if (gameId == 4251 && GameObjectDataDb[gameId].ObjectType == GameObjectType.Robe)
+                    if (gameId == 4251 && GameObjectDataDb[gameId].ObjectType == Robe)
                     {
                         GameObjectDataDb.Remove(gameId);
                     }
@@ -227,8 +243,9 @@ public static class SphObjectDb
         }
     }
 
-    private static void LoadLocalisationData()
+    private static void LoadLocalisationData ()
     {
+        var localeDataPath = Path.Combine(AppSettings["DecodedGameDataPath"], AppSettings["DecodedLocaleFolderName"]);
         var langFiles = Directory.EnumerateFiles(localeDataPath);
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         var Win1251 = Encoding.GetEncoding(1251);
@@ -275,7 +292,7 @@ public static class SphObjectDb
         }
     }
 
-    private static void GenerateGameObjectLocale()
+    private static void GenerateGameObjectLocale ()
     {
         foreach (var (name, localeEntry) in LocalisationContent)
         {
@@ -297,12 +314,13 @@ public static class SphObjectDb
                         {
                             continue;
                         }
+
                         var split = localeContent[i].Split(" ", StringSplitOptions.RemoveEmptyEntries);
                         if (split.Length == 0 || !int.TryParse(split[0], out var strId) || strId < 200)
                         {
                             continue;
                         }
-                        
+
                         // prefs
 
                         var pref = prefFiles[name];
@@ -319,7 +337,7 @@ public static class SphObjectDb
                         }
 
                         ObjectNameToLocalizationMap[prefName][strId - 200][locale] = localeContent[i][4..];
-                        
+
                         continue;
                     }
 
@@ -352,7 +370,8 @@ public static class SphObjectDb
                             {
                                 if (i + 4 < localeContent.Length && localeContent[i + 4].StartsWith("10 "))
                                 {
-                                    ObjectNameToLocalizationMap[name][j][locale] = mantraPrefix + " " + localeContent[i + 4][3..];
+                                    ObjectNameToLocalizationMap[name][j][locale] =
+                                        mantraPrefix + " " + localeContent[i + 4][3..];
                                 }
                                 else
                                 {
@@ -369,7 +388,7 @@ public static class SphObjectDb
                         {
                             ObjectNameToLocalizationMap[name].Add(id, new LocalizationEntryString());
                         }
-                        
+
                         if (!name.Contains("mantra"))
                         {
                             ObjectNameToLocalizationMap[name][id][locale] = localeContent[i + 1][3..];
@@ -378,7 +397,8 @@ public static class SphObjectDb
                         {
                             if (i + 4 < localeContent.Length && localeContent[i + 4].StartsWith("10 "))
                             {
-                                ObjectNameToLocalizationMap[name][id][locale] = mantraPrefix + " " + localeContent[i + 4][3..];
+                                ObjectNameToLocalizationMap[name][id][locale] =
+                                    mantraPrefix + " " + localeContent[i + 4][3..];
                             }
                             else
                             {
@@ -388,7 +408,10 @@ public static class SphObjectDb
                     }
                 }
 
-                if (gameIdsFound) continue;
+                if (gameIdsFound)
+                {
+                    continue;
+                }
 
                 if (!ObjectNameToLocalizationMap[name].ContainsKey(-1))
                 {
@@ -400,7 +423,7 @@ public static class SphObjectDb
         }
     }
 
-    private static void LoadGameObjectLocalization()
+    private static void LoadGameObjectLocalization ()
     {
         foreach (var (gameId, gameObject) in GameObjectDataDb)
         {
@@ -425,7 +448,6 @@ public static class SphObjectDb
                 // this shouldn't happen
                 Console.WriteLine($"ERROR: Missing localization for {gameObject.SphereType} GID: {gameId}");
             }
-            
         }
 
         foreach (var (objectType, suffixData) in SuffixDataDb)

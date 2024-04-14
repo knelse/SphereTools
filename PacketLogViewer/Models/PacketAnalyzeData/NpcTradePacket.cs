@@ -14,6 +14,7 @@ public class NpcTradePacket : PacketAnalyzeData
     public double Z { get; set; }
     public int Angle { get; set; }
     public string Name { get; set; } = string.Empty;
+    public int NameId { get; set; }
     public int TypeNameLength { get; set; }
     public string TypeName { get; set; } = string.Empty;
     public int IconNameLength { get; set; }
@@ -24,10 +25,10 @@ public class NpcTradePacket : PacketAnalyzeData
 
     public NpcTradePacket (List<PacketPart> parts) : base(parts)
     {
-        var actionTypePacket = Parts.FirstOrDefault(x => x.Name == PacketPartNames.ActionType);
-        if (actionTypePacket is not null)
+        var actionTypePart = Parts.FirstOrDefault(x => x.Name == PacketPartNames.ActionType);
+        if (actionTypePart is not null)
         {
-            var actionTypeVal = BitStreamExtensions.BitsToInt(actionTypePacket.Value);
+            var actionTypeVal = (int) (actionTypePart.ActualLongValue ?? int.MaxValue);
             ActionType = Enum.IsDefined(typeof (EntityActionType), actionTypeVal)
                 ? (EntityActionType) actionTypeVal
                 : EntityActionType.UNDEF;
@@ -44,6 +45,7 @@ public class NpcTradePacket : PacketAnalyzeData
         if (ActionType is EntityActionType.FULL_SPAWN)
         {
             var nameVal = GetIntValue(PacketPartNames.NameID);
+            NameId = nameVal;
             Name = PacketLogViewerMainWindow.DefinedEnums["npc_names"].TryGetValue(nameVal, out var name)
                 ? name
                 : string.Empty;
