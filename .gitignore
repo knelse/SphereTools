@@ -7,7 +7,6 @@ signsrch/*
 vcpkg/*
 x96dbg/*
 xor/*
-_sphFilesDecode/*
 *.bak
 _sphFileBackup/*
 _sphFilesUpdated*/*
@@ -25,9 +24,6 @@ HexToBinaryString/HexToBinaryString.deps.json
 HexToBinaryString/HexToBinaryString.dll
 HexToBinaryString/HexToBinaryString.runtimeconfig.json
 enterGame1
-entityData
-entityNamesCollected
-itemNamesCollected
 mobPacket
 server_sent_coords
 Kukla
@@ -61,3 +57,4 @@ packet_structure.txt
 packet_types.txt
 statPacket.txt
 time.txt
+_sphFilesDecode/players
