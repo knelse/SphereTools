@@ -1,0 +1,9 @@
+﻿{
+  "Settings": {
+    "PacketDefinitionPath": "C:\\source\\sphPacketDefinitions",
+    "MacAddress": "C87F54061FF1"
+  },
+  "ConnectionStrings": {
+    "LiteDbPacketCollection": "Filename=C:\\_sphereStuff\\sph_packets.db;Connection=shared;"
+  }
+}

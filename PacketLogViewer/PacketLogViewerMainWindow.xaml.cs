@@ -20,22 +20,22 @@ using SphereHelpers.Extensions;
 using SpherePacketVisualEditor;
 using SphServer.Helpers;
 using SphServer.Helpers.Enums;
+using Microsoft.Extensions.Configuration;
 
 namespace PacketLogViewer;
 
 public partial class PacketLogViewerMainWindow
 {
-    private const string PacketDefinitionPath = @"C:\\source\\sphPacketDefinitions";
+    private static readonly string PacketDefinitionPath;
     private const string PacketDefinitionExtension = ".spd";
     private const string ExportedPartExtension = ".spdp";
     private const string EnumExtension = ".sphenum";
     public static Encoding Win1251 = null!;
+    private static IConfigurationRoot AppConfig;
 
-    public static readonly LiteDatabase PacketDatabase =
-        new (@"Filename=C:\_sphereStuff\sph_packets.db;Connection=shared;");
+    public static readonly LiteDatabase PacketDatabase;
 
-    public static readonly ILiteCollection<StoredPacket> PacketCollection =
-        PacketDatabase.GetCollection<StoredPacket>("Packets");
+    public static readonly ILiteCollection<StoredPacket> PacketCollection;
 
     private static Bit[] PacketContentBits = null!;
 
@@ -60,118 +60,134 @@ public partial class PacketLogViewerMainWindow
     private ScrollViewer? PacketDisplayScrollViewer;
     private TextPointer? StartTextPointer;
 
+    static PacketLogViewerMainWindow ()
+    {
+        AppConfig = new ConfigurationBuilder().AddJsonFile("appconfig.json").AddEnvironmentVariables().Build();
+        PacketDatabase = new LiteDatabase(AppConfig.GetConnectionString("LiteDbPacketCollection"));
+        PacketDefinitionPath = AppConfig.GetSection("Settings").GetValue<string>("PacketDefinitionPath");
+        Directory.CreateDirectory(PacketDefinitionPath);
+        PacketCollection = PacketDatabase.GetCollection<StoredPacket>("Packets");
+    }
+
     public PacketLogViewerMainWindow ()
     {
         InitializeComponent();
         RegisterBsonMapperForBrush();
 
-        Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-        Win1251 = Encoding.GetEncoding(1251);
-
-        PacketCapture = new PacketCapture
+        try
         {
-            OnPacketProcessed = OnPacketProcessed
-        };
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            Win1251 = Encoding.GetEncoding(1251);
 
-        UpdateGameTime();
-
-        // prewarm
-        _ = SphObjectDb.GameObjectDataDb;
-
-        LogListFullPackets.ItemsSource = LogRecords;
-        LogListFullPackets.ContextMenu = new ContextMenu();
-        var menuItem = new MenuItem { Header = "Copy" };
-        menuItem.Click += FullPacketsLog_MenuItem_OnClick;
-        LogListFullPackets.ContextMenu.Items.Add(menuItem);
-
-        LogListFullPackets.SelectionChanged += LogListOnSelectionChanged;
-        CurrentEntityStateForClient.ItemsSource = CurrentClientState;
-
-        LogListFullPackets.KeyDown += (_, args) =>
-        {
-            if (args.KeyboardDevice.Modifiers != ModifierKeys.Control || args.Key != Key.C)
+            PacketCapture = new PacketCapture(AppConfig.GetSection("Settings").GetValue<string>("MacAddress"))
             {
-                return;
-            }
-
-            CopySelectedRowContent(LogListFullPackets);
-        };
-
-        LoadPacketDefinitions();
-        LoadEnums();
-        LoadContent();
-
-        var fullPacketView = CollectionViewSource.GetDefaultView(LogListFullPackets.ItemsSource);
-        var filterFunc = new Predicate<object>(o =>
-        {
-            if (ShowFavoritesOnly)
-            {
-                return (o as StoredPacket)?.Favorite ?? false;
-            }
-
-            if (!HideUninteresting)
-            {
-                return true;
-            }
-
-            return !((o as StoredPacket)?.HiddenByDefault ?? false);
-        });
-        fullPacketView.Filter = filterFunc;
-
-        PacketVisualizerControl.KeyDown += PacketVisualizerControlAddPacketPart;
-        PacketVisualizerControl.KeyDown += PacketVisualizerControlHandlePartSelection;
-        SelectionBrush = new SolidColorBrush
-        {
-            Color = ((SolidColorBrush) PacketVisualizerControl.SelectionBrush).Color,
-            Opacity = PacketVisualizerControl.SelectionOpacity
-        };
-        PacketVisualizerControl.SelectionBrush = Brushes.Transparent;
-        PacketVisualizerControl.PreviewMouseWheel += (_, _) => { };
-        var scrollViewerProperty =
-            typeof (RichTextBox).GetProperty("ScrollViewer", BindingFlags.NonPublic | BindingFlags.Instance)!;
-
-        Loaded += (_, _) =>
-        {
-            PacketDisplayScrollViewer = (ScrollViewer) scrollViewerProperty.GetValue(PacketVisualizerControl)!;
-
-            PacketDisplayScrollViewer!.ScrollChanged += (sender, _) => { SynchronizeScrollValues(sender); };
-
-            PacketVisualizerDefinedPacketValuesScrollViewer.ScrollChanged += (sender, _) =>
-            {
-                SynchronizeScrollValues(sender);
+                OnPacketProcessed = OnPacketProcessed
             };
 
-            PacketVisualizerLineNumbersAndValuesScrollViewer.ScrollChanged +=
-                (sender, _) => { SynchronizeScrollValues(sender); };
-        };
+            UpdateGameTime();
 
-        KeyUp += (_, e) =>
-        {
-            if (e.KeyboardDevice.Modifiers != ModifierKeys.Control || e.Key != Key.S)
+            // prewarm
+            _ = SphObjectDb.GameObjectDataDb;
+
+            LogListFullPackets.ItemsSource = LogRecords;
+            LogListFullPackets.ContextMenu = new ContextMenu();
+            var menuItem = new MenuItem { Header = "Copy" };
+            menuItem.Click += FullPacketsLog_MenuItem_OnClick;
+            LogListFullPackets.ContextMenu.Items.Add(menuItem);
+
+            LogListFullPackets.SelectionChanged += LogListOnSelectionChanged;
+            CurrentEntityStateForClient.ItemsSource = CurrentClientState;
+
+            LogListFullPackets.KeyDown += (_, args) =>
             {
-                return;
-            }
+                if (args.KeyboardDevice.Modifiers != ModifierKeys.Control || args.Key != Key.C)
+                {
+                    return;
+                }
 
-            if (DefinedPacketsListBox.SelectedItem is null)
+                CopySelectedRowContent(LogListFullPackets);
+            };
+
+            LoadPacketDefinitions();
+            LoadEnums();
+            LoadContent();
+
+            var fullPacketView = CollectionViewSource.GetDefaultView(LogListFullPackets.ItemsSource);
+            var filterFunc = new Predicate<object>(o =>
             {
-                return;
-            }
+                if (ShowFavoritesOnly)
+                {
+                    return (o as StoredPacket)?.Favorite ?? false;
+                }
 
-            SaveSelectedPacketDefinition();
-        };
+                if (!HideUninteresting)
+                {
+                    return true;
+                }
 
-        CreateFlowDocumentWithHighlights(false, true);
+                return !((o as StoredPacket)?.HiddenByDefault ?? false);
+            });
+            fullPacketView.Filter = filterFunc;
 
-        PacketPartsInDefinitionListBox.ItemsSource = PacketParts;
+            PacketVisualizerControl.KeyDown += PacketVisualizerControlAddPacketPart;
+            PacketVisualizerControl.KeyDown += PacketVisualizerControlHandlePartSelection;
+            SelectionBrush = new SolidColorBrush
+            {
+                Color = ((SolidColorBrush) PacketVisualizerControl.SelectionBrush).Color,
+                Opacity = PacketVisualizerControl.SelectionOpacity
+            };
+            PacketVisualizerControl.SelectionBrush = Brushes.Transparent;
+            PacketVisualizerControl.PreviewMouseWheel += (_, _) => { };
+            var scrollViewerProperty =
+                typeof (RichTextBox).GetProperty("ScrollViewer", BindingFlags.NonPublic | BindingFlags.Instance)!;
 
-        SphereTimeUpdateTimer = new DispatcherTimer
+            Loaded += (_, _) =>
+            {
+                PacketDisplayScrollViewer = (ScrollViewer) scrollViewerProperty.GetValue(PacketVisualizerControl)!;
+
+                PacketDisplayScrollViewer!.ScrollChanged += (sender, _) => { SynchronizeScrollValues(sender); };
+
+                PacketVisualizerDefinedPacketValuesScrollViewer.ScrollChanged += (sender, _) =>
+                {
+                    SynchronizeScrollValues(sender);
+                };
+
+                PacketVisualizerLineNumbersAndValuesScrollViewer.ScrollChanged +=
+                    (sender, _) => { SynchronizeScrollValues(sender); };
+            };
+
+            KeyUp += (_, e) =>
+            {
+                if (e.KeyboardDevice.Modifiers != ModifierKeys.Control || e.Key != Key.S)
+                {
+                    return;
+                }
+
+                if (DefinedPacketsListBox.SelectedItem is null)
+                {
+                    return;
+                }
+
+                SaveSelectedPacketDefinition();
+            };
+
+            CreateFlowDocumentWithHighlights(false, true);
+
+            PacketPartsInDefinitionListBox.ItemsSource = PacketParts;
+
+            SphereTimeUpdateTimer = new DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(1.0 / 24)
+            };
+            SphereTimeUpdateTimer.Tick += (_, _) => UpdateGameTime();
+            SphereTimeUpdateTimer.Start();
+
+            ScrollIntoViewIfSelectionExists();
+        }
+        catch (Exception ex)
         {
-            Interval = TimeSpan.FromSeconds(1.0 / 24)
-        };
-        SphereTimeUpdateTimer.Tick += (_, _) => UpdateGameTime();
-        SphereTimeUpdateTimer.Start();
-
-        ScrollIntoViewIfSelectionExists();
+            MessageBox.Show($"Exception: {ex.Message}");
+        }
     }
 
     public byte[]? CurrentContentBytes { get; set; }

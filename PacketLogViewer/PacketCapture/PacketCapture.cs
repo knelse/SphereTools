@@ -36,15 +36,16 @@ public class PacketCapture
 
     public Action<StoredPacket> OnPacketProcessed;
 
-    public PacketCapture (string macAddress = "C87F54061FF1")
+    public PacketCapture (string macAddress)
     {
         Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         captureDevice = CaptureDeviceList.Instance.FirstOrDefault(x => x.MacAddress?.ToString() == macAddress);
         if (captureDevice is null)
         {
-            ConsoleExtensions.WriteLineColored($"ERROR: Capture device with mac address {macAddress} not found",
-                ConsoleColor.Red);
-            return;
+            var existingDevices =
+                string.Join("\n", CaptureDeviceList.Instance.Select(x => x.Description + " ---- " + x.MacAddress));
+            throw new ArgumentException(
+                $"Unknown capture device with MAC address: {macAddress}.\n\nDevices found:\n{existingDevices}");
         }
 
         captureDevice.OnPacketArrival += CaptureDeviceOnPacketArrival;
