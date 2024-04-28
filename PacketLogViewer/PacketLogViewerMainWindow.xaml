@@ -188,7 +188,8 @@
                 <Grid.ColumnDefinitions>
                     <ColumnDefinition Width="140" />
                     <ColumnDefinition Width="70" />
-                    <ColumnDefinition Width="*" />
+                    <ColumnDefinition Width="210" />
+                    <ColumnDefinition Width="500" />
                 </Grid.ColumnDefinitions>
                 <CheckBox Name="IsFavorite" Grid.Row="0" Grid.Column="0" Margin="2 4 4 2" Background="White"
                           Padding="2"
@@ -208,6 +209,7 @@
                          HorizontalContentAlignment="Left" VerticalContentAlignment="Center" FontFamily="Hack"
                          FontSize="16" HorizontalAlignment="Left" TextChanged="SearchInPacketTextBox_OnTextChanged"
                          KeyUp="SearchInPacketTextBox_OnKeyUp" />
+                <Button Grid.Column="3" Click="AddPacketButton_OnClick" Margin="100 4 4 2">Add packet</Button>
             </Grid>
             <Grid Grid.Row="1" HorizontalAlignment="Left" VerticalAlignment="Top" Margin="0">
                 <Grid.ColumnDefinitions>

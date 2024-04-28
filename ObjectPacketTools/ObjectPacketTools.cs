@@ -728,4 +728,22 @@ public static class ObjectPacketTools
             _ => Enum.GetName(objectType)
         })!;
     }
+
+    public static bool IsQuestItem (ObjectType objectType)
+    {
+        return objectType is
+            ObjectType.QuestArmorAmulet
+            or ObjectType.QuestArmorBelt
+            or ObjectType.QuestArmorBoots
+            or ObjectType.QuestArmorChest
+            or ObjectType.QuestArmorGloves
+            or ObjectType.QuestArmorBracelet
+            or ObjectType.QuestArmorHelmet
+            or ObjectType.QuestArmorPants
+            or ObjectType.QuestArmorRobe
+            or ObjectType.QuestArmorShield
+            or ObjectType.QuestWeaponAxe
+            or ObjectType.QuestWeaponCrossbow
+            or ObjectType.QuestWeaponSword;
+    }
 }

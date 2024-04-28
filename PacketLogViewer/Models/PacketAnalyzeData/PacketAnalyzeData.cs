@@ -14,7 +14,7 @@ public class PacketAnalyzeData
     public int Id { get; set; }
     public ObjectType ObjectType { get; set; }
     [BsonIgnore] protected readonly List<PacketPart> Parts;
-    public string DisplayValue => $"{Id:X4} ({Enum.GetName(ObjectType) ?? string.Empty})";
+    public virtual string DisplayValue => $"{Id:X4} ({Enum.GetName(ObjectType) ?? string.Empty})";
 
     public PacketAnalyzeData ()
     {
@@ -38,6 +38,12 @@ public class PacketAnalyzeData
     {
         var part = Parts.FirstOrDefault(x => x.Name == name);
         return part is not null ? (int) (part.ActualLongValue ?? 0) : 0;
+    }
+
+    public bool GetBitValue (string name)
+    {
+        var part = Parts.FirstOrDefault(x => x.Name == name);
+        return part is not null && part.Value[0].AsBool();
     }
 
     public double GetClientCoordValue (string name)

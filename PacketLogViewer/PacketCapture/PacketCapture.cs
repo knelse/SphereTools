@@ -217,7 +217,7 @@ public class PacketCapture
         return result;
     }
 
-    private void ProcessPacketRawData (CapturedPacketRawData packetRawData)
+    internal void ProcessPacketRawData (CapturedPacketRawData packetRawData)
     {
         var subpackets = SplitContentIntoPackets(packetRawData.DecodedBuffer);
         for (var index = 0; index < subpackets.Count; index++)

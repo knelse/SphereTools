@@ -314,7 +314,15 @@ public partial class PacketLogViewerMainWindow
             CreateFlowDocumentWithHighlights(false, true);
             UpdateDefinedPackets();
             ClearSelection();
-            var packetContents = PacketAnalyzer.GetTextOutputForPacket(bytes);
+            var packetContents = string.Empty;
+            var knownAnalyzedParts = selected.AnalyzeResult.Where(x => x is ItemPacket or MobPacket or NpcTradePacket)
+                .ToList();
+            if (knownAnalyzedParts.Any())
+            {
+                packetContents = string.Join('\n', knownAnalyzedParts.Select(x => x.DisplayValue));
+                packetContents += "\n\n";
+            }
+
             ContentPreview.Text = packetContents + "\n";
             var sphObjects = ObjectPacketTools.GetObjectsFromPacket(bytes);
             ContentPreview.Text += sphObjects.Count > 0 ? ObjectPacketTools.GetTextOutput(sphObjects) : "";
@@ -1643,5 +1651,30 @@ public partial class PacketLogViewerMainWindow
                     }
                 };
             });
+    }
+
+    private void AddPacketButton_OnClick (object sender, RoutedEventArgs e)
+    {
+        var dialog = new AddPacketManuallyDialog()
+        {
+            Owner = this
+        };
+
+        if (dialog.ShowDialog() == true)
+        {
+            var packets = dialog.ProcessedPackets;
+            foreach (var packet in packets)
+            {
+                var rawData = new CapturedPacketRawData
+                {
+                    ArrivalTime = DateTime.Now,
+                    DecodedBuffer = packet,
+                    Buffer = packet,
+                    WasProcessed = false,
+                    Source = PacketSource.SERVER
+                };
+                PacketCapture.ProcessPacketRawData(rawData);
+            }
+        }
     }
 }

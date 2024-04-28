@@ -35,6 +35,7 @@ public class PacketPart
 {
     public const string UndefinedFieldValue = "__undef";
     public const string LengthFromPreviousFieldValue = "__fromPrevious";
+    public const string ShiftTestValue = "__shiftTest";
     public string? EnumName { get; set; }
     public byte HighlightColorR { get; set; }
     public byte HighlightColorG { get; set; }
@@ -176,6 +177,31 @@ public class PacketPart
         {
             enumValueStr = PacketLogViewerMainWindow.DefinedEnums[enumName][(int) ulongValue];
         }
+        else if (bytes.Length <= 8 && enumName is not null &&
+                 PacketLogViewerMainWindow.DefinedEnums.ContainsKey(enumName) && enumName == "localizables" &&
+                 ulongValue != 2560)
+        {
+            // try to find nearest defined value (armor would be put as 1000:something 1002:something_else, while
+            // quest armor would have 1001 as index)
+            var localizables = PacketLogViewerMainWindow.DefinedEnums[enumName];
+            var currentIndex = (int) ulongValue;
+            while (currentIndex >= 0)
+            {
+                if (localizables.ContainsKey(currentIndex))
+                {
+                    enumValueStr = localizables[currentIndex];
+                    break;
+                }
+
+                currentIndex--;
+            }
+        }
+        else if (bytes.Length <= 8 && enumName is not null &&
+                 PacketLogViewerMainWindow.DefinedEnums.ContainsKey(enumName) && enumName == "localizables" &&
+                 ulongValue == 2560)
+        {
+            enumValueStr = "NO_GAME_OBJECT";
+        }
 
         return new PacketPartDisplayText(bitsString, bytesString, textString, longValueStr, ulongValueStr,
             enumValueStr, coordsClientStr, coordsServerStr);
@@ -233,7 +259,8 @@ public class PacketPart
         return parts;
     }
 
-    public static void UpdatePacketPartValues (IList<PacketPart> parts, BitStream contentStream, int bitOffset, bool isMob = false)
+    public static void UpdatePacketPartValues (IList<PacketPart> parts, BitStream contentStream, int bitOffset,
+        bool isMob = false)
     {
         if (bitOffset != 0)
         {
@@ -271,6 +298,18 @@ public class PacketPart
                     packetPart.BitLength = length;
                     reducedFieldLengthForMobs = true;
                 }
+
+                contentStream.SeekBitOffset(currentOffset);
+            }
+
+            if (packetPart.Name == ShiftTestValue)
+            {
+                var shiftTest = contentStream.ReadByte(4);
+                if (shiftTest != 0)
+                {
+                    length = 8;
+                }
+
                 contentStream.SeekBitOffset(currentOffset);
             }
 

@@ -91,6 +91,11 @@ public static class PacketPartNames
     public const string IconNameLength = "icon_name_length";
     public const string IconName = "icon_name";
     public const string Skip = "skip";
+    public const string HasGameId = "has_game_id";
+    public const string GameObjectId = "game_object_id";
+    public const string ContainerId = "container_id";
+    public const string Count = "count";
+    public const string ScrollType = "scroll_type";
 }
 
 internal class SubpacketBytesWithOffset
@@ -404,6 +409,45 @@ internal static class PacketAnalyzer
                 case ObjectType.AlchemyMetal:
                 case ObjectType.AlchemyPlant:
                 case ObjectType.AlchemyMineral:
+                case ObjectType.Map:
+                case ObjectType.ArmorAmulet:
+                case ObjectType.ArmorBelt:
+                case ObjectType.ArmorBoots:
+                case ObjectType.ArmorBracelet:
+                case ObjectType.ArmorChest:
+                case ObjectType.ArmorGloves:
+                case ObjectType.ArmorHelmet:
+                case ObjectType.ArmorPants:
+                case ObjectType.ArmorRobe:
+                case ObjectType.ArmorShield:
+                case ObjectType.ArmorHelmetPremium:
+                case ObjectType.WeaponAxe:
+                case ObjectType.WeaponCrossbow:
+                case ObjectType.WeaponSword:
+                case ObjectType.QuestArmorAmulet:
+                case ObjectType.QuestArmorBelt:
+                case ObjectType.QuestArmorBoots:
+                case ObjectType.QuestArmorChest:
+                case ObjectType.QuestArmorGloves:
+                case ObjectType.QuestArmorBracelet:
+                case ObjectType.QuestArmorHelmet:
+                case ObjectType.QuestArmorPants:
+                case ObjectType.QuestArmorRobe:
+                case ObjectType.QuestArmorShield:
+                case ObjectType.QuestWeaponAxe:
+                case ObjectType.QuestWeaponCrossbow:
+                case ObjectType.QuestWeaponSword:
+                case ObjectType.Inkpot:
+                case ObjectType.PowderSingleTarget:
+                case ObjectType.PowderAoE:
+                case ObjectType.PowderAmilus:
+                case ObjectType.PowderFinale:
+                case ObjectType.MantraBlack:
+                case ObjectType.MantraWhite:
+                case ObjectType.ScrollLegend:
+                case ObjectType.ScrollRecipe:
+                case ObjectType.Ring:
+                case ObjectType.QuestArmorRing:
                     fullStream.ReadBit();
                     var actionTypeVal = fullStream.ReadByte();
                     var actionType = Enum.IsDefined(typeof (EntityActionType), (int) actionTypeVal)
@@ -418,8 +462,14 @@ internal static class PacketAnalyzer
                         if (objectType is ObjectType.Monster or ObjectType.MonsterFlyer or ObjectType.NpcTrade
                                 or ObjectType.DoorEntrance or ObjectType.DoorExit or ObjectType.AlchemyMineral
                                 or ObjectType.AlchemyMetal or ObjectType.AlchemyPlant or ObjectType.NpcBanker
-                                or ObjectType.NpcQuestDegree or ObjectType.NpcQuestTitle &&
-                            actionType != EntityActionType.SET_POSITION)
+                                or ObjectType.NpcQuestDegree or ObjectType.NpcQuestTitle or ObjectType.Map
+                                or ObjectType.QuestArmorAmulet or ObjectType.QuestArmorBelt
+                                or ObjectType.QuestArmorBoots or ObjectType.QuestArmorChest
+                                or ObjectType.QuestArmorGloves or ObjectType.QuestArmorBracelet
+                                or ObjectType.QuestArmorHelmet or ObjectType.QuestArmorPants
+                                or ObjectType.QuestArmorRobe or ObjectType.QuestArmorShield or ObjectType.QuestWeaponAxe
+                                or ObjectType.QuestWeaponCrossbow or ObjectType.QuestWeaponSword
+                            && actionType != EntityActionType.SET_POSITION)
                         {
                             shouldHidePacket = false;
                         }
@@ -549,6 +599,60 @@ internal static class PacketAnalyzer
                 case ObjectType.SackMobLoot:
                     packetName = "sack_mob_loot";
                     break;
+                case ObjectType.Map:
+                case ObjectType.ArmorAmulet:
+                case ObjectType.ArmorBelt:
+                case ObjectType.ArmorBoots:
+                case ObjectType.ArmorBracelet:
+                case ObjectType.ArmorChest:
+                case ObjectType.ArmorGloves:
+                case ObjectType.ArmorHelmet:
+                case ObjectType.ArmorPants:
+                case ObjectType.ArmorRobe:
+                case ObjectType.ArmorShield:
+                case ObjectType.ArmorHelmetPremium:
+                case ObjectType.WeaponAxe:
+                case ObjectType.WeaponCrossbow:
+                case ObjectType.WeaponSword:
+                case ObjectType.QuestArmorAmulet:
+                case ObjectType.QuestArmorBelt:
+                case ObjectType.QuestArmorBoots:
+                case ObjectType.QuestArmorChest:
+                case ObjectType.QuestArmorGloves:
+                case ObjectType.QuestArmorBracelet:
+                case ObjectType.QuestArmorHelmet:
+                case ObjectType.QuestArmorPants:
+                case ObjectType.QuestArmorRobe:
+                case ObjectType.QuestArmorShield:
+                case ObjectType.QuestWeaponAxe:
+                case ObjectType.QuestWeaponCrossbow:
+                case ObjectType.QuestWeaponSword:
+                    packetName = "item_map";
+                    break;
+                case ObjectType.Inkpot:
+                    packetName = "item_inkpot";
+                    break;
+                case ObjectType.AlchemyMetal:
+                case ObjectType.AlchemyMineral:
+                case ObjectType.AlchemyPlant:
+                case ObjectType.PowderSingleTarget:
+                case ObjectType.PowderAoE:
+                case ObjectType.PowderAmilus:
+                case ObjectType.PowderFinale:
+                    packetName = "item_alchemy_plant";
+                    break;
+                case ObjectType.MantraBlack:
+                case ObjectType.MantraWhite:
+                    packetName = "item_mantra";
+                    break;
+                case ObjectType.ScrollLegend:
+                case ObjectType.ScrollRecipe:
+                    packetName = "scroll_recipe";
+                    break;
+                case ObjectType.Ring:
+                case ObjectType.QuestArmorRing:
+                    packetName = "item_ring";
+                    break;
                 default:
                     success = false;
                     break;
@@ -614,6 +718,23 @@ internal static class PacketAnalyzer
                     $"{npcTradePacket.Id:X4}\t{npcTradePacket.ObjectType}\t{npcTradePacket.ActionType}\t{npcTradePacket.X}\t{npcTradePacket.Y}\t{npcTradePacket.Z}\t{npcTradePacket.Angle}\t{npcTradePacket.NameId}\t{npcTradePacket.TypeNameLength}\t{npcTradePacket.TypeName}\t{npcTradePacket.IconNameLength}\t{npcTradePacket.IconName}\n";
                 File.AppendAllText(@"C:\\_sphereDumps\\npc.txt", output);
             }
+        }
+
+        if (result.ObjectType is
+            ObjectType.PowderFinale or ObjectType.PowderSingleTarget or ObjectType.PowderAmilus or ObjectType.PowderAoE
+            or ObjectType.ElixirCastle or ObjectType.ElixirTrap or ObjectType.WeaponSword or ObjectType.WeaponAxe
+            or ObjectType.WeaponCrossbow or ObjectType.AlchemyMineral or ObjectType.AlchemyPlant
+            or ObjectType.AlchemyMetal or ObjectType.Map or ObjectType.Inkpot or ObjectType.ArmorChest
+            or ObjectType.ArmorAmulet or ObjectType.ArmorBoots or ObjectType.ArmorGloves or ObjectType.ArmorBelt
+            or ObjectType.ArmorShield or ObjectType.ArmorHelmet or ObjectType.ArmorPants or ObjectType.ArmorBracelet
+            or ObjectType.Ring or ObjectType.ArmorRobe or ObjectType.QuestArmorChest or ObjectType.QuestArmorAmulet
+            or ObjectType.QuestArmorBoots or ObjectType.QuestArmorGloves or ObjectType.QuestArmorBelt
+            or ObjectType.QuestArmorShield or ObjectType.QuestArmorHelmet or ObjectType.QuestArmorPants
+            or ObjectType.QuestArmorBracelet or ObjectType.QuestArmorRing or ObjectType.QuestArmorRobe
+            or ObjectType.QuestWeaponSword or ObjectType.QuestWeaponAxe or ObjectType.QuestWeaponCrossbow
+            or ObjectType.MantraWhite or ObjectType.MantraBlack or ObjectType.ScrollLegend or ObjectType.ScrollRecipe)
+        {
+            result = new ItemPacket(subpacket);
         }
 
         return result;

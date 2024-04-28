@@ -20,7 +20,7 @@ public class MobPacket : PacketAnalyzeData
     public int MaxHP { get; set; }
     public int Type { get; set; }
 
-    public string DisplayValue =>
+    public override string DisplayValue =>
         $"{Id:X4} ({Enum.GetName(ObjectType) ?? string.Empty}) {TypenameDisplayValue} {LevelAndHpDisplayValue}at [{X:F2}, {Y:F2}, {Z:F2}]";
 
     private string LevelAndHpDisplayValue => Level == 0 ? string.Empty : $"lvl {Level} {CurrentHP}/{MaxHP} ";
