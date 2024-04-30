@@ -15,6 +15,8 @@ public class PacketAnalyzeData
     public ObjectType ObjectType { get; set; }
     [BsonIgnore] protected readonly List<PacketPart> Parts;
     public virtual string DisplayValue => $"{Id:X4} ({Enum.GetName(ObjectType) ?? string.Empty})";
+    public EntityActionType ActionType { get; set; } = EntityActionType.UNDEF;
+    public EntityInteractionType InteractionType { get; set; } = EntityInteractionType.UNDEF;
 
     public PacketAnalyzeData ()
     {

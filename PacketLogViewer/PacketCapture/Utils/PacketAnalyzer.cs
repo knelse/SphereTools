@@ -65,8 +65,15 @@ public enum EntityActionType
     SET_POSITION = 0x06,
     FULL_SPAWN = 0x7C,
     ATTACK = 0x2A,
-    DEATH = 0xA,
+    INTERACT = 0xA,
     UNKNOWN = 0x14,
+    UNDEF
+}
+
+public enum EntityInteractionType
+{
+    DEATH = 0x040D,
+    OPEN_CONTAINER = 0x0103,
     UNDEF
 }
 
@@ -306,6 +313,11 @@ internal static class PacketAnalyzer
             }
         }
 
+        if (string.IsNullOrWhiteSpace(output.ToString()))
+        {
+            output.Clear();
+        }
+
         return $"ID: {entityId:X4} ({entityType}, {entityTypeName})\n{output}";
     }
 
@@ -448,14 +460,31 @@ internal static class PacketAnalyzer
                 case ObjectType.ScrollRecipe:
                 case ObjectType.Ring:
                 case ObjectType.QuestArmorRing:
+                case ObjectType.Key:
+                case ObjectType.KeyBarn:
+                case ObjectType.FoodApple:
+                case ObjectType.FoodBread:
+                case ObjectType.FoodFish:
+                case ObjectType.FoodMeat:
+                case ObjectType.FoodPear:
+                case ObjectType.Firecracker:
+                case ObjectType.Firework:
+                case ObjectType.Sack:
+                case ObjectType.MantraBookSmall:
+                case ObjectType.MantraBookLarge:
+                case ObjectType.MantraBookGreat:
                     fullStream.ReadBit();
                     var actionTypeVal = fullStream.ReadByte();
                     var actionType = Enum.IsDefined(typeof (EntityActionType), (int) actionTypeVal)
                         ? (EntityActionType) actionTypeVal
                         : EntityActionType.UNDEF;
+                    var interactionTypeVal = fullStream.ReadUInt16();
+                    var interactionType = Enum.IsDefined(typeof (EntityInteractionType), (int) interactionTypeVal)
+                        ? (EntityInteractionType) interactionTypeVal
+                        : EntityInteractionType.UNDEF;
                     fullStream.SeekBitOffset(initialBitOffset);
                     var (success, parts) = GetNewEntityPacketParts(fullStream, objectType,
-                        entId, actionType, subPacketIndex);
+                        entId, actionType, interactionType, subPacketIndex);
                     currentParts.AddRange(parts);
                     if (success)
                     {
@@ -543,7 +572,7 @@ internal static class PacketAnalyzer
     }
 
     private static Tuple<bool, List<PacketPart>> GetNewEntityPacketParts (BitStream stream, ObjectType objectType,
-        ushort entId, EntityActionType actionType, int subpacketIndex)
+        ushort entId, EntityActionType actionType, EntityInteractionType interactionType, int subpacketIndex)
     {
         var packetName = string.Empty;
         var entityNameForComment = CamelCaseToUpperWithSpaces(objectType.ToString());
@@ -560,10 +589,27 @@ internal static class PacketAnalyzer
             packetName = "change_target_health";
             comment = $"ENTITY DEALS DAMAGE [{entId:X4}]";
         }
-        else if (actionType == EntityActionType.DEATH)
+        else if (actionType == EntityActionType.INTERACT)
         {
-            packetName = "entity_killed";
-            comment = $"ENTITY KILLED [{entId:X4}]";
+            switch (interactionType)
+            {
+                case EntityInteractionType.DEATH:
+                    packetName = "entity_killed";
+                    comment = $"ENTITY KILLED [{entId:X4}]";
+                    break;
+                case EntityInteractionType.OPEN_CONTAINER:
+                    success = false;
+                    packetName = "header_with_action_type";
+                    comment = $"CONTAINER OPEN [{entId:X4}]";
+                    break;
+                case EntityInteractionType.UNDEF:
+                    packetName = "header_with_action_type";
+                    success = false;
+                    break;
+                default:
+                    success = false;
+                    break;
+            }
         }
         else if (actionType == EntityActionType.UNKNOWN)
         {
@@ -600,20 +646,6 @@ internal static class PacketAnalyzer
                     packetName = "sack_mob_loot";
                     break;
                 case ObjectType.Map:
-                case ObjectType.ArmorAmulet:
-                case ObjectType.ArmorBelt:
-                case ObjectType.ArmorBoots:
-                case ObjectType.ArmorBracelet:
-                case ObjectType.ArmorChest:
-                case ObjectType.ArmorGloves:
-                case ObjectType.ArmorHelmet:
-                case ObjectType.ArmorPants:
-                case ObjectType.ArmorRobe:
-                case ObjectType.ArmorShield:
-                case ObjectType.ArmorHelmetPremium:
-                case ObjectType.WeaponAxe:
-                case ObjectType.WeaponCrossbow:
-                case ObjectType.WeaponSword:
                 case ObjectType.QuestArmorAmulet:
                 case ObjectType.QuestArmorBelt:
                 case ObjectType.QuestArmorBoots:
@@ -630,6 +662,8 @@ internal static class PacketAnalyzer
                     packetName = "item_map";
                     break;
                 case ObjectType.Inkpot:
+                case ObjectType.Firecracker:
+                case ObjectType.Firework:
                     packetName = "item_inkpot";
                     break;
                 case ObjectType.AlchemyMetal:
@@ -647,11 +681,46 @@ internal static class PacketAnalyzer
                     break;
                 case ObjectType.ScrollLegend:
                 case ObjectType.ScrollRecipe:
-                    packetName = "scroll_recipe";
+                    packetName = "item_scroll_recipe";
+                    break;
+                case ObjectType.ArmorAmulet:
+                case ObjectType.ArmorBracelet:
+                    packetName = "item_bracelet";
                     break;
                 case ObjectType.Ring:
                 case ObjectType.QuestArmorRing:
+                case ObjectType.ArmorBelt:
+                case ObjectType.ArmorBoots:
+                case ObjectType.ArmorChest:
+                case ObjectType.ArmorGloves:
+                case ObjectType.ArmorHelmet:
+                case ObjectType.ArmorPants:
+                case ObjectType.ArmorRobe:
+                case ObjectType.ArmorShield:
+                case ObjectType.ArmorHelmetPremium:
+                case ObjectType.WeaponAxe:
+                case ObjectType.WeaponCrossbow:
+                case ObjectType.WeaponSword:
                     packetName = "item_ring";
+                    break;
+                case ObjectType.Key:
+                case ObjectType.KeyBarn:
+                    packetName = "item_key";
+                    break;
+                case ObjectType.FoodApple:
+                case ObjectType.FoodBread:
+                case ObjectType.FoodFish:
+                case ObjectType.FoodMeat:
+                case ObjectType.FoodPear:
+                    packetName = "item_apple";
+                    break;
+                case ObjectType.Sack:
+                    packetName = "item_sack";
+                    break;
+                case ObjectType.MantraBookSmall:
+                case ObjectType.MantraBookLarge:
+                case ObjectType.MantraBookGreat:
+                    packetName = "item_mantrabook";
                     break;
                 default:
                     success = false;
@@ -732,7 +801,11 @@ internal static class PacketAnalyzer
             or ObjectType.QuestArmorShield or ObjectType.QuestArmorHelmet or ObjectType.QuestArmorPants
             or ObjectType.QuestArmorBracelet or ObjectType.QuestArmorRing or ObjectType.QuestArmorRobe
             or ObjectType.QuestWeaponSword or ObjectType.QuestWeaponAxe or ObjectType.QuestWeaponCrossbow
-            or ObjectType.MantraWhite or ObjectType.MantraBlack or ObjectType.ScrollLegend or ObjectType.ScrollRecipe)
+            or ObjectType.MantraWhite or ObjectType.MantraBlack or ObjectType.ScrollLegend or ObjectType.ScrollRecipe
+            or ObjectType.Key or ObjectType.KeyBarn or ObjectType.FoodApple or ObjectType.FoodBread
+            or ObjectType.FoodFish or ObjectType.FoodMeat or ObjectType.FoodPear or ObjectType.Firecracker
+            or ObjectType.Firework or ObjectType.Sack or ObjectType.MantraBookSmall or ObjectType.MantraBookLarge
+            or ObjectType.MantraBookGreat)
         {
             result = new ItemPacket(subpacket);
         }

@@ -196,29 +196,87 @@ public partial class PacketLogViewerMainWindow
     public bool ListenerEnabled { get; set; } = true;
     public bool HideUninteresting { get; set; } = true;
 
-    private void OnPacketProcessed (StoredPacket storedPacket)
+    private void OnPacketProcessed (List<StoredPacket> storedPackets, bool forceProcess)
     {
-        if (!ListenerEnabled)
+        if (!ListenerEnabled && !forceProcess)
         {
             return;
         }
 
-        storedPacket.Id = PacketCollection.Insert(storedPacket);
-
-        storedPacket.UpdatePacketPartsForContent();
-
-        Dispatcher.Invoke(() =>
+        for (var i = 0; i < storedPackets.Count; i++)
         {
-            LogRecords.Add(storedPacket);
-            if (PacketAnalyzer.IsClientPingPacket(storedPacket))
+            var storedPacket = storedPackets[i];
+            storedPacket.Id = PacketCollection.Insert(storedPacket);
+
+            storedPacket.UpdatePacketPartsForContent();
+
+            if (i >= 1)
             {
-                UpdateClientCoordsAndId(storedPacket);
+                var firstEntityIdThisPacket = storedPacket.PacketParts.FirstOrDefault(x => x.Name == PacketPartNames.ID)
+                    ?.ActualLongValue;
+                var lastStoredPacket = storedPackets[i - 1];
+                var lastEntityIdLastPacket = lastStoredPacket.PacketParts
+                    .LastOrDefault(x => x.Name == PacketPartNames.ID)
+                    ?.ActualLongValue;
+                if (firstEntityIdThisPacket == lastEntityIdLastPacket && firstEntityIdThisPacket != null)
+                {
+                    // packet got split in 2 and entity continues in the next packet, so we gotta fix
+                    var stream = new BitStream(storedPacket.ContentBytes);
+                    var initialOffset = storedPacket.PacketParts.FirstOrDefault(x => x.Name == PacketPartNames.ID)
+                        .BitOffset;
+                    stream.SeekBitOffset(initialOffset);
+                    while (stream.ValidPosition)
+                    {
+                        var splitTest = stream.ReadByte();
+                        if (!stream.ValidPosition || splitTest == 0x7E || splitTest == 0x7F)
+                        {
+                            break;
+                        }
+
+                        stream.SeekBack(7);
+                    }
+
+                    if (stream.ValidPosition)
+                    {
+                        var newOffset = stream.BitOffsetFromStart;
+                        // entity_id = 16, skip = 2, entity_type = 10, skip = 1, action_type = 8
+                        stream.SeekBitOffset(initialOffset + 37);
+                        var oldBufferChunk = stream.ReadBytes(newOffset - initialOffset - 8 - 37) ?? [];
+                        stream.SeekBitOffset(newOffset);
+                        var newStreamBuffer = stream.GetStreamDataFromCurrentOffsetAndBit();
+                        stream.SeekBitOffset(0);
+                        var newStreamHeader = stream.ReadBytes(7, true);
+                        var newContentBytes = new List<byte>(newStreamHeader);
+                        newContentBytes.AddRange(newStreamBuffer);
+                        storedPacket.ContentBytes = newContentBytes.ToArray();
+                        var newLength = storedPacket.ContentBytes.Length;
+                        storedPacket.ContentBytes[0] = (byte) (newLength & 0xFF);
+                        storedPacket.ContentBytes[1] = (byte) ((newLength >> 8) & 0xFF);
+                        storedPacket.UpdatePacketPartsForContent();
+                        var lastContentBytes = new List<byte>(lastStoredPacket.ContentBytes);
+                        lastContentBytes.AddRange(oldBufferChunk);
+                        lastStoredPacket.ContentBytes = lastContentBytes.ToArray();
+                        var lastLength = lastStoredPacket.ContentBytes.Length;
+                        lastStoredPacket.ContentBytes[0] = (byte) (lastLength & 0xFF);
+                        lastStoredPacket.ContentBytes[1] = (byte) ((lastLength >> 8) & 0xFF);
+                        lastStoredPacket.UpdatePacketPartsForContent();
+                    }
+                }
             }
 
-            UpdateClientState(storedPacket);
+            Dispatcher.Invoke(() =>
+            {
+                LogRecords.Add(storedPacket);
+                if (PacketAnalyzer.IsClientPingPacket(storedPacket))
+                {
+                    UpdateClientCoordsAndId(storedPacket);
+                }
 
-            LogListFullPackets.UpdateLayout();
-        });
+                UpdateClientState(storedPacket);
+
+                LogListFullPackets.UpdateLayout();
+            });
+        }
     }
 
     public void UpdateGameTime ()
@@ -320,10 +378,12 @@ public partial class PacketLogViewerMainWindow
             if (knownAnalyzedParts.Any())
             {
                 packetContents = string.Join('\n', knownAnalyzedParts.Select(x => x.DisplayValue));
-                packetContents += "\n\n";
+                packetContents +=
+                    "\n----------------------------------------------------------------------------------";
             }
 
-            ContentPreview.Text = packetContents + "\n";
+            ContentPreview.Text = packetContents + "\n" + PacketAnalyzer.GetTextOutputForPacket(bytes) +
+                                  "----------------------------------------------------------------------------------\n";
             var sphObjects = ObjectPacketTools.GetObjectsFromPacket(bytes);
             ContentPreview.Text += sphObjects.Count > 0 ? ObjectPacketTools.GetTextOutput(sphObjects) : "";
         }
@@ -364,7 +424,10 @@ public partial class PacketLogViewerMainWindow
                         CurrentClientState.Remove(previousState);
                         CurrentClientState.Insert(previousIndex, result);
                     }
-                    else if (mob.ActionType == EntityActionType.DEATH)
+                    else if (mob is
+                             {
+                                 ActionType: EntityActionType.INTERACT, InteractionType: EntityInteractionType.DEATH
+                             })
                     {
                         CurrentClientState.Remove(previousState);
                     }
@@ -393,7 +456,10 @@ public partial class PacketLogViewerMainWindow
                         CurrentClientState.Remove(previousState);
                         CurrentClientState.Insert(previousIndex, result);
                     }
-                    else if (npc.ActionType == EntityActionType.DEATH)
+                    else if (npc is
+                             {
+                                 ActionType: EntityActionType.INTERACT, InteractionType: EntityInteractionType.DEATH
+                             })
                     {
                         CurrentClientState.Remove(previousState);
                     }
@@ -1673,7 +1739,7 @@ public partial class PacketLogViewerMainWindow
                     WasProcessed = false,
                     Source = PacketSource.SERVER
                 };
-                PacketCapture.ProcessPacketRawData(rawData);
+                PacketCapture.ProcessPacketRawDataForce(rawData, true);
             }
         }
     }

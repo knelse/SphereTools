@@ -36,6 +36,7 @@ public class PacketPart
     public const string UndefinedFieldValue = "__undef";
     public const string LengthFromPreviousFieldValue = "__fromPrevious";
     public const string ShiftTestValue = "__shiftTest";
+    public const string CountTestValue = "__countTest";
     public string? EnumName { get; set; }
     public byte HighlightColorR { get; set; }
     public byte HighlightColorG { get; set; }
@@ -208,9 +209,10 @@ public class PacketPart
     }
 
     public static List<PacketPart> LoadFromFile (string filePath, string groupName, BitStream contentStream,
-        int bitOffset, bool isMob = false)
+        int bitOffset, bool isMob = false, bool optionalPartsIncluded = false)
     {
         var contents = File.ReadAllLines(filePath);
+        var initialOffset = contentStream.BitOffsetFromStart;
         var parts = new List<PacketPart>();
 
         foreach (var line in contents)
@@ -256,6 +258,20 @@ public class PacketPart
         }
 
         UpdatePacketPartValues(parts, contentStream, bitOffset, isMob);
+
+        if (!optionalPartsIncluded)
+        {
+            var countTestPart = parts.FirstOrDefault(x => x.Name == CountTestValue);
+            if (countTestPart != null && countTestPart.ActualLongValue == 0)
+            {
+                // should replace this with packet with count
+                var nameWithCount = Path.Combine(Path.GetDirectoryName(filePath) ?? string.Empty, Path.GetFileNameWithoutExtension(filePath) + "_with_count" +
+                                    Path.GetExtension(filePath));
+                contentStream.SeekBitOffset(initialOffset);
+                return LoadFromFile(nameWithCount, groupName, contentStream, bitOffset, isMob, true);
+            }
+        }
+
         return parts;
     }
 

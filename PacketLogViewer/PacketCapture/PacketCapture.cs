@@ -34,7 +34,7 @@ public class PacketCapture
 
     internal short ClientId;
 
-    public Action<StoredPacket> OnPacketProcessed;
+    public Action<List<StoredPacket>, bool> OnPacketProcessed;
 
     public PacketCapture (string macAddress)
     {
@@ -210,6 +210,11 @@ public class PacketCapture
             var subspanTotalLength = BitConverter.ToInt16(content, offset);
             var end = offset + subspanTotalLength;
 
+            if (end > content.Length)
+            {
+                continue;
+            }
+
             result.Add(content[offset..end]);
             offset = end;
         }
@@ -219,7 +224,13 @@ public class PacketCapture
 
     internal void ProcessPacketRawData (CapturedPacketRawData packetRawData)
     {
+        ProcessPacketRawDataForce(packetRawData);
+    }
+
+    internal void ProcessPacketRawDataForce (CapturedPacketRawData packetRawData, bool forceProcess = false)
+    {
         var subpackets = SplitContentIntoPackets(packetRawData.DecodedBuffer);
+        var storedPackets = new List<StoredPacket>();
         for (var index = 0; index < subpackets.Count; index++)
         {
             var subpacket = subpackets[index];
@@ -231,8 +242,9 @@ public class PacketCapture
                 NumberInSequence = index
             };
             storedPacket.HiddenByDefault = PacketAnalyzer.ShouldBeHiddenByDefault(storedPacket);
-
-            OnPacketProcessed(storedPacket);
+            storedPackets.Add(storedPacket);
         }
+
+        OnPacketProcessed(storedPackets, forceProcess);
     }
 }
