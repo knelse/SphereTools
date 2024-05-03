@@ -31,7 +31,7 @@ public class ItemPacket : PacketAnalyzeData
                 : EntityActionType.UNDEF;
         }
 
-        if (ActionType is EntityActionType.FULL_SPAWN)
+        if (ActionType is EntityActionType.FULL_SPAWN or EntityActionType.FULL_SPAWN_2)
         {
             HasGameId = GetBitValue(PacketPartNames.HasGameId);
             GameObjectId = GetIntValue(PacketPartNames.GameObjectId);
@@ -42,10 +42,11 @@ public class ItemPacket : PacketAnalyzeData
                 GameObject = SphObjectDb.GameObjectDataDb[GameObjectId];
             }
 
-            var scrollType = GetIntValue(PacketPartNames.ScrollType);
-            if (scrollType > 0)
+            var subtypeId = GetIntValue(PacketPartNames.SubtypeId);
+
+            if (ObjectType is ObjectType.ScrollLegend or ObjectType.ScrollRecipe)
             {
-                var scrollName = $"scroll{scrollType}";
+                var scrollName = $"scroll{subtypeId:000}";
                 if (SphObjectDb.LocalisationContent.ContainsKey(scrollName))
                 {
                     var localized = SphObjectDb.LocalisationContent[scrollName][Locale.Russian];
@@ -53,6 +54,16 @@ public class ItemPacket : PacketAnalyzeData
                     {
                         OverrideType = localized[0][3..];
                     }
+                }
+            }
+            else if (ObjectType is ObjectType.Key or ObjectType.KeyBarn)
+            {
+                var keyLocales = SphObjectDb.LocalisationContent["st_key"][Locale.Russian];
+                var subtypeStr = $"{subtypeId}";
+                var text = keyLocales.FirstOrDefault(x => x.StartsWith(subtypeStr));
+                if (!string.IsNullOrEmpty(text))
+                {
+                    OverrideType = text[(subtypeStr.Length + 1)..];
                 }
             }
         }

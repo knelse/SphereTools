@@ -1312,6 +1312,11 @@ public partial class PacketLogViewerMainWindow
                     }
 
                     nextPartEndIndex = Math.Min(nextPartEndIndex, endBitOffset);
+                    if (nextPartStartIndex > nextPartEndIndex)
+                    {
+                        (nextPartEndIndex, nextPartStartIndex) = (nextPartStartIndex, nextPartEndIndex);
+                    }
+
                     bits = PacketContentBits[nextPartStartIndex..nextPartEndIndex];
                     partType = nextPacketPart.PacketPartType;
                     name = nextPacketPart.Name;
