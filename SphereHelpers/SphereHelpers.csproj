@@ -9,6 +9,7 @@
 
     <ItemGroup>
         <ProjectReference Include="..\BitStream\BitStream.csproj"/>
+        <ProjectReference Include="..\ObjectPacketTools\ObjectPacketTools.csproj"/>
         <ProjectReference Include="..\SphGameObject\SphGameObject.csproj"/>
     </ItemGroup>
 

@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using SphereHelpers.Extensions;
 using SpherePacketVisualEditor;
+using SphServer.Helpers;
 
 namespace PacketLogViewer.Models.PacketAnalyzeData;
 

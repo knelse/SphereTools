@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using SpherePacketVisualEditor;
+using SphServer.Helpers;
 
 namespace PacketLogViewer.Models.PacketAnalyzeData;
 
@@ -13,6 +14,9 @@ public class ItemPacket : PacketAnalyzeData
     public int ContainerId { get; set; }
     public int Count { get; set; } = 1;
     public ItemSuffix ItemSuffix { get; set; } = ItemSuffix.None;
+    public int PALevel { get; set; }
+    public int RemainingUses { get; set; }
+    public string OwnerName { get; set; } = string.Empty;
 
     public readonly SphGameObject? GameObject;
 
@@ -37,6 +41,10 @@ public class ItemPacket : PacketAnalyzeData
             GameObjectId = GetIntValue(PacketPartNames.GameObjectId);
             ContainerId = GetIntValue(PacketPartNames.ContainerId);
             Count = Math.Max(GetIntValue(PacketPartNames.Count), 1);
+            PALevel = GetIntValue(PacketPartNames.PALevel);
+            RemainingUses = GetIntValue(PacketPartNames.RemainingUses);
+            OwnerName = GetStringValue(PacketPartNames.OwnerName);
+
             if (HasGameId)
             {
                 GameObject = SphObjectDb.GameObjectDataDb[GameObjectId];
@@ -65,6 +73,24 @@ public class ItemPacket : PacketAnalyzeData
                 {
                     OverrideType = text[(subtypeStr.Length + 1)..];
                 }
+            }
+            else if (ObjectType is ObjectType.Token or ObjectType.TokenMultiuse)
+            {
+                var keyLocales = SphObjectDb.LocalisationContent["_tokens"][Locale.Russian];
+                var subtypeStr = $"{subtypeId}";
+                var text = keyLocales.FirstOrDefault(x => x.StartsWith(subtypeStr));
+                if (!string.IsNullOrEmpty(text))
+                {
+                    var remainingStr = ObjectType is ObjectType.TokenMultiuse && RemainingUses > 0
+                        ? $" ({RemainingUses})"
+                        : string.Empty;
+                    OverrideType = "Жетон ТП, " + text[(subtypeStr.Length + 1)..] + remainingStr;
+                }
+            }
+            else if (ObjectType is ObjectType.TokenIslandGuest)
+            {
+                var ownerStr = string.IsNullOrEmpty(OwnerName) ? string.Empty : $" ({OwnerName})";
+                OverrideType = "Гостевой жетон на ЛО" + ownerStr;
             }
         }
     }
@@ -103,7 +129,13 @@ public class ItemPacket : PacketAnalyzeData
         var count = Count > 1 ? $" ({Count})" : string.Empty;
         var name = $"{questItemPrefix}{displayName}" + suffix +
                    (string.IsNullOrEmpty(tier) ? tier : $" {tier}") + count;
+        var pa = string.Empty;
+        if (PALevel > 0)
+        {
+            pa = $" PA: {PALevel}";
+        }
+
         return $"{name,-44}ID: {Id:X4}  GMID: {GameObjectId.ToString(),5}  " +
-               $"Type: {(int) ObjectType,4} {typeName,-24} Suff: N/A  Bag: {ContainerId:X4}";
+               $"Type: {(int) ObjectType,4} {typeName,-24} Suff: N/A  Bag: {ContainerId:X4}{pa}";
     }
 }

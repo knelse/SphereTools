@@ -189,15 +189,23 @@ public class PacketPart
             // quest armor would have 1001 as index)
             var localizables = PacketLogViewerMainWindow.DefinedEnums[enumName];
             var currentIndex = (int) ulongValue;
-            while (currentIndex >= 0)
+            if (SphObjectDb.GameObjectDataDb.ContainsKey(currentIndex))
             {
-                if (localizables.ContainsKey(currentIndex))
-                {
-                    enumValueStr = localizables[currentIndex];
-                    break;
-                }
+                enumValueStr = SphObjectDb.GameObjectDataDb[currentIndex].Localisation[Locale.Russian];
+            }
 
-                currentIndex--;
+            else
+            {
+                while (currentIndex >= 0)
+                {
+                    if (localizables.ContainsKey(currentIndex))
+                    {
+                        enumValueStr = localizables[currentIndex];
+                        break;
+                    }
+
+                    currentIndex--;
+                }
             }
         }
         else if (bytes.Length <= 8 && enumName is not null &&

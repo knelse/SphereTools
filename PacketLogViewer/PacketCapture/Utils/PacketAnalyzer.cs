@@ -8,7 +8,8 @@ using PacketLogViewer.Models;
 using PacketLogViewer.Models.PacketAnalyzeData;
 using SphereHelpers.Extensions;
 using SpherePacketVisualEditor;
-using SphServer.Helpers.Enums;
+using SphServer.Helpers;
+using static SphServer.Helpers.PacketPartMapping;
 
 namespace PacketLogViewer;
 
@@ -60,24 +61,6 @@ public enum PacketAnalyzeState
     FULL
 }
 
-public enum EntityActionType
-{
-    SET_POSITION = 0x06,
-    FULL_SPAWN = 0x7C,
-    FULL_SPAWN_2 = 0x7D,
-    ATTACK = 0x2A,
-    INTERACT = 0xA,
-    UNKNOWN = 0x14,
-    UNDEF
-}
-
-public enum EntityInteractionType
-{
-    DEATH = 0x040D,
-    OPEN_CONTAINER = 0x0103,
-    UNDEF
-}
-
 public static class PacketPartNames
 {
     public const string ID = "entity_id";
@@ -106,6 +89,9 @@ public static class PacketPartNames
     public const string SubtypeId = "subtype_id";
     public const string ItemNameLength = "item_name_length";
     public const string ItemName = "item_name";
+    public const string PALevel = "pa_level";
+    public const string RemainingUses = "remaining_uses";
+    public const string OwnerName = "owner_name";
 }
 
 internal class SubpacketBytesWithOffset
@@ -124,252 +110,6 @@ internal class SubpacketBytesWithOffset
 
 internal static class PacketAnalyzer
 {
-    public static HashSet<ObjectType> ItemObjectTypes =
-    [
-        ObjectType.Token,
-        ObjectType.Mutator,
-        ObjectType.SeedCastle,
-        ObjectType.XpPillDegree,
-        ObjectType.TokenMultiuse,
-        ObjectType.TradeLicense,
-        ObjectType.ScrollLegend,
-        ObjectType.ScrollRecipe,
-        ObjectType.Mission,
-        ObjectType.TokenIsland,
-        ObjectType.TokenIslandGuest,
-        ObjectType.Bead,
-        ObjectType.BackpackLarge,
-        ObjectType.BackpackSmall,
-        ObjectType.Sack,
-        ObjectType.MantraBookSmall,
-        ObjectType.RecipeBook,
-        ObjectType.MantraBookLarge,
-        ObjectType.MantraBookGreat,
-        ObjectType.MapBook,
-        ObjectType.KeyBarn,
-        ObjectType.PowderFinale,
-        ObjectType.PowderSingleTarget,
-        ObjectType.PowderAmilus,
-        ObjectType.PowderAoE,
-        ObjectType.ElixirCastle,
-        ObjectType.ElixirTrap,
-        ObjectType.WeaponSword,
-        ObjectType.WeaponAxe,
-        ObjectType.WeaponCrossbow,
-        ObjectType.Arrows,
-        ObjectType.RingDiamond,
-        ObjectType.RingRuby,
-        ObjectType.Ruby,
-        ObjectType.RingGold,
-        ObjectType.AlchemyMineral,
-        ObjectType.AlchemyPlant,
-        ObjectType.AlchemyMetal,
-        ObjectType.FoodApple,
-        ObjectType.FoodPear,
-        ObjectType.FoodMeat,
-        ObjectType.FoodBread,
-        ObjectType.FoodFish,
-        ObjectType.AlchemyBrushwood,
-        ObjectType.Key,
-        ObjectType.Map,
-        ObjectType.Inkpot,
-        ObjectType.Firecracker,
-        ObjectType.Ear,
-        ObjectType.EarString,
-        ObjectType.MonsterPart,
-        ObjectType.Firework,
-        ObjectType.InkpotBroken,
-        ObjectType.ArmorChest,
-        ObjectType.ArmorAmulet,
-        ObjectType.ArmorBoots,
-        ObjectType.ArmorGloves,
-        ObjectType.ArmorBelt,
-        ObjectType.ArmorShield,
-        ObjectType.ArmorHelmet,
-        ObjectType.ArmorPants,
-        ObjectType.ArmorBracelet,
-        ObjectType.Ring,
-        ObjectType.ArmorRobe,
-        ObjectType.RingGolem,
-        ObjectType.AlchemyPot,
-        ObjectType.AlchemyFurnace,
-        ObjectType.Blueprint,
-        ObjectType.QuestArmorChest,
-        ObjectType.QuestArmorAmulet,
-        ObjectType.QuestArmorBoots,
-        ObjectType.QuestArmorGloves,
-        ObjectType.QuestArmorBelt,
-        ObjectType.QuestArmorShield,
-        ObjectType.QuestArmorHelmet,
-        ObjectType.QuestArmorPants,
-        ObjectType.QuestArmorBracelet,
-        ObjectType.QuestArmorRing,
-        ObjectType.QuestArmorRobe,
-        ObjectType.QuestWeaponSword,
-        ObjectType.QuestWeaponAxe,
-        ObjectType.QuestWeaponCrossbow,
-        ObjectType.SpecialGuild,
-        ObjectType.SpecialAbility,
-        ObjectType.SpecialAbilitySteal,
-        ObjectType.ArmorHelmetPremium,
-        ObjectType.MantraWhite,
-        ObjectType.MantraBlack
-    ];
-
-    public static HashSet<ObjectType> EntityObjectTypes =
-    [
-        ObjectType.Token,
-        ObjectType.Mutator,
-        ObjectType.SeedCastle,
-        ObjectType.XpPillDegree,
-        ObjectType.DoorEntrance,
-        ObjectType.DoorExit,
-        ObjectType.TokenMultiuse,
-        ObjectType.TradeLicense,
-        ObjectType.MobSpawner,
-        ObjectType.Monster,
-        ObjectType.MonsterFlyer,
-        ObjectType.NpcBanker,
-        ObjectType.NpcTrade,
-        ObjectType.NpcQuestDegree,
-        ObjectType.NpcQuestTitle,
-        ObjectType.SackMobLoot,
-        ObjectType.ChestInDungeon,
-        ObjectType.Chest,
-        ObjectType.ScrollLegend,
-        ObjectType.ScrollRecipe,
-        ObjectType.Mission,
-        ObjectType.TokenIsland,
-        ObjectType.TokenIslandGuest,
-        ObjectType.Bead,
-        ObjectType.BackpackLarge,
-        ObjectType.BackpackSmall,
-        ObjectType.Sack,
-        ObjectType.MantraBookSmall,
-        ObjectType.RecipeBook,
-        ObjectType.MantraBookLarge,
-        ObjectType.MantraBookGreat,
-        ObjectType.MapBook,
-        ObjectType.KeyBarn,
-        ObjectType.PowderFinale,
-        ObjectType.PowderSingleTarget,
-        ObjectType.PowderAmilus,
-        ObjectType.PowderAoE,
-        ObjectType.ElixirCastle,
-        ObjectType.ElixirTrap,
-        ObjectType.WeaponSword,
-        ObjectType.WeaponAxe,
-        ObjectType.WeaponCrossbow,
-        ObjectType.Arrows,
-        ObjectType.RingDiamond,
-        ObjectType.RingRuby,
-        ObjectType.Ruby,
-        ObjectType.RingGold,
-        ObjectType.AlchemyMineral,
-        ObjectType.AlchemyPlant,
-        ObjectType.AlchemyMetal,
-        ObjectType.FoodApple,
-        ObjectType.FoodPear,
-        ObjectType.FoodMeat,
-        ObjectType.FoodBread,
-        ObjectType.FoodFish,
-        ObjectType.AlchemyBrushwood,
-        ObjectType.Key,
-        ObjectType.Map,
-        ObjectType.Inkpot,
-        ObjectType.Firecracker,
-        ObjectType.Ear,
-        ObjectType.EarString,
-        ObjectType.MonsterPart,
-        ObjectType.Firework,
-        ObjectType.InkpotBroken,
-        ObjectType.ArmorChest,
-        ObjectType.ArmorAmulet,
-        ObjectType.ArmorBoots,
-        ObjectType.ArmorGloves,
-        ObjectType.ArmorBelt,
-        ObjectType.ArmorShield,
-        ObjectType.ArmorHelmet,
-        ObjectType.ArmorPants,
-        ObjectType.ArmorBracelet,
-        ObjectType.Ring,
-        ObjectType.ArmorRobe,
-        ObjectType.RingGolem,
-        ObjectType.AlchemyPot,
-        ObjectType.AlchemyFurnace,
-        ObjectType.Blueprint,
-        ObjectType.QuestArmorChest,
-        ObjectType.QuestArmorAmulet,
-        ObjectType.QuestArmorBoots,
-        ObjectType.QuestArmorGloves,
-        ObjectType.QuestArmorBelt,
-        ObjectType.QuestArmorShield,
-        ObjectType.QuestArmorHelmet,
-        ObjectType.QuestArmorPants,
-        ObjectType.QuestArmorBracelet,
-        ObjectType.QuestArmorRing,
-        ObjectType.QuestArmorRobe,
-        ObjectType.QuestWeaponSword,
-        ObjectType.QuestWeaponAxe,
-        ObjectType.QuestWeaponCrossbow,
-        ObjectType.SpecialGuild,
-        ObjectType.SpecialAbility,
-        ObjectType.SpecialAbilitySteal,
-        ObjectType.ArmorHelmetPremium,
-        ObjectType.MantraWhite,
-        ObjectType.MantraBlack
-    ];
-
-    public static HashSet<ObjectType> ItemBagObjectTypes =
-    [
-        ObjectType.BackpackLarge,
-        ObjectType.BackpackSmall,
-        ObjectType.MantraBookSmall,
-        ObjectType.MantraBookLarge,
-        ObjectType.MantraBookGreat,
-        ObjectType.MapBook,
-        ObjectType.AlchemyPot,
-        ObjectType.Sack
-    ];
-
-    public static HashSet<ObjectType> ItemRecipeBagObjectTypes =
-    [
-        ObjectType.RecipeBook
-    ];
-
-    public static HashSet<ObjectType> EquippableItemTypes =
-    [
-        ObjectType.WeaponSword,
-        ObjectType.WeaponAxe,
-        ObjectType.WeaponCrossbow,
-        ObjectType.ArmorChest,
-        ObjectType.ArmorAmulet,
-        ObjectType.ArmorBoots,
-        ObjectType.ArmorGloves,
-        ObjectType.ArmorBelt,
-        ObjectType.ArmorShield,
-        ObjectType.ArmorHelmet,
-        ObjectType.ArmorPants,
-        ObjectType.ArmorBracelet,
-        ObjectType.Ring,
-        ObjectType.ArmorRobe,
-        ObjectType.QuestArmorChest,
-        ObjectType.QuestArmorAmulet,
-        ObjectType.QuestArmorBoots,
-        ObjectType.QuestArmorGloves,
-        ObjectType.QuestArmorBelt,
-        ObjectType.QuestArmorShield,
-        ObjectType.QuestArmorHelmet,
-        ObjectType.QuestArmorPants,
-        ObjectType.QuestArmorBracelet,
-        ObjectType.QuestArmorRing,
-        ObjectType.QuestArmorRobe,
-        ObjectType.QuestWeaponSword,
-        ObjectType.QuestWeaponAxe,
-        ObjectType.QuestWeaponCrossbow
-    ];
-
-
     public static readonly byte[] packet_04_00_4F_01 = { 0x04, 0x00, 0xF4, 0x01 };
     public static readonly byte[] ok_mark = { 0x2c, 0x01, 0x00 };
 
@@ -617,6 +357,12 @@ internal static class PacketAnalyzer
 
             fullStream.SeekBitOffset(initialBitOffset);
 
+            if (subPacketIndex > 100)
+            {
+                // something weird happened
+                break;
+            }
+
 
             // try to find entity id and object type
             var entId = fullStream.ReadUInt16();
@@ -673,9 +419,7 @@ internal static class PacketAnalyzer
                 }
 
                 var hasGameId = fullStream.ReadBit().AsBool();
-                var hasCount = false;
-                var hasName = false;
-                var hasSubtype = false;
+                var optionalFields = new List<OptionalPacketFields>();
                 if (hasGameId && actionType is EntityActionType.FULL_SPAWN or EntityActionType.FULL_SPAWN_2)
                 {
                     if (EquippableItemTypes.Contains(objectType))
@@ -695,51 +439,20 @@ internal static class PacketAnalyzer
                     }
 
                     // should be equal to 2^32 - 1
-                    _ = fullStream.ReadInt64(31);
-                    var delimTest = fullStream.ReadByte();
-                    if (delimTest is not (0x7E or 0x7F))
-                    {
-                        var nextFieldId = fullStream.ReadByte();
-                        hasCount = nextFieldId == 0x0C;
-                        hasName = nextFieldId == 0x0F;
-                    }
+                    var t = fullStream.ReadInt64(31);
+                    optionalFields = GetOptionalFields(fullStream);
                 }
                 else if (actionType is EntityActionType.FULL_SPAWN or EntityActionType.FULL_SPAWN_2)
                 {
                     fullStream.ReadBits(87);
                     // should be equal to 2^32 - 1
                     _ = fullStream.ReadInt64(31);
-                    var delimTest = fullStream.ReadByte();
-                    if (delimTest is not (0x7E or 0x7F))
-                    {
-                        var nextFieldId = fullStream.ReadByte();
-                        hasCount = nextFieldId == 0x0C;
-                        hasSubtype = nextFieldId == 0x0F;
-                        if (hasCount)
-                        {
-                            _ = fullStream.ReadInt64(23);
-                            var delimTest1 = fullStream.ReadByte();
-                            if (delimTest1 is not (0x7E or 0x7F))
-                            {
-                                var nextFieldId1 = fullStream.ReadByte();
-                                hasSubtype = nextFieldId1 == 0x0F;
-                            }
-                        }
-
-                        if (hasSubtype)
-                        {
-                            var delimTest2 = fullStream.ReadByte();
-                            // if (delimTest2 is not (0x7E or 0x7F))
-                            // {
-                            //     hasTail = true;
-                            // }
-                        }
-                    }
+                    optionalFields = GetOptionalFields(fullStream);
                 }
 
                 fullStream.SeekBitOffset(initialBitOffset);
                 var (success, parts) = GetNewEntityPacketParts(fullStream, objectType,
-                    entId, actionType, interactionType, subPacketIndex, hasGameId, hasCount, hasName, hasSubtype);
+                    entId, actionType, interactionType, subPacketIndex, hasGameId, optionalFields);
                 currentParts.AddRange(parts);
                 if (success)
                 {
@@ -815,144 +528,60 @@ internal static class PacketAnalyzer
         return storedPacket;
     }
 
+    private static List<OptionalPacketFields> GetOptionalFields (BitStream stream)
+    {
+        var currentPosition = stream.BitOffsetFromStart;
+        var result = new List<OptionalPacketFields>();
+        while (stream.ValidPosition)
+        {
+            var divider = stream.ReadByte();
+            if (!stream.ValidPosition)
+            {
+                break;
+            }
+
+            var isDelimiter = divider is 0x7F or 0x7E;
+            if (isDelimiter) // || (divider != 0b0001011 && divider != 0b00010101))
+            {
+                break;
+            }
+
+            var nextField = stream.ReadByte();
+            if (!stream.ValidPosition)
+            {
+                break;
+            }
+
+            var fieldLength = stream.ReadByte();
+            if (!stream.ValidPosition)
+            {
+                break;
+            }
+
+            var fieldName = Enum.IsDefined(typeof (OptionalPacketFields), nextField)
+                ? (OptionalPacketFields) nextField
+                : OptionalPacketFields.UNKNOWN;
+
+            if (fieldName is not OptionalPacketFields.UNKNOWN)
+            {
+                result.Add(fieldName);
+            }
+
+            stream.ReadBits(8 * fieldLength - 1);
+        }
+
+        return result;
+    }
+
     private static Tuple<bool, List<PacketPart>> GetNewEntityPacketParts (BitStream stream, ObjectType objectType,
         ushort entId, EntityActionType actionType, EntityInteractionType interactionType, int subpacketIndex,
-        bool hasGameId, bool hasCount, bool hasName, bool hasSubtype)
+        bool hasGameId, List<OptionalPacketFields> optionalFields)
     {
-        var packetName = string.Empty;
-        var entityNameForComment = CamelCaseToUpperWithSpaces(objectType.ToString());
-        var success = true;
-        var comment = (string?) null;
-        var genericItemPacket = false;
-
-        if (actionType == EntityActionType.SET_POSITION)
-        {
-            packetName = "entity_move";
-            comment = $"ENTITY MOVES [{entId:X4}])";
-        }
-        else if (actionType == EntityActionType.ATTACK)
-        {
-            packetName = "change_target_health";
-            comment = $"ENTITY DEALS DAMAGE [{entId:X4}]";
-        }
-        else if (actionType == EntityActionType.INTERACT)
-        {
-            switch (interactionType)
-            {
-                case EntityInteractionType.DEATH:
-                    packetName = "entity_killed";
-                    comment = $"ENTITY KILLED [{entId:X4}]";
-                    break;
-                case EntityInteractionType.OPEN_CONTAINER:
-                    success = false;
-                    packetName = "header_with_action_type";
-                    comment = $"CONTAINER OPEN [{entId:X4}]";
-                    break;
-                case EntityInteractionType.UNDEF:
-                    packetName = "header_with_action_type";
-                    success = false;
-                    break;
-                default:
-                    success = false;
-                    break;
-            }
-        }
-        else if (actionType == EntityActionType.UNKNOWN)
-        {
-            packetName = "action_0x14";
-            comment = $"ENTITY DOING 0x14 [{entId:X4}]";
-        }
-        // assuming full
-        else
-        {
-            switch (objectType)
-            {
-                case ObjectType.Monster:
-                case ObjectType.MonsterFlyer:
-                    packetName = "monster_full";
-                    break;
-                case ObjectType.MobSpawner:
-                    packetName = "mob_spawner";
-                    break;
-                case ObjectType.NpcTrade:
-                    packetName = "npc_trade";
-                    break;
-                case ObjectType.NpcQuestTitle:
-                case ObjectType.NpcQuestDegree:
-                    packetName = "npc_quest_title";
-                    break;
-                case ObjectType.DoorEntrance:
-                case ObjectType.DoorExit:
-                    packetName = "door_test";
-                    break;
-                case ObjectType.ChestInDungeon:
-                    packetName = "chest_in_dungeon";
-                    break;
-                case ObjectType.SackMobLoot:
-                    packetName = "sack_mob_loot";
-                    break;
-                default:
-                    if (objectType is ObjectType.Key or ObjectType.KeyBarn)
-                    {
-                        packetName = "item_key";
-                    }
-                    else if (objectType is ObjectType.Ring)
-                    {
-                        packetName = "item_ring_named";
-                    }
-                    else if (objectType is ObjectType.AlchemyPot)
-                    {
-                        packetName = "item_alchemypot";
-                    }
-                    else if (ItemRecipeBagObjectTypes.Contains(objectType))
-                    {
-                        packetName = "item_recipebook";
-                    }
-                    else if (ItemBagObjectTypes.Contains(objectType))
-                    {
-                        packetName = "item_bag";
-                    }
-                    else if (ItemObjectTypes.Contains(objectType))
-                    {
-                        packetName = "item";
-                        genericItemPacket = true;
-                    }
-                    else
-                    {
-                        success = false;
-                    }
-
-                    break;
-            }
-
-            if (genericItemPacket)
-            {
-                if (hasGameId)
-                {
-                    packetName += "_with_gameid";
-                }
-
-                if (!hasGameId && hasSubtype)
-                {
-                    packetName += "_subtyped";
-                }
-
-                if (hasCount)
-                {
-                    packetName += "_counted";
-                }
-
-                if (hasName)
-                {
-                    packetName += "_named";
-                }
-            }
-        }
-
-        comment ??= $"NEW ENTITY -- {entityNameForComment} [{entId:X4}]";
+        var (packetName, comment, success) = GetPacketPartName(objectType, actionType, interactionType, entId,
+            hasGameId, optionalFields);
 
         return packetName == string.Empty
-            ? new Tuple<bool, List<PacketPart>>(success, new List<PacketPart>())
+            ? new Tuple<bool, List<PacketPart>>(success, [])
             : new Tuple<bool, List<PacketPart>>(success,
                 FindPartsByNameSkipLastUndefSetCommentUpdateBitOffset(stream, packetName,
                     subpacketIndex, comment));
@@ -1016,22 +645,6 @@ internal static class PacketAnalyzer
         }
 
         return result;
-    }
-
-    private static string CamelCaseToUpperWithSpaces (string s)
-    {
-        var sb = new StringBuilder();
-        foreach (var c in s)
-        {
-            if (char.IsUpper(c))
-            {
-                sb.Append(' ');
-            }
-
-            sb.Append(char.ToUpper(c));
-        }
-
-        return sb.ToString();
     }
 
     private static List<PacketPart> FindPartsByName (BitStream stream, string name, bool isSubpacket)

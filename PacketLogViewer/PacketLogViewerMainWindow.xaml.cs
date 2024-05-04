@@ -203,6 +203,8 @@ public partial class PacketLogViewerMainWindow
             return;
         }
 
+        storedPackets.Sort((a, b) => a.NumberInSequence.CompareTo(b.NumberInSequence));
+
         for (var i = 0; i < storedPackets.Count; i++)
         {
             var storedPacket = storedPackets[i];
