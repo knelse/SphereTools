@@ -102,7 +102,7 @@ public static class PacketPartMapping
         ObjectType.AlchemyFurnace,
         ObjectType.Blueprint,
         ObjectType.QuestArmorChest,
-        ObjectType.QuestArmorAmulet,
+        ObjectType.QuestArmorChest2,
         ObjectType.QuestArmorBoots,
         ObjectType.QuestArmorGloves,
         ObjectType.QuestArmorBelt,
@@ -206,7 +206,7 @@ public static class PacketPartMapping
         ObjectType.AlchemyFurnace,
         ObjectType.Blueprint,
         ObjectType.QuestArmorChest,
-        ObjectType.QuestArmorAmulet,
+        ObjectType.QuestArmorChest2,
         ObjectType.QuestArmorBoots,
         ObjectType.QuestArmorGloves,
         ObjectType.QuestArmorBelt,
@@ -261,7 +261,7 @@ public static class PacketPartMapping
         ObjectType.Ring,
         ObjectType.ArmorRobe,
         ObjectType.QuestArmorChest,
-        ObjectType.QuestArmorAmulet,
+        ObjectType.QuestArmorChest2,
         ObjectType.QuestArmorBoots,
         ObjectType.QuestArmorGloves,
         ObjectType.QuestArmorBelt,
@@ -395,8 +395,14 @@ public static class PacketPartMapping
                     case ObjectType.MantraBookGreat:
                         packetName = "item_mantrabook_great";
                         break;
+                    case ObjectType.TokenIsland:
+                        packetName = "item_token_island";
+                        break;
                     case ObjectType.TokenIslandGuest:
                         packetName = "item_token_island_guest";
+                        break;
+                    case ObjectType.TradeLicense:
+                        packetName = "item_license_trade";
                         break;
                     default:
                         if (ItemRecipeBagObjectTypes.Contains(objectType))
@@ -548,7 +554,7 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.Inkpot] = "item_inkpot",
         [ObjectType.Firecracker] = "item_firework",
         [ObjectType.Ear] = "",
-        [ObjectType.EarString] = "",
+        [ObjectType.EarString] = "item_earstring",
         [ObjectType.MonsterPart] = "",
         [ObjectType.Firework] = "item_firework",
         [ObjectType.InkpotBroken] = "",
@@ -568,7 +574,7 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.AlchemyFurnace] = "",
         [ObjectType.Blueprint] = "",
         [ObjectType.QuestArmorChest] = "",
-        [ObjectType.QuestArmorAmulet] = "",
+        [ObjectType.QuestArmorChest2] = "",
         [ObjectType.QuestArmorBoots] = "item_quest_boots",
         [ObjectType.QuestArmorGloves] = "",
         [ObjectType.QuestArmorBelt] = "",

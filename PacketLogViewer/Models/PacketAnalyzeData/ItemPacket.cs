@@ -17,6 +17,8 @@ public class ItemPacket : PacketAnalyzeData
     public int PALevel { get; set; }
     public int RemainingUses { get; set; }
     public string OwnerName { get; set; } = string.Empty;
+    public bool HasSuffix { get; set; }
+    public int Suffix { get; set; }
 
     public readonly SphGameObject? GameObject;
 
@@ -44,6 +46,8 @@ public class ItemPacket : PacketAnalyzeData
             PALevel = GetIntValue(PacketPartNames.PALevel);
             RemainingUses = GetIntValue(PacketPartNames.RemainingUses);
             OwnerName = GetStringValue(PacketPartNames.OwnerName);
+            HasSuffix = !GetBitValue(PacketPart.HasSuffixValue);
+            Suffix = GetIntValue(PacketPartNames.Suffix);
 
             if (HasGameId)
             {
@@ -97,8 +101,6 @@ public class ItemPacket : PacketAnalyzeData
 
     private string GetDisplayValue ()
     {
-        var questItemPrefix = ObjectPacketTools.IsQuestItem(ObjectType) ? "Квест " : string.Empty;
-
         var typeName = $"({Enum.GetName(ObjectType)!})";
         string tier;
         var displayName =
@@ -121,13 +123,38 @@ public class ItemPacket : PacketAnalyzeData
             tier = GameObject?.ToRomanTierLiteral() ?? string.Empty;
         }
 
-        var suffix = (GameObject?.Suffix ?? ItemSuffix.None) == ItemSuffix.None
-            ? string.Empty
-            : $" {GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.ObjectType][GameObject!.Suffix]
-                .localization[Locale.Russian]}";
+        var suffixLocale = string.Empty;
+        if (GameObject is not null)
+        {
+            if (HasSuffix)
+            {
+                if (GameObjectDataHelper.ObjectTypeToSuffixLocaleMapActual.ContainsKey(GameObject!.ObjectType) &&
+                    GameObjectDataHelper.ObjectTypeToSuffixLocaleMapActual[GameObject!.ObjectType]
+                        .Any(x => x.Value.value == Suffix))
+                {
+                    GameObject.Suffix = GameObjectDataHelper.ObjectTypeToSuffixLocaleMapActual[GameObject!.ObjectType]
+                        .First(x => x.Value.value == Suffix).Key;
+                }
+                else
+                {
+                    Console.WriteLine($"No suffix for {GameObject.ObjectType} and ID {Suffix}");
+                }
+
+                if (SphObjectDb.LocalisationContent.ContainsKey(GameObject.SphereType))
+                {
+                    var localeEntries = SphObjectDb.LocalisationContent[GameObject.SphereType][Locale.Russian];
+                    var suffixStr = $"2{Suffix:00}";
+                    var suffixLocaleStr = localeEntries.FirstOrDefault(x => x.StartsWith(suffixStr));
+                    if (!string.IsNullOrEmpty(suffixLocaleStr))
+                    {
+                        suffixLocale = $"{suffixLocaleStr[3..]}";
+                    }
+                }
+            }
+        }
 
         var count = Count > 1 ? $" ({Count})" : string.Empty;
-        var name = $"{questItemPrefix}{displayName}" + suffix +
+        var name = $"{displayName}" + suffixLocale +
                    (string.IsNullOrEmpty(tier) ? tier : $" {tier}") + count;
         var pa = string.Empty;
         if (PALevel > 0)

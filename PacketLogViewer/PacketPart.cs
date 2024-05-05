@@ -38,6 +38,7 @@ public class PacketPart
     public const string ShiftTestValue = "__shiftTest";
     public const string CountTestValue = "__countTest";
     public const string HasGameIdValue = "__hasGameId";
+    public const string HasSuffixValue = "__hasSuffix";
     public const string HasItemNameValue = "__hasStringName";
     public const string MaybeDelimiterValue = "__maybeDelimiter";
     public string? EnumName { get; set; }
@@ -295,12 +296,9 @@ public class PacketPart
             contentStream.SeekBitOffset(bitOffset);
         }
 
-        var reducedFieldLengthForMobs = false;
-        var skipGameId = false;
-        var skipItemName = false;
-        var delimiterAt = int.MaxValue;
-        var hasCountField = false;
-        var morePartsToAppend = new List<PacketPart>();
+        var hasGameId = false;
+        var hasSuffix = false;
+        var suffixLength = 7;
 
         for (var i = 0; i < parts.Count; i++)
         {
@@ -330,114 +328,49 @@ public class PacketPart
                 {
                     length -= 1;
                     packetPart.BitLength = length;
-                    reducedFieldLengthForMobs = true;
                 }
 
                 contentStream.SeekBitOffset(currentOffset);
             }
 
-            if (packetPart.Name == ShiftTestValue)
+            if (packetPart.Name == HasGameIdValue)
             {
-                var shiftTest = contentStream.ReadByte(4);
-                if (shiftTest != 0)
+                hasGameId = contentStream.ReadBit().AsBool();
+                contentStream.SeekBitOffset(currentOffset);
+            }
+
+            if (packetPart.Name == HasSuffixValue && hasGameId)
+            {
+                hasSuffix = !contentStream.ReadBit().AsBool();
+
+                var suffixLengthType = contentStream.ReadByte(2);
+                if (!hasSuffix)
                 {
-                    length = 8;
+                    suffixLengthType = 0;
+                }
+
+                suffixLength = suffixLengthType switch
+                {
+                    0 => 3,
+                    1 => 7,
+                    _ => 7
+                };
+                if (parts.Count > i + 2 && parts[i + 2].Name == PacketPartNames.Suffix)
+                {
+                    var oldLength = parts[i + 2].BitLength;
+                    parts[i + 2].BitLength = suffixLength;
+                    if (oldLength != suffixLength)
+                    {
+                        var lengthDiff = suffixLength - oldLength;
+                        for (var j = i + 2; j < parts.Count; j++)
+                        {
+                            parts[j].BitOffset += (int) lengthDiff;
+                        }
+                    }
                 }
 
                 contentStream.SeekBitOffset(currentOffset);
             }
-
-            // if (packetPart.Name == HasGameIdValue)
-            // {
-            //     skipGameId = !contentStream.ReadBit().AsBool();
-            //     contentStream.SeekBitOffset(currentOffset);
-            //     // if (skipGameId)
-            //     // {
-            //     //     skipItemName = true;
-            //     // }
-            // }
-
-            // if (packetPart.Name == HasItemNameValue)
-            // {
-            //     // if (skipGameId)
-            //     // {
-            //     //     packetPart.BitLength = 0;
-            //     //     length = 0;
-            //     //     for (var j = i + 1; j < parts.Count; j++)
-            //     //     {
-            //     //         parts[j].BitOffset -= (int) length;
-            //     //     }
-            //     // }
-            //     // else
-            //     // {
-            //     var nameTest = contentStream.ReadByte(8);
-            //     skipItemName = nameTest != 0x0F;
-            //     hasCountField = nameTest == 0x0C;
-            //     contentStream.SeekBitOffset(currentOffset);
-            //     // }
-            // }
-
-            // if (packetPart.Name == MaybeDelimiterValue)
-            // {
-            //     var delimTest = contentStream.ReadByte(8);
-            //     if (delimTest is 0x7E or 0x7F)
-            //     {
-            //         delimiterAt = i;
-            //         packetPart.BitLength = 0;
-            //         length = 0;
-            //         contentStream.SeekBitOffset(currentOffset);
-            //         break;
-            //     }
-            // }
-
-            // if (isItem)
-            // {
-            //     if (skipGameId)
-            //     {
-            //         if (packetPart.Name is PacketPartNames.GameObjectId or ShiftTestValue)
-            //         {
-            //             packetPart.BitLength = 0;
-            //             length = 0;
-            //             for (var j = i + 1; j < parts.Count; j++)
-            //             {
-            //                 parts[j].BitOffset -= (int) length;
-            //             }
-            //         }
-            //     }
-            //
-            //     if (skipItemName)
-            //     {
-            //         if (packetPart.Name is PacketPartNames.ItemName or PacketPartNames.ItemNameLength)
-            //         {
-            //             packetPart.BitLength = 0;
-            //             length = 0;
-            //             for (var j = i + 1; j < parts.Count; j++)
-            //             {
-            //                 parts[j].BitOffset -= (int) length;
-            //             }
-            //         }
-            //     }
-            //
-            //     if (hasCountField)
-            //     {
-            //         // we're still at hasCount field
-            //         contentStream.ReadByte();
-            //         var countLengthBytes = contentStream.ReadByte();
-            //         var countLengthVal = BitStreamExtensions.IntToBits(countLengthBytes, 8);
-            //         var countLength = 8 * countLengthBytes - 1;
-            //         var count = contentStream.ReadInt64(countLength);
-            //         var countVal = BitStreamExtensions.IntToBits((int) count, countLength);
-            //         var countLengthPart = new PacketPart(8, "count_length", null, false,
-            //             PacketPartType.UINT64,
-            //             currentOffset, countLengthVal, 18, 203, 250, 150);
-            //         var countPart = new PacketPart(countLength, "count", null, false, PacketPartType.UINT64,
-            //             currentOffset + 8, countVal, 143, 74, 205, 150);
-            //         morePartsToAppend.Add(countLengthPart);
-            //         morePartsToAppend.Add(countPart);
-            //         // we assume it's the last part
-            //         break;
-            //     }
-            // }
 
             if (packetPart.PacketPartType is PacketPartType.INT64 or PacketPartType.UINT64)
             {

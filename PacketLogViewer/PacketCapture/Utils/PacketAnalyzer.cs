@@ -92,6 +92,8 @@ public static class PacketPartNames
     public const string PALevel = "pa_level";
     public const string RemainingUses = "remaining_uses";
     public const string OwnerName = "owner_name";
+    public const string SuffixLength = "suffix_length";
+    public const string Suffix = "suffix";
 }
 
 internal class SubpacketBytesWithOffset
@@ -418,18 +420,33 @@ internal static class PacketAnalyzer
                     break;
                 }
 
+                var suffixLength = 7;
+
                 var hasGameId = fullStream.ReadBit().AsBool();
                 var optionalFields = new List<OptionalPacketFields>();
                 if (hasGameId && actionType is EntityActionType.FULL_SPAWN or EntityActionType.FULL_SPAWN_2)
                 {
                     if (EquippableItemTypes.Contains(objectType))
                     {
-                        fullStream.ReadBits(39);
-                        var shiftTest = fullStream.ReadByte(4);
-                        if (shiftTest != 0)
+                        var gameId = fullStream.ReadBits(14);
+                        // has_suffix
+                        var hasSuffix = !fullStream.ReadBit().AsBool();
+                        var suffixLengthType = fullStream.ReadByte(2);
+                        if (!hasSuffix)
                         {
-                            fullStream.ReadByte(4);
+                            suffixLengthType = 0;
                         }
+
+                        suffixLength = suffixLengthType switch
+                        {
+                            0 => 3,
+                            1 => 7,
+                            _ => 7
+                        };
+                        // suffix
+                        _ = fullStream.ReadByte(suffixLength);
+                        // divider aka 00000011000000000000101 
+                        var divider = fullStream.ReadBits(23);
 
                         fullStream.ReadBits(55);
                     }
@@ -463,7 +480,8 @@ internal static class PacketAnalyzer
 
                     typeWithDelimiter = true;
                 }
-                else
+
+                if (!success || !parts.Any())
                 {
                     undefTypes = true;
                     breakAfterCurrentTry = false;
@@ -552,7 +570,7 @@ internal static class PacketAnalyzer
                 break;
             }
 
-            var fieldLength = stream.ReadByte();
+            var fieldLength = nextField == (byte) OptionalPacketFields.MADE_BY ? 2 : stream.ReadByte();
             if (!stream.ValidPosition)
             {
                 break;

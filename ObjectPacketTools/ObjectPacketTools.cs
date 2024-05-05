@@ -147,7 +147,7 @@ public struct ObjectPacket
             case ObjectType.ArmorPants:
             case ObjectType.ArmorRobe:
             case ObjectType.ArmorShield:
-            case ObjectType.QuestArmorAmulet:
+            case ObjectType.QuestArmorChest2:
             case ObjectType.QuestArmorBelt:
             case ObjectType.QuestArmorBoots:
             case ObjectType.QuestArmorBracelet:
@@ -452,16 +452,30 @@ public struct ObjectPacket
             tier = GameObject?.ToRomanTierLiteral() ?? string.Empty;
         }
 
-        var suffix = (GameObject?.Suffix ?? ItemSuffix.None) == ItemSuffix.None
-            ? string.Empty
-            : @$" {GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.ObjectType][GameObject!.Suffix]
-                .localization[Locale.Russian]}";
+        var suffix = string.Empty;
+
+        try
+        {
+            suffix = (GameObject?.Suffix ?? ItemSuffix.None) == ItemSuffix.None
+                ? string.Empty
+                : GameObjectDataHelper.ObjectTypeToSuffixLocaleMap.ContainsKey(GameObject!.ObjectType) &&
+                  GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.ObjectType]
+                      .ContainsKey(GameObject!.Suffix)
+                    ? @$" {GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.ObjectType][GameObject!.Suffix]
+                        .localization[Locale.Russian]}"
+                    : string.Empty;
+        }
+        catch
+        {
+            Console.WriteLine($"No suffix for {GameObject.ObjectType} and ID {GameObject?.Suffix}");
+        }
+
         var count = Count > 1 ? $" ({Count})" : string.Empty;
         var name = $"{FriendlyName}" + suffix + (string.IsNullOrEmpty(tier) ? tier : $" {tier}") + count;
-        return $"{name.PadRight(44)}ID: {Id:X4}  GMID: {GameId.ToString().PadLeft(5)}  " +
-               $"Type: {Type.ToString().PadLeft(4)} {typeName.PadRight(24)} Suff: {SuffixMod.ToString().PadLeft(4)}  Bag: {BagId:X4}  " +
+        return $"{name,-44}ID: {Id:X4}  GMID: {GameId.ToString(),5}  " +
+               $"Type: {Type.ToString(),4} {typeName,-24} Suff: {SuffixMod.ToString(),4}  Bag: {BagId:X4}  " +
                $"X: {Convert.ToHexString(X)}  Y: {Convert.ToHexString(Y)}  Z: {Convert.ToHexString(Z)}  T: " +
-               $"{Convert.ToHexString(T)}  PA: {IsPremium.ToString().PadLeft(5)} {_skip1.ToByteString()}\t{_skip2.ToByteString()}\t" +
+               $"{Convert.ToHexString(T)}  PA: {IsPremium.ToString(),5} {_skip1.ToByteString()}\t{_skip2.ToByteString()}\t" +
                $"{_skip3.ToByteString()}\t{_skip4.ToByteString()}\tPA: {_premiumSkip.ToByteString()}";
     }
 }
@@ -732,7 +746,7 @@ public static class ObjectPacketTools
     public static bool IsQuestItem (ObjectType objectType)
     {
         return objectType is
-            ObjectType.QuestArmorAmulet
+            ObjectType.QuestArmorChest2
             or ObjectType.QuestArmorBelt
             or ObjectType.QuestArmorBoots
             or ObjectType.QuestArmorChest

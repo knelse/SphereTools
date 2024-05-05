@@ -86,7 +86,7 @@ public enum ObjectType : ushort
     AlchemyFurnace = 803,
     Blueprint = 804,
     QuestArmorChest = 949,
-    QuestArmorAmulet = 950, // unused?
+    QuestArmorChest2 = 950, // unused?
     QuestArmorBoots = 952,
     QuestArmorGloves = 953,
     QuestArmorBelt = 954,
