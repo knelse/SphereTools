@@ -4,6 +4,7 @@ using System.IO;
 using System.Linq;
 using System.Text;
 using BitStreams;
+using LiteDB;
 using PacketLogViewer.Models;
 using PacketLogViewer.Models.PacketAnalyzeData;
 using SphereHelpers.Extensions;
@@ -94,6 +95,7 @@ public static class PacketPartNames
     public const string OwnerName = "owner_name";
     public const string SuffixLength = "suffix_length";
     public const string Suffix = "suffix";
+    public const string HpSizeType = "hp_size_type";
 }
 
 internal class SubpacketBytesWithOffset
@@ -114,6 +116,9 @@ internal static class PacketAnalyzer
 {
     public static readonly byte[] packet_04_00_4F_01 = { 0x04, 0x00, 0xF4, 0x01 };
     public static readonly byte[] ok_mark = { 0x2c, 0x01, 0x00 };
+
+    public static readonly ILiteCollection<MobPacket> MobCollection =
+        PacketLogViewerMainWindow.PacketDatabase.GetCollection<MobPacket>("MobData");
 
     public static readonly List<Func<byte[], bool>> ServerPacketHideRules = new ()
     {
@@ -542,6 +547,11 @@ internal static class PacketAnalyzer
         }
 
         AddPacketPartAnalyzeData(storedPacket);
+
+        foreach (var mobPacket in storedPacket.AnalyzeResult.Where(x => x is MobPacket))
+        {
+            MobCollection.Upsert(mobPacket as MobPacket);
+        }
 
         return storedPacket;
     }

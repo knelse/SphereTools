@@ -1,8 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using BitStreams;
-using SphereHelpers.Extensions;
+using LiteDB;
 using SpherePacketVisualEditor;
 using SphServer.Helpers;
 
@@ -10,6 +9,7 @@ namespace PacketLogViewer.Models.PacketAnalyzeData;
 
 public class MobPacket : PacketAnalyzeData
 {
+    [BsonId] public int DbId { get; set; }
     public EntityActionType ActionType { get; set; } = EntityActionType.UNDEF;
     public double X { get; set; }
     public double Y { get; set; }
@@ -26,7 +26,11 @@ public class MobPacket : PacketAnalyzeData
     private string LevelAndHpDisplayValue => Level == 0 ? string.Empty : $"lvl {Level} {CurrentHP}/{MaxHP} ";
 
     private string TypenameDisplayValue =>
-        Type == 0 ? string.Empty : SphObjectDb.GameObjectDataDb[Type].Localisation[Locale.Russian];
+        Type == 0
+            ? string.Empty
+            : SphObjectDb.GameObjectDataDb.ContainsKey(Type)
+                ? SphObjectDb.GameObjectDataDb[Type].Localisation[Locale.Russian]
+                : string.Empty;
 
     public MobPacket (List<PacketPart> parts) : base(parts)
     {

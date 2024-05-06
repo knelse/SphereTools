@@ -328,7 +328,7 @@ public static class PacketPartMapping
                 {
                     case ObjectType.Monster:
                     case ObjectType.MonsterFlyer:
-                        packetName = "monster_full";
+                        packetName = "entity_monster";
                         break;
                     case ObjectType.MobSpawner:
                         packetName = "mob_spawner";
@@ -403,6 +403,9 @@ public static class PacketPartMapping
                         break;
                     case ObjectType.TradeLicense:
                         packetName = "item_license_trade";
+                        break;
+                    case ObjectType.AlchemyFurnace:
+                        packetName = "entity_alchemyfurnace";
                         break;
                     default:
                         if (ItemRecipeBagObjectTypes.Contains(objectType))
@@ -499,13 +502,13 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.DoorExit] = "",
         [ObjectType.Teleport] = "teleport",
         [ObjectType.TokenMultiuse] = "item_token_multiuse",
-        [ObjectType.TradeLicense] = "",
-        [ObjectType.MobSpawner] = "",
+        [ObjectType.TradeLicense] = "item_license_trade",
+        [ObjectType.MobSpawner] = "mob_spawner",
         [ObjectType.TutorialMessage] = "tutorial_message",
         [ObjectType.ScrollLegend] = "", // item_scroll or item_scroll_counted
         [ObjectType.ScrollRecipe] = "", // item_scroll or item_scroll_counted
         [ObjectType.Mission] = "",
-        [ObjectType.TokenIsland] = "",
+        [ObjectType.TokenIsland] = "item_token_island",
         [ObjectType.TokenIslandGuest] = "item_token_island_guest",
         [ObjectType.NpcQuestTitle] = "npc_quest_title",
         [ObjectType.NpcQuestDegree] = "",
@@ -558,39 +561,39 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.MonsterPart] = "",
         [ObjectType.Firework] = "item_firework",
         [ObjectType.InkpotBroken] = "",
-        [ObjectType.ArmorChest] = "", //item_armor_integrity_pa
-        [ObjectType.ArmorAmulet] = "",
-        [ObjectType.ArmorBoots] = "",
-        [ObjectType.ArmorGloves] = "",
-        [ObjectType.ArmorBelt] = "",
-        [ObjectType.ArmorShield] = "",
-        [ObjectType.ArmorHelmet] = "",
+        [ObjectType.ArmorChest] = "", // generic item packet
+        [ObjectType.ArmorAmulet] = "", // generic item packet
+        [ObjectType.ArmorBoots] = "", // generic item packet
+        [ObjectType.ArmorGloves] = "", // generic item packet
+        [ObjectType.ArmorBelt] = "", // generic item packet
+        [ObjectType.ArmorShield] = "", // generic item packet
+        [ObjectType.ArmorHelmet] = "", // generic item packet
         [ObjectType.ArmorPants] = "item_pants",
-        [ObjectType.ArmorBracelet] = "",
+        [ObjectType.ArmorBracelet] = "", // generic item packet
         [ObjectType.Ring] = "item_ring_named",
         [ObjectType.ArmorRobe] = "", // item_robe_dragon_pa
         [ObjectType.RingGolem] = "",
         [ObjectType.AlchemyPot] = "item_alchemypot",
         [ObjectType.AlchemyFurnace] = "",
         [ObjectType.Blueprint] = "",
-        [ObjectType.QuestArmorChest] = "",
-        [ObjectType.QuestArmorChest2] = "",
-        [ObjectType.QuestArmorBoots] = "item_quest_boots",
-        [ObjectType.QuestArmorGloves] = "",
-        [ObjectType.QuestArmorBelt] = "",
-        [ObjectType.QuestArmorShield] = "item_quest_shield",
-        [ObjectType.QuestArmorHelmet] = "item_quest_helmet",
-        [ObjectType.QuestArmorPants] = "",
-        [ObjectType.QuestArmorBracelet] = "",
-        [ObjectType.QuestArmorRing] = "",
-        [ObjectType.QuestArmorRobe] = "item_quest_robe",
-        [ObjectType.QuestWeaponSword] = "",
-        [ObjectType.QuestWeaponAxe] = "",
-        [ObjectType.QuestWeaponCrossbow] = "item_quest_crossbow",
-        [ObjectType.SpecialGuild] = "",
+        [ObjectType.QuestArmorChest] = "", // generic item packet
+        [ObjectType.QuestArmorChest2] = "", // generic item packet
+        [ObjectType.QuestArmorBoots] = "item_quest_boots", // generic item packet
+        [ObjectType.QuestArmorGloves] = "", // generic item packet
+        [ObjectType.QuestArmorBelt] = "", // generic item packet
+        [ObjectType.QuestArmorShield] = "item_quest_shield", // generic item packet
+        [ObjectType.QuestArmorHelmet] = "item_quest_helmet", // generic item packet
+        [ObjectType.QuestArmorPants] = "", // generic item packet
+        [ObjectType.QuestArmorBracelet] = "", // generic item packet
+        [ObjectType.QuestArmorRing] = "", // generic item packet
+        [ObjectType.QuestArmorRobe] = "item_quest_robe", // generic item packet
+        [ObjectType.QuestWeaponSword] = "", // generic item packet
+        [ObjectType.QuestWeaponAxe] = "", // generic item packet
+        [ObjectType.QuestWeaponCrossbow] = "item_quest_crossbow", // generic item packet
+        [ObjectType.SpecialGuild] = "", // item_guild
         [ObjectType.SpecialAbility] = "",
         [ObjectType.SpecialAbilitySteal] = "",
-        [ObjectType.ArmorHelmetPremium] = "",
+        [ObjectType.ArmorHelmetPremium] = "", // generic item packet
         [ObjectType.MantraWhite] = "", //item_mantra_counted
         [ObjectType.MantraBlack] = "" //item_mantra_counted
         //Unknown

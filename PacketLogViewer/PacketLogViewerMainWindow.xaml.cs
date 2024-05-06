@@ -205,66 +205,171 @@ public partial class PacketLogViewerMainWindow
 
         storedPackets.Sort((a, b) => a.NumberInSequence.CompareTo(b.NumberInSequence));
 
+        for (var i = 1; i < storedPackets.Count; i++)
+        {
+            // try fixing split packets
+            var storedPacket = storedPackets[i];
+
+            var currentStream = new BitStream(storedPacket.ContentBytes);
+            // header
+            currentStream.ReadBytes(7, true);
+            var entityId = currentStream.ReadUInt16();
+            currentStream.ReadByte(2);
+            var objectTypeVal = currentStream.ReadUInt16(10);
+            var objectType = Enum.IsDefined(typeof (ObjectType), objectTypeVal)
+                ? (ObjectType) objectTypeVal
+                : ObjectType.Unknown;
+            if (objectType is ObjectType.UpdateState)
+            {
+                continue;
+            }
+
+            currentStream.ReadByte(1);
+            var actionTypeVal = (int) currentStream.ReadByte();
+            var actionType = Enum.IsDefined(typeof (EntityActionType), actionTypeVal)
+                ? (EntityActionType) actionTypeVal
+                : EntityActionType.UNDEF;
+            if (actionType is EntityActionType.FULL_SPAWN or EntityActionType.FULL_SPAWN_2)
+            {
+                continue;
+            }
+
+            var previousStream = new BitStream(storedPackets[i - 1].ContentBytes);
+            previousStream.Seek(previousStream.Length, 0);
+            previousStream.SeekBack(16);
+            var entityIdTest = previousStream.ReadUInt16();
+            while (entityIdTest != entityId && previousStream.BitOffsetFromStart > 72)
+            {
+                previousStream.SeekBack(17);
+                entityIdTest = previousStream.ReadUInt16();
+            }
+
+            var shouldStitchPackets = false;
+
+            if (entityIdTest != entityId)
+            {
+                continue;
+            }
+
+            if (previousStream.BitOffsetFromStart == 72)
+            {
+                shouldStitchPackets = true;
+            }
+            else
+            {
+                previousStream.SeekBack(24);
+                var dividerTest = previousStream.ReadByte();
+                shouldStitchPackets = dividerTest is 0x7F or 0x7E;
+            }
+
+            if (!shouldStitchPackets)
+            {
+                continue;
+            }
+
+            while (currentStream.ValidPosition)
+            {
+                var splitTest = currentStream.ReadByte();
+                if (!currentStream.ValidPosition || splitTest == 0x7E || splitTest == 0x7F)
+                {
+                    break;
+                }
+
+                currentStream.SeekBack(7);
+            }
+
+            if (!currentStream.ValidPosition)
+            {
+                continue;
+            }
+
+            var positionAfterDelimiter = currentStream.BitOffsetFromStart;
+            var entityRemainderLength = positionAfterDelimiter - 72; // header (56) and ent id (16)
+            currentStream.SeekBitOffset(0);
+            var header = currentStream.ReadBytes(7, true);
+            // should be 9, 0 but skipping 2 more to align for sacks
+            currentStream.Seek(9, 0);
+            var remainderBits = currentStream.ReadBits(entityRemainderLength);
+            var newCurrentContent = new List<byte>();
+            newCurrentContent.AddRange(header);
+            newCurrentContent.AddRange(currentStream.GetStreamDataFromCurrentOffsetAndBit());
+            newCurrentContent[1] = (byte) (newCurrentContent.Count / 256);
+            newCurrentContent[0] = (byte) (newCurrentContent.Count % 256);
+            storedPacket.ContentBytes = newCurrentContent.ToArray();
+            previousStream.Seek(previousStream.Length, 0);
+            // this is a hack, probably bit count varies
+            previousStream.SeekBack(3);
+            previousStream.AutoIncreaseStream = true;
+            previousStream.WriteBits(remainderBits[16..]);
+            previousStream.SeekBitOffset(0);
+            // last one is the divider, first 2 are something random?
+            var previousContentBytes = previousStream.GetStreamDataFromCurrentOffsetAndBit()[..^1];
+            previousContentBytes[1] = (byte) (previousContentBytes.Length / 256);
+            previousContentBytes[0] = (byte) (previousContentBytes.Length % 256);
+            storedPackets[i - 1].ContentBytes = previousContentBytes;
+        }
+
         for (var i = 0; i < storedPackets.Count; i++)
         {
             var storedPacket = storedPackets[i];
-            storedPacket.Id = PacketCollection.Insert(storedPacket);
 
             storedPacket.UpdatePacketPartsForContent();
 
-            if (i >= 1)
-            {
-                var firstEntityIdThisPacket = storedPacket.PacketParts.FirstOrDefault(x => x.Name == PacketPartNames.ID)
-                    ?.ActualLongValue;
-                var lastStoredPacket = storedPackets[i - 1];
-                var lastEntityIdLastPacket = lastStoredPacket.PacketParts
-                    .LastOrDefault(x => x.Name == PacketPartNames.ID)
-                    ?.ActualLongValue;
-                if (firstEntityIdThisPacket == lastEntityIdLastPacket && firstEntityIdThisPacket != null)
-                {
-                    // packet got split in 2 and entity continues in the next packet, so we gotta fix
-                    var stream = new BitStream(storedPacket.ContentBytes);
-                    var initialOffset = storedPacket.PacketParts.FirstOrDefault(x => x.Name == PacketPartNames.ID)
-                        .BitOffset;
-                    stream.SeekBitOffset(initialOffset);
-                    while (stream.ValidPosition)
-                    {
-                        var splitTest = stream.ReadByte();
-                        if (!stream.ValidPosition || splitTest == 0x7E || splitTest == 0x7F)
-                        {
-                            break;
-                        }
+            // if (i >= 1)
+            // {
+            //     var firstEntityIdThisPacket = storedPacket.PacketParts.FirstOrDefault(x => x.Name == PacketPartNames.ID)
+            //         ?.ActualLongValue;
+            //     var lastStoredPacket = storedPackets[i - 1];
+            //     var lastEntityIdLastPacket = lastStoredPacket.PacketParts
+            //         .LastOrDefault(x => x.Name == PacketPartNames.ID)
+            //         ?.ActualLongValue;
+            //     if (firstEntityIdThisPacket == lastEntityIdLastPacket && firstEntityIdThisPacket != null)
+            //     {
+            //         // packet got split in 2 and entity continues in the next packet, so we gotta fix
+            //         var stream = new BitStream(storedPacket.ContentBytes);
+            //         var initialOffset = storedPacket.PacketParts.FirstOrDefault(x => x.Name == PacketPartNames.ID)
+            //             .BitOffset;
+            //         stream.SeekBitOffset(initialOffset);
+            //         while (stream.ValidPosition)
+            //         {
+            //             var splitTest = stream.ReadByte();
+            //             if (!stream.ValidPosition || splitTest == 0x7E || splitTest == 0x7F)
+            //             {
+            //                 break;
+            //             }
+            //
+            //             stream.SeekBack(7);
+            //         }
+            //
+            //         if (stream.ValidPosition)
+            //         {
+            //             var newOffset = stream.BitOffsetFromStart;
+            //             // entity_id = 16, skip = 2, entity_type = 10, skip = 1, action_type = 8
+            //             stream.SeekBitOffset(initialOffset + 37);
+            //             var oldBufferChunk = stream.ReadBytes(newOffset - initialOffset - 8 - 37) ?? [];
+            //             stream.SeekBitOffset(newOffset);
+            //             var newStreamBuffer = stream.GetStreamDataFromCurrentOffsetAndBit();
+            //             stream.SeekBitOffset(0);
+            //             var newStreamHeader = stream.ReadBytes(7, true);
+            //             var newContentBytes = new List<byte>(newStreamHeader);
+            //             newContentBytes.AddRange(newStreamBuffer);
+            //             storedPacket.ContentBytes = newContentBytes.ToArray();
+            //             var newLength = storedPacket.ContentBytes.Length;
+            //             storedPacket.ContentBytes[0] = (byte) (newLength & 0xFF);
+            //             storedPacket.ContentBytes[1] = (byte) ((newLength >> 8) & 0xFF);
+            //             storedPacket.UpdatePacketPartsForContent();
+            //             var lastContentBytes = new List<byte>(lastStoredPacket.ContentBytes);
+            //             lastContentBytes.AddRange(oldBufferChunk);
+            //             lastStoredPacket.ContentBytes = lastContentBytes.ToArray();
+            //             var lastLength = lastStoredPacket.ContentBytes.Length;
+            //             lastStoredPacket.ContentBytes[0] = (byte) (lastLength & 0xFF);
+            //             lastStoredPacket.ContentBytes[1] = (byte) ((lastLength >> 8) & 0xFF);
+            //             lastStoredPacket.UpdatePacketPartsForContent();
+            //         }
+            //     }
+            // }
 
-                        stream.SeekBack(7);
-                    }
-
-                    if (stream.ValidPosition)
-                    {
-                        var newOffset = stream.BitOffsetFromStart;
-                        // entity_id = 16, skip = 2, entity_type = 10, skip = 1, action_type = 8
-                        stream.SeekBitOffset(initialOffset + 37);
-                        var oldBufferChunk = stream.ReadBytes(newOffset - initialOffset - 8 - 37) ?? [];
-                        stream.SeekBitOffset(newOffset);
-                        var newStreamBuffer = stream.GetStreamDataFromCurrentOffsetAndBit();
-                        stream.SeekBitOffset(0);
-                        var newStreamHeader = stream.ReadBytes(7, true);
-                        var newContentBytes = new List<byte>(newStreamHeader);
-                        newContentBytes.AddRange(newStreamBuffer);
-                        storedPacket.ContentBytes = newContentBytes.ToArray();
-                        var newLength = storedPacket.ContentBytes.Length;
-                        storedPacket.ContentBytes[0] = (byte) (newLength & 0xFF);
-                        storedPacket.ContentBytes[1] = (byte) ((newLength >> 8) & 0xFF);
-                        storedPacket.UpdatePacketPartsForContent();
-                        var lastContentBytes = new List<byte>(lastStoredPacket.ContentBytes);
-                        lastContentBytes.AddRange(oldBufferChunk);
-                        lastStoredPacket.ContentBytes = lastContentBytes.ToArray();
-                        var lastLength = lastStoredPacket.ContentBytes.Length;
-                        lastStoredPacket.ContentBytes[0] = (byte) (lastLength & 0xFF);
-                        lastStoredPacket.ContentBytes[1] = (byte) ((lastLength >> 8) & 0xFF);
-                        lastStoredPacket.UpdatePacketPartsForContent();
-                    }
-                }
-            }
+            storedPacket.Id = PacketCollection.Insert(storedPacket);
 
             Dispatcher.Invoke(() =>
             {

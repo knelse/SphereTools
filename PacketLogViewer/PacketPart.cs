@@ -331,15 +331,73 @@ public class PacketPart
                 }
 
                 contentStream.SeekBitOffset(currentOffset);
+                // find 36 bit 0 after level and cut
             }
 
-            if (packetPart.Name == HasGameIdValue)
+            if (packetPart.Name == PacketPartNames.HpSizeType && contentStream.ValidPosition)
+            {
+                var val = contentStream.ReadByte(2);
+                var hpLength = val switch
+                {
+                    0 => 8,
+                    _ => 16
+                };
+                if (parts.Count > i + 2 && parts[i + 2].Name == PacketPartNames.CurrentHP)
+                {
+                    var oldLength = parts[i + 2].BitLength;
+                    parts[i + 2].BitLength = hpLength;
+                    if (oldLength != hpLength)
+                    {
+                        var lengthDiff = hpLength - oldLength;
+                        for (var j = i + 2; j < parts.Count; j++)
+                        {
+                            parts[j].BitOffset += (int) lengthDiff;
+                        }
+                    }
+                }
+
+                if (hpLength == 8 && parts.Count > i + 3 && parts[i + 3].Name == "skip_1")
+                {
+                    parts[i + 3].BitLength = 2;
+                    for (var j = i + 3; j < parts.Count; j++)
+                    {
+                        parts[j].BitOffset += 1;
+                    }
+                }
+
+                if (parts.Count > i + 4 && parts[i + 4].Name == PacketPartNames.MaxHP)
+                {
+                    var oldLength = parts[i + 4].BitLength;
+                    parts[i + 4].BitLength = hpLength;
+                    if (oldLength != hpLength)
+                    {
+                        var lengthDiff = hpLength - oldLength;
+                        for (var j = i + 4; j < parts.Count; j++)
+                        {
+                            parts[j].BitOffset += (int) lengthDiff;
+                        }
+                    }
+                }
+
+                if (hpLength == 8 && parts.Count > i + 5 && parts[i + 5].Name == "skip_1")
+                {
+                    parts[i + 5].BitLength = 2;
+                    for (var j = i + 5; j < parts.Count; j++)
+                    {
+                        parts[j].BitOffset += 1;
+                    }
+                }
+
+                contentStream.SeekBitOffset(currentOffset);
+            }
+
+            if (packetPart.Name == HasGameIdValue && contentStream.ValidPosition)
             {
                 hasGameId = contentStream.ReadBit().AsBool();
                 contentStream.SeekBitOffset(currentOffset);
             }
 
-            if (packetPart.Name == HasSuffixValue && hasGameId)
+            if (packetPart.Name == HasSuffixValue && hasGameId && contentStream.ValidPosition)
             {
                 hasSuffix = !contentStream.ReadBit().AsBool();
 
@@ -372,6 +430,38 @@ public class PacketPart
                 contentStream.SeekBitOffset(currentOffset);
             }
 
+            if (packetPart.Name == "should_be_36_0s")
+            {
+                var zeroCount = 0;
+                var bitsRead = 0;
+                while (contentStream.ValidPosition && zeroCount < 36)
+                {
+                    var curr = contentStream.ReadBit().AsInt();
+                    if (curr == 0)
+                    {
+                        zeroCount++;
+                    }
+                    else
+                    {
+                        zeroCount = 0;
+                    }
+
+                    bitsRead++;
+                    var lengthDiff = bitsRead - packetPart.BitLength;
+                    if (lengthDiff > 0)
+                    {
+                        packetPart.BitLength = bitsRead;
+                        length = packetPart.BitLength;
+                        for (var j = i + 1; j < parts.Count; j++)
+                        {
+                            parts[j].BitOffset += (int) lengthDiff;
+                        }
+                    }
+                }
+
+                contentStream.SeekBitOffset(currentOffset);
+            }
+
             if (packetPart.PacketPartType is PacketPartType.INT64 or PacketPartType.UINT64)
             {
                 // should be good enough
@@ -380,7 +470,7 @@ public class PacketPart
 
             contentStream.SeekBitOffset(currentOffset);
 
-            if (packetPart.Name == PacketPartNames.Level)
+            if (packetPart.Name == PacketPartNames.Level && contentStream.ValidPosition)
             {
                 var levelVal = contentStream.ReadInt64(packetPart.BitLength);
                 var levelVal1 = levelVal & 0b11111;
