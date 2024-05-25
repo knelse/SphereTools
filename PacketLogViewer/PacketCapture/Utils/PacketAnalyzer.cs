@@ -96,6 +96,7 @@ public static class PacketPartNames
     public const string SuffixLength = "suffix_length";
     public const string Suffix = "suffix";
     public const string HpSizeType = "hp_size_type";
+    public const string NpcTradeType = "npc_trade_type";
 }
 
 internal class SubpacketBytesWithOffset
@@ -119,6 +120,9 @@ internal static class PacketAnalyzer
 
     public static readonly ILiteCollection<MobPacket> MobCollection =
         PacketLogViewerMainWindow.PacketDatabase.GetCollection<MobPacket>("MobData");
+
+    public static readonly ILiteCollection<NpcTradePacket> NpcTradeCollection =
+        PacketLogViewerMainWindow.PacketDatabase.GetCollection<NpcTradePacket>("NpcTradeData");
 
     public static readonly List<Func<byte[], bool>> ServerPacketHideRules = new ()
     {
@@ -470,6 +474,7 @@ internal static class PacketAnalyzer
                     // should be equal to 2^32 - 1
                     _ = fullStream.ReadInt64(31);
                     optionalFields = GetOptionalFields(fullStream);
+                    shouldHidePacket = false;
                 }
 
                 fullStream.SeekBitOffset(initialBitOffset);
@@ -506,6 +511,11 @@ internal static class PacketAnalyzer
 
             if (typeWithDelimiter)
             {
+                if (objectType is ObjectType.Teleport)
+                {
+                    fullStream.ReadBit();
+                }
+
                 var delimTest = fullStream.ReadByte();
                 if (!fullStream.ValidPosition)
                 {
@@ -551,6 +561,11 @@ internal static class PacketAnalyzer
         foreach (var mobPacket in storedPacket.AnalyzeResult.Where(x => x is MobPacket))
         {
             MobCollection.Upsert(mobPacket as MobPacket);
+        }
+
+        foreach (var npcTradePacket in storedPacket.AnalyzeResult.Where(x => x is NpcTradePacket))
+        {
+            NpcTradeCollection.Upsert(npcTradePacket as NpcTradePacket);
         }
 
         return storedPacket;
@@ -655,14 +670,15 @@ internal static class PacketAnalyzer
             result = new DespawnPacket(subpacket);
         }
 
-        if (result.ObjectType is ObjectType.NpcTrade or ObjectType.NpcQuestTitle or ObjectType.NpcQuestDegree)
+        if (result.ObjectType is ObjectType.NpcTrade or ObjectType.NpcQuestTitle or ObjectType.NpcQuestDegree
+            or ObjectType.NpcQuestKarma or ObjectType.NpcGuilder or ObjectType.NpcBanker)
         {
             var npcTradePacket = new NpcTradePacket(subpacket);
             result = npcTradePacket;
             if (npcTradePacket.ActionType == EntityActionType.FULL_SPAWN)
             {
                 var output =
-                    $"{npcTradePacket.Id:X4}\t{npcTradePacket.ObjectType}\t{npcTradePacket.ActionType}\t{npcTradePacket.X}\t{npcTradePacket.Y}\t{npcTradePacket.Z}\t{npcTradePacket.Angle}\t{npcTradePacket.NameId}\t{npcTradePacket.TypeNameLength}\t{npcTradePacket.TypeName}\t{npcTradePacket.IconNameLength}\t{npcTradePacket.IconName}\n";
+                    $"{npcTradePacket.Id:X4}\t{npcTradePacket.ObjectType}\t{npcTradePacket.ActionType}\t{npcTradePacket.X}\t{npcTradePacket.Y}\t{npcTradePacket.Z}\t{npcTradePacket.Angle}\t{npcTradePacket.NameId}\t{npcTradePacket.TypeNameLength}\t{npcTradePacket.TypeName}\t{npcTradePacket.IconNameLength}\t{npcTradePacket.IconName}\t{npcTradePacket.NpcTradeType}\n";
                 File.AppendAllText(@"C:\\_sphereDumps\\npc.txt", output);
             }
         }
@@ -670,6 +686,19 @@ internal static class PacketAnalyzer
         if (ItemObjectTypes.Contains(result.ObjectType))
         {
             result = new ItemPacket(subpacket);
+        }
+
+        if (WorldObjectsToTrack.TryGetValue(result.ObjectType, out var filename))
+        {
+            var worldObject = new WorldObject(subpacket);
+            if (result is not (MobPacket or DespawnPacket or NpcTradePacket or ItemPacket))
+            {
+                result = worldObject;
+            }
+
+            var output =
+                $"{worldObject.Id:X4}\t{worldObject.ObjectType}\t{worldObject.ActionType}\t{worldObject.X}\t{worldObject.Y}\t{worldObject.Z}\t{worldObject.Angle}\n";
+            File.AppendAllText($@"C:\\_sphereDumps\\{filename}.txt", output);
         }
 
         return result;

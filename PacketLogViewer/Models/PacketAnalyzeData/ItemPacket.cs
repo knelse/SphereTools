@@ -41,6 +41,7 @@ public class ItemPacket : PacketAnalyzeData
         {
             HasGameId = GetBitValue(PacketPartNames.HasGameId);
             GameObjectId = GetIntValue(PacketPartNames.GameObjectId);
+            // 0xFF00 = on the ground
             ContainerId = GetIntValue(PacketPartNames.ContainerId);
             Count = Math.Max(GetIntValue(PacketPartNames.Count), 1);
             PALevel = GetIntValue(PacketPartNames.PALevel);

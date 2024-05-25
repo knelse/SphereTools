@@ -480,7 +480,8 @@ public partial class PacketLogViewerMainWindow
             UpdateDefinedPackets();
             ClearSelection();
             var packetContents = string.Empty;
-            var knownAnalyzedParts = selected.AnalyzeResult.Where(x => x is ItemPacket or MobPacket or NpcTradePacket)
+            var knownAnalyzedParts = selected.AnalyzeResult
+                .Where(x => x is ItemPacket or MobPacket or NpcTradePacket or WorldObject)
                 .ToList();
             if (knownAnalyzedParts.Any())
             {

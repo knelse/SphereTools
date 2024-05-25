@@ -19,6 +19,7 @@
 105: token_island_guest
 127: token_tutorial_torweal
 205: npc_quest_title
+208: npc_quest_karma
 209: npc_quest_degree
 210: monster
 211: monster_flyer
@@ -26,6 +27,7 @@
 213: npc_trade
 225: npc_banker
 236: bead
+239: npc_guilder
 400: backpack_large
 401: backpack_small
 405: sack

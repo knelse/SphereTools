@@ -131,6 +131,8 @@ public static class PacketPartMapping
         ObjectType.XpPillDegree,
         ObjectType.DoorEntrance,
         ObjectType.DoorExit,
+        ObjectType.Teleport,
+        ObjectType.TeleportWild,
         ObjectType.TokenMultiuse,
         ObjectType.TradeLicense,
         ObjectType.MobSpawner,
@@ -139,7 +141,9 @@ public static class PacketPartMapping
         ObjectType.NpcBanker,
         ObjectType.NpcTrade,
         ObjectType.NpcQuestDegree,
+        ObjectType.NpcQuestKarma,
         ObjectType.NpcQuestTitle,
+        ObjectType.NpcGuilder,
         ObjectType.SackMobLoot,
         ObjectType.ChestInDungeon,
         ObjectType.Chest,
@@ -276,6 +280,15 @@ public static class PacketPartMapping
         ObjectType.QuestWeaponCrossbow
     ];
 
+    public static Dictionary<ObjectType, string> WorldObjectsToTrack = new ()
+    {
+        [ObjectType.Teleport] = "teleports",
+        [ObjectType.TeleportWild] = "teleport_wild",
+        [ObjectType.AlchemyMineral] = "alchemy_minerals",
+        [ObjectType.AlchemyPlant] = "alchemy_plants",
+        [ObjectType.AlchemyMetal] = "alchemy_metals"
+    };
+
     public static Tuple<string, string, bool> GetPacketPartName (ObjectType objectType, EntityActionType actionType,
         EntityInteractionType interactionType, ushort entId, bool hasGameId, List<OptionalPacketFields> optionalFields)
     {
@@ -338,11 +351,11 @@ public static class PacketPartMapping
                         break;
                     case ObjectType.NpcQuestTitle:
                     case ObjectType.NpcQuestDegree:
+                    case ObjectType.NpcQuestKarma:
                         packetName = "npc_quest_title";
                         break;
-                    case ObjectType.DoorEntrance:
-                    case ObjectType.DoorExit:
-                        packetName = "door_test";
+                    case ObjectType.NpcGuilder:
+                        packetName = "npc_guilder";
                         break;
                     case ObjectType.ChestInDungeon:
                         packetName = "chest_in_dungeon";
@@ -406,6 +419,10 @@ public static class PacketPartMapping
                         break;
                     case ObjectType.AlchemyFurnace:
                         packetName = "entity_alchemyfurnace";
+                        break;
+                    case ObjectType.DoorEntrance:
+                    case ObjectType.DoorExit:
+                        packetName = "door_entrance";
                         break;
                     default:
                         if (ItemRecipeBagObjectTypes.Contains(objectType))
@@ -512,11 +529,13 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.TokenIslandGuest] = "item_token_island_guest",
         [ObjectType.NpcQuestTitle] = "npc_quest_title",
         [ObjectType.NpcQuestDegree] = "",
+        [ObjectType.NpcQuestKarma] = "npc_quest_karma",
         [ObjectType.Monster] = "",
         [ObjectType.MonsterFlyer] = "",
         [ObjectType.NpcTrade] = "npc_trade",
         [ObjectType.NpcBanker] = "",
         [ObjectType.Bead] = "",
+        [ObjectType.NpcGuilder] = "npc_guilder",
         [ObjectType.BackpackLarge] = "item_backpack",
         [ObjectType.BackpackSmall] = "item_backpack",
         [ObjectType.Sack] = "item_sack",

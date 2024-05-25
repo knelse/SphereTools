@@ -20,9 +20,10 @@ public class NpcTradePacket : PacketAnalyzeData
     public string TypeName { get; set; } = string.Empty;
     public int IconNameLength { get; set; }
     public string IconName { get; set; } = string.Empty;
+    public int NpcTradeType { get; set; }
 
     public override string DisplayValue =>
-        $"{Id:X4} ({Enum.GetName(ObjectType) ?? string.Empty}) {Name} ({TypeName}, {IconName}) at [{X:F2}, {Y:F2}, {Z:F2}]";
+        $"{Id:X4} ({Enum.GetName(ObjectType) ?? string.Empty}) {Name} ({NpcTradeType}, {TypeName}, {IconName}) at [{X:F2}, {Y:F2}, {Z:F2}]";
 
     public NpcTradePacket (List<PacketPart> parts) : base(parts)
     {
@@ -54,6 +55,7 @@ public class NpcTradePacket : PacketAnalyzeData
             TypeName = GetStringValue(PacketPartNames.TypeName);
             IconNameLength = GetIntValue(PacketPartNames.IconNameLength);
             IconName = GetStringValue(PacketPartNames.IconName);
+            NpcTradeType = GetIntValue(PacketPartNames.NpcTradeType);
         }
     }
 }
