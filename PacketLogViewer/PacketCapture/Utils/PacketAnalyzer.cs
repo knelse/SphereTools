@@ -700,6 +700,15 @@ internal static class PacketAnalyzer
             File.AppendAllText($@"C:\\_sphereDumps\\doors.txt", output);
         }
 
+        if (result.ObjectType is ObjectType.TeleportWithTarget)
+        {
+            var tp = new TeleportWithTargetPacket(subpacket);
+            result = tp;
+            var output =
+                $"{tp.Id:X4}\t{result.ObjectType}\t{tp.ActionType}\t{tp.X}\t{tp.Y}\t{tp.Z}\t{tp.Angle}\t{tp.SubtypeID}\n";
+            File.AppendAllText($@"C:\\_sphereDumps\\target_tps.txt", output);
+        }
+
         if (WorldObjectsToTrack.TryGetValue(result.ObjectType, out var filename))
         {
             var worldObject = new WorldObject(subpacket);

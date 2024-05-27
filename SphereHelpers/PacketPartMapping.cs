@@ -132,12 +132,13 @@ public static class PacketPartMapping
         ObjectType.DoorEntrance,
         ObjectType.DoorExit,
         ObjectType.Teleport,
-        ObjectType.TeleportRodos,
+        ObjectType.TeleportWithTarget,
         ObjectType.DungeonEntrance,
         ObjectType.TeleportWild,
         ObjectType.TokenMultiuse,
         ObjectType.TradeLicense,
         ObjectType.MobSpawner,
+        ObjectType.TournamentTeleport,
         ObjectType.Monster,
         ObjectType.MonsterFlyer,
         ObjectType.NpcBanker,
@@ -286,8 +287,8 @@ public static class PacketPartMapping
     public static Dictionary<ObjectType, string> WorldObjectsToTrack = new ()
     {
         [ObjectType.Teleport] = "teleports",
-        [ObjectType.TeleportRodos] = "teleports_rodos",
         [ObjectType.TeleportWild] = "teleport_wild",
+        [ObjectType.TournamentTeleport] = "teleport_tournament",
         [ObjectType.AlchemyMineral] = "alchemy_minerals",
         [ObjectType.AlchemyPlant] = "alchemy_plants",
         [ObjectType.AlchemyMetal] = "alchemy_metals",
@@ -436,8 +437,11 @@ public static class PacketPartMapping
                     case ObjectType.DungeonEntrance:
                         packetName = "dungeon_entrance";
                         break;
-                    case ObjectType.TeleportRodos:
-                        packetName = "teleport_rodos";
+                    case ObjectType.TeleportWithTarget:
+                        packetName = "teleport_with_target";
+                        break;
+                    case ObjectType.TournamentTeleport:
+                        packetName = "tournament_teleport";
                         break;
                     case ObjectType.Workshop:
                         packetName = "workshop";
@@ -537,10 +541,11 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.DoorExit] = "door_entrance",
         [ObjectType.DungeonEntrance] = "dungeon_entrance",
         [ObjectType.Teleport] = "teleport",
-        [ObjectType.TeleportRodos] = "teleport_rodos",
+        [ObjectType.TeleportWithTarget] = "teleport_with_target",
         [ObjectType.TokenMultiuse] = "item_token_multiuse",
         [ObjectType.TradeLicense] = "item_license_trade",
         [ObjectType.MobSpawner] = "mob_spawner",
+        [ObjectType.TournamentTeleport] = "tournament_teleport",
         [ObjectType.TutorialMessage] = "tutorial_message",
         [ObjectType.ScrollLegend] = "", // item_scroll or item_scroll_counted
         [ObjectType.ScrollRecipe] = "", // item_scroll or item_scroll_counted
