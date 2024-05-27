@@ -69,7 +69,7 @@ public class ItemPacket : PacketAnalyzeData
                     }
                 }
             }
-            else if (ObjectType is ObjectType.Key or ObjectType.KeyBarn)
+            else if (ObjectType is ObjectType.Key or ObjectType.KeyBarn or ObjectType.DoorEntrance)
             {
                 var keyLocales = SphObjectDb.LocalisationContent["st_key"][Locale.Russian];
                 var subtypeStr = $"{subtypeId}";

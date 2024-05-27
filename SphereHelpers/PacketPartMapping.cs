@@ -132,6 +132,8 @@ public static class PacketPartMapping
         ObjectType.DoorEntrance,
         ObjectType.DoorExit,
         ObjectType.Teleport,
+        ObjectType.TeleportRodos,
+        ObjectType.DungeonEntrance,
         ObjectType.TeleportWild,
         ObjectType.TokenMultiuse,
         ObjectType.TradeLicense,
@@ -209,6 +211,7 @@ public static class PacketPartMapping
         ObjectType.AlchemyPot,
         ObjectType.AlchemyFurnace,
         ObjectType.Blueprint,
+        ObjectType.Workshop,
         ObjectType.QuestArmorChest,
         ObjectType.QuestArmorChest2,
         ObjectType.QuestArmorBoots,
@@ -283,10 +286,13 @@ public static class PacketPartMapping
     public static Dictionary<ObjectType, string> WorldObjectsToTrack = new ()
     {
         [ObjectType.Teleport] = "teleports",
+        [ObjectType.TeleportRodos] = "teleports_rodos",
         [ObjectType.TeleportWild] = "teleport_wild",
         [ObjectType.AlchemyMineral] = "alchemy_minerals",
         [ObjectType.AlchemyPlant] = "alchemy_plants",
-        [ObjectType.AlchemyMetal] = "alchemy_metals"
+        [ObjectType.AlchemyMetal] = "alchemy_metals",
+        [ObjectType.DungeonEntrance] = "dungeon_entrance",
+        [ObjectType.Workshop] = "workshop"
     };
 
     public static Tuple<string, string, bool> GetPacketPartName (ObjectType objectType, EntityActionType actionType,
@@ -348,6 +354,9 @@ public static class PacketPartMapping
                         break;
                     case ObjectType.NpcTrade:
                         packetName = "npc_trade";
+                        break;
+                    case ObjectType.NpcBanker:
+                        packetName = "npc_banker";
                         break;
                     case ObjectType.NpcQuestTitle:
                     case ObjectType.NpcQuestDegree:
@@ -423,6 +432,15 @@ public static class PacketPartMapping
                     case ObjectType.DoorEntrance:
                     case ObjectType.DoorExit:
                         packetName = "door_entrance";
+                        break;
+                    case ObjectType.DungeonEntrance:
+                        packetName = "dungeon_entrance";
+                        break;
+                    case ObjectType.TeleportRodos:
+                        packetName = "teleport_rodos";
+                        break;
+                    case ObjectType.Workshop:
+                        packetName = "workshop";
                         break;
                     default:
                         if (ItemRecipeBagObjectTypes.Contains(objectType))
@@ -515,9 +533,11 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.Mutator] = "",
         [ObjectType.SeedCastle] = "",
         [ObjectType.XpPillDegree] = "",
-        [ObjectType.DoorEntrance] = "",
-        [ObjectType.DoorExit] = "",
+        [ObjectType.DoorEntrance] = "door_entrance",
+        [ObjectType.DoorExit] = "door_entrance",
+        [ObjectType.DungeonEntrance] = "dungeon_entrance",
         [ObjectType.Teleport] = "teleport",
+        [ObjectType.TeleportRodos] = "teleport_rodos",
         [ObjectType.TokenMultiuse] = "item_token_multiuse",
         [ObjectType.TradeLicense] = "item_license_trade",
         [ObjectType.MobSpawner] = "mob_spawner",
@@ -533,7 +553,7 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.Monster] = "",
         [ObjectType.MonsterFlyer] = "",
         [ObjectType.NpcTrade] = "npc_trade",
-        [ObjectType.NpcBanker] = "",
+        [ObjectType.NpcBanker] = "npc_banker",
         [ObjectType.Bead] = "",
         [ObjectType.NpcGuilder] = "npc_guilder",
         [ObjectType.BackpackLarge] = "item_backpack",
@@ -595,6 +615,7 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.AlchemyPot] = "item_alchemypot",
         [ObjectType.AlchemyFurnace] = "",
         [ObjectType.Blueprint] = "",
+        [ObjectType.Workshop] = "workshop",
         [ObjectType.QuestArmorChest] = "", // generic item packet
         [ObjectType.QuestArmorChest2] = "", // generic item packet
         [ObjectType.QuestArmorBoots] = "item_quest_boots", // generic item packet

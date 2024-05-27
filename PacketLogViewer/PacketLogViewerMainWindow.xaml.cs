@@ -481,7 +481,7 @@ public partial class PacketLogViewerMainWindow
             ClearSelection();
             var packetContents = string.Empty;
             var knownAnalyzedParts = selected.AnalyzeResult
-                .Where(x => x is ItemPacket or MobPacket or NpcTradePacket or WorldObject)
+                .Where(x => x is ItemPacket or MobPacket or NpcTradePacket or WorldObject or DoorPacket)
                 .ToList();
             if (knownAnalyzedParts.Any())
             {

@@ -223,8 +223,21 @@ public class PacketPart
     public static List<PacketPart> LoadFromFile (string filePath, string groupName, BitStream contentStream,
         int bitOffset, bool isMob = false, bool isItem = false, bool optionalPartsIncluded = false)
     {
-        var contents = File.ReadAllLines(filePath);
         var initialOffset = contentStream.BitOffsetFromStart;
+        if (groupName == "door_entrance")
+        {
+            // some doors desperately want to be teleports
+            contentStream.ReadBits(198);
+            var tpTest = contentStream.ReadUInt16(15);
+            if (tpTest == 0x7FFF)
+            {
+                filePath = filePath.Replace("door_entrance", "door_entrance_tp");
+            }
+
+            contentStream.SeekBitOffset(initialOffset);
+        }
+
+        var contents = File.ReadAllLines(filePath);
         var parts = new List<PacketPart>();
 
         foreach (var line in contents)

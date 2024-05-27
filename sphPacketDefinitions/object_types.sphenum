@@ -8,6 +8,7 @@
 60: door_entrance
 61: door_exit
 63: teleport
+65: dungeon_entrance
 66: token_multiuse
 68: trade_license
 70: mob_spawner
@@ -88,6 +89,7 @@
 800: alchemy_pot
 803: alchemy_furnace
 804: blueprint
+805: workshop
 949: quest_armor_chest
 950: quest_armor_amulet
 952: quest_armor_boots

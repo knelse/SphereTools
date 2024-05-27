@@ -97,6 +97,9 @@ public static class PacketPartNames
     public const string Suffix = "suffix";
     public const string HpSizeType = "hp_size_type";
     public const string NpcTradeType = "npc_trade_type";
+    public const string TargetX = "target_x";
+    public const string TargetY = "target_y";
+    public const string TargetZ = "target_z";
 }
 
 internal class SubpacketBytesWithOffset
@@ -686,6 +689,15 @@ internal static class PacketAnalyzer
         if (ItemObjectTypes.Contains(result.ObjectType))
         {
             result = new ItemPacket(subpacket);
+        }
+
+        if (result.ObjectType is ObjectType.DoorEntrance or ObjectType.DoorExit)
+        {
+            var door = new DoorPacket(subpacket);
+            result = door;
+            var output =
+                $"{door.Id:X4}\t{result.ObjectType}\t{door.ActionType}\t{door.X}\t{door.Y}\t{door.Z}\t{door.Angle}\t{door.SubtypeID}\t{door.TargetX}\t{door.TargetY}\t{door.TargetZ}\n";
+            File.AppendAllText($@"C:\\_sphereDumps\\doors.txt", output);
         }
 
         if (WorldObjectsToTrack.TryGetValue(result.ObjectType, out var filename))

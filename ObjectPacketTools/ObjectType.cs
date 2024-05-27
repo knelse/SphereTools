@@ -9,7 +9,9 @@ public enum ObjectType : ushort
     XpPillDegree = 47,
     DoorEntrance = 60,
     DoorExit = 61,
+    TeleportRodos = 62,
     Teleport = 63,
+    DungeonEntrance = 65,
     TeleportWild = 67,
     TokenMultiuse = 66,
     TradeLicense = 68,
@@ -88,6 +90,7 @@ public enum ObjectType : ushort
     AlchemyPot = 800,
     AlchemyFurnace = 803,
     Blueprint = 804,
+    Workshop = 805,
     QuestArmorChest = 949,
     QuestArmorChest2 = 950, // unused?
     QuestArmorBoots = 952,
