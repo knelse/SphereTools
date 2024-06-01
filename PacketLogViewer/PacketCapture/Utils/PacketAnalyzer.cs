@@ -665,7 +665,15 @@ internal static class PacketAnalyzer
         var result = new PacketAnalyzeData(subpacket);
         if (result.ObjectType is ObjectType.Monster or ObjectType.MonsterFlyer or ObjectType.MobSpawner)
         {
-            result = new MobPacket(subpacket);
+            var mob = new MobPacket(subpacket);
+            result = mob;
+            if (result.ObjectType is ObjectType.Monster or ObjectType.MonsterFlyer &&
+                mob.ActionType is EntityActionType.FULL_SPAWN or EntityActionType.FULL_SPAWN_2)
+            {
+                var output =
+                    $"{mob.Id:X4}\t{result.ObjectType}\t{mob.ActionType}\t{mob.X}\t{mob.Y}\t{mob.Z}\t{mob.Angle}\t{mob.CurrentHP}\t{mob.MaxHP}\t{mob.Type}\t{mob.Level}\n";
+                File.AppendAllText($@"C:\\_sphereDumps\\mob.txt", output);
+            }
         }
 
         if (result.ObjectType is ObjectType.Despawn)
@@ -727,7 +735,7 @@ internal static class PacketAnalyzer
 
     private static List<PacketPart> FindPartsByName (BitStream stream, string name, bool isSubpacket)
     {
-        var isMob = name == "monster_full";
+        var isMob = name is "monster_full" or "entity_monster";
         var isItem = name.StartsWith("item");
         if (isSubpacket)
         {

@@ -555,7 +555,7 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.NpcQuestTitle] = "npc_quest_title",
         [ObjectType.NpcQuestDegree] = "",
         [ObjectType.NpcQuestKarma] = "npc_quest_karma",
-        [ObjectType.Monster] = "",
+        [ObjectType.Monster] = "monster_full",
         [ObjectType.MonsterFlyer] = "",
         [ObjectType.NpcTrade] = "npc_trade",
         [ObjectType.NpcBanker] = "npc_banker",

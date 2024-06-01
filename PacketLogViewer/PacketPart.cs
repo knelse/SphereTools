@@ -237,6 +237,31 @@ public class PacketPart
             contentStream.SeekBitOffset(initialOffset);
         }
 
+        if (groupName == "entity_monster")
+        {
+            // level 1 monsters are special
+            contentStream.ReadBits(141);
+            var hpSizeType = contentStream.ReadByte(5);
+            var hpSize = hpSizeType == 0x11 ? 16 : 8;
+            contentStream.ReadBits(hpSize);
+            contentStream.ReadBits(hpSize == 8 ? 2 : 1);
+            contentStream.ReadBits(hpSize);
+            contentStream.ReadBits(hpSize == 8 ? 2 : 1);
+            var mobType = contentStream.ReadUInt32(14);
+            contentStream.ReadBits(3);
+            var lvlValue = contentStream.ReadUInt32(29);
+            if (lvlValue == 0x104028)
+            {
+                filePath = filePath.Replace("entity_monster", "monster_level_1");
+            }
+            else if (mobType > 2000)
+            {
+                filePath = filePath.Replace("entity_monster", "monster_full");
+            }
+
+            contentStream.SeekBitOffset(initialOffset);
+        }
+
         var contents = File.ReadAllLines(filePath);
         var parts = new List<PacketPart>();
 
@@ -312,6 +337,7 @@ public class PacketPart
         var hasGameId = false;
         var hasSuffix = false;
         var suffixLength = 7;
+        var levelIsOne = false;
 
         for (var i = 0; i < parts.Count; i++)
         {
@@ -483,19 +509,26 @@ public class PacketPart
 
             contentStream.SeekBitOffset(currentOffset);
 
+            if (packetPart.Name == "level_last_3")
+            {
+                levelIsOne = true;
+            }
+
             if (packetPart.Name == PacketPartNames.Level && contentStream.ValidPosition)
             {
                 var levelVal = contentStream.ReadInt64(packetPart.BitLength);
                 var levelVal1 = levelVal & 0b11111;
                 var levelVal2 = ((levelVal >> 17) & 0b11111) << 5;
-                var level = levelVal switch
-                {
-                    0x7D080 => 128,
-                    0x3E840 => 64,
-                    0x1F420 => 32,
-                    0xFA10 => 16,
-                    _ => (int) (levelVal1 + levelVal2 + 1)
-                };
+                var level = levelIsOne
+                    ? 1
+                    : levelVal switch
+                    {
+                        0x7D080 => 128,
+                        0x3E840 => 64,
+                        0x1F420 => 32,
+                        0xFA10 => 16,
+                        _ => (int) (levelVal1 + levelVal2 + 1)
+                    };
                 packetPart.ActualLongValue = level;
             }
 
