@@ -1144,3 +1144,6 @@
 10559 You cannot nest any more bags
 10560 New Year's amulet has expired
 10561 Operation not available now
+10562 It is forbidden to place a bag here if it contains other bags
+10563 Too far
+10564 The tablet is already being captured by another player

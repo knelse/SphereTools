@@ -19,6 +19,10 @@ public class ItemPacket : PacketAnalyzeData
     public string OwnerName { get; set; } = string.Empty;
     public bool HasSuffix { get; set; }
     public int Suffix { get; set; }
+    public double X { get; set; }
+    public double Y { get; set; }
+    public double Z { get; set; }
+    public int Angle { get; set; }
 
     public readonly SphGameObject? GameObject;
 
@@ -49,6 +53,10 @@ public class ItemPacket : PacketAnalyzeData
             OwnerName = GetStringValue(PacketPartNames.OwnerName);
             HasSuffix = !GetBitValue(PacketPart.HasSuffixValue);
             Suffix = GetIntValue(PacketPartNames.Suffix);
+            X = GetClientCoordValue(PacketPartNames.CoordX);
+            Y = GetClientCoordValue(PacketPartNames.CoordY);
+            Z = GetClientCoordValue(PacketPartNames.CoordZ);
+            Angle = GetIntValue(PacketPartNames.Angle);
 
             if (HasGameId)
             {

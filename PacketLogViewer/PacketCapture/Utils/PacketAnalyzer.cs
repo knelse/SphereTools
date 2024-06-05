@@ -5,6 +5,7 @@ using System.Linq;
 using System.Text;
 using BitStreams;
 using LiteDB;
+using Microsoft.Extensions.Configuration;
 using PacketLogViewer.Models;
 using PacketLogViewer.Models.PacketAnalyzeData;
 using SphereHelpers.Extensions;
@@ -663,6 +664,7 @@ internal static class PacketAnalyzer
     private static PacketAnalyzeData GetAnalyzeDataForSubpacket (List<PacketPart> subpacket)
     {
         var result = new PacketAnalyzeData(subpacket);
+        var outputPath = PacketLogViewerMainWindow.AppConfig.GetSection("Settings").GetValue<string>("OutputFolder");
         if (result.ObjectType is ObjectType.Monster or ObjectType.MonsterFlyer or ObjectType.MobSpawner)
         {
             var mob = new MobPacket(subpacket);
@@ -672,17 +674,17 @@ internal static class PacketAnalyzer
             {
                 var output =
                     $"{mob.Id:X4}\t{result.ObjectType}\t{mob.ActionType}\t{mob.X}\t{mob.Y}\t{mob.Z}\t{mob.Angle}\t{mob.CurrentHP}\t{mob.MaxHP}\t{mob.Type}\t{mob.Level}\n";
-                File.AppendAllText($@"C:\\_sphereDumps\\mob.txt", output);
+                File.AppendAllText($@"{outputPath}\\mob.txt", output);
             }
         }
 
-        if (result.ObjectType is ObjectType.Despawn)
+        else if (result.ObjectType is ObjectType.Despawn)
         {
             result = new DespawnPacket(subpacket);
         }
 
-        if (result.ObjectType is ObjectType.NpcTrade or ObjectType.NpcQuestTitle or ObjectType.NpcQuestDegree
-            or ObjectType.NpcQuestKarma or ObjectType.NpcGuilder or ObjectType.NpcBanker)
+        else if (result.ObjectType is ObjectType.NpcTrade or ObjectType.NpcQuestTitle or ObjectType.NpcQuestDegree
+                 or ObjectType.NpcQuestKarma or ObjectType.NpcGuilder or ObjectType.NpcBanker)
         {
             var npcTradePacket = new NpcTradePacket(subpacket);
             result = npcTradePacket;
@@ -690,44 +692,60 @@ internal static class PacketAnalyzer
             {
                 var output =
                     $"{npcTradePacket.Id:X4}\t{npcTradePacket.ObjectType}\t{npcTradePacket.ActionType}\t{npcTradePacket.X}\t{npcTradePacket.Y}\t{npcTradePacket.Z}\t{npcTradePacket.Angle}\t{npcTradePacket.NameId}\t{npcTradePacket.TypeNameLength}\t{npcTradePacket.TypeName}\t{npcTradePacket.IconNameLength}\t{npcTradePacket.IconName}\t{npcTradePacket.NpcTradeType}\n";
-                File.AppendAllText(@"C:\\_sphereDumps\\npc.txt", output);
+                File.AppendAllText($@"{outputPath}\\npc.txt", output);
             }
         }
 
-        if (ItemObjectTypes.Contains(result.ObjectType))
+        else if (ItemObjectTypes.Contains(result.ObjectType))
         {
-            result = new ItemPacket(subpacket);
+            var item = new ItemPacket(subpacket);
+            result = item;
+            if (item.ActionType is EntityActionType.FULL_SPAWN or EntityActionType.FULL_SPAWN_2)
+            {
+                var gameId = item.HasGameId ? item.GameObjectId : 0;
+                var suffix = item.HasSuffix ? item.Suffix : 0;
+                var output =
+                    $"{item.Id:X4}\t{result.ObjectType}\t{item.ActionType}\t{item.X}\t{item.Y}\t{item.Z}\t{item.Angle}\t" +
+                    $"{gameId}\t{item.ContainerId}\t{suffix}\t{item.PALevel}\t{item.Count}\t{item.RemainingUses}\t{item.OwnerName}\n";
+                File.AppendAllText($@"{outputPath}\\items.txt", output);
+            }
         }
 
-        if (result.ObjectType is ObjectType.DoorEntrance or ObjectType.DoorExit)
+        else if (result.ObjectType is ObjectType.DoorEntrance or ObjectType.DoorExit)
         {
             var door = new DoorPacket(subpacket);
             result = door;
-            var output =
-                $"{door.Id:X4}\t{result.ObjectType}\t{door.ActionType}\t{door.X}\t{door.Y}\t{door.Z}\t{door.Angle}\t{door.SubtypeID}\t{door.TargetX}\t{door.TargetY}\t{door.TargetZ}\n";
-            File.AppendAllText($@"C:\\_sphereDumps\\doors.txt", output);
+            if (door.ActionType == EntityActionType.FULL_SPAWN)
+            {
+                var output =
+                    $"{door.Id:X4}\t{result.ObjectType}\t{door.ActionType}\t{door.X}\t{door.Y}\t{door.Z}\t{door.Angle}\t{door.SubtypeID}\t{door.TargetX}\t{door.TargetY}\t{door.TargetZ}\n";
+                File.AppendAllText($@"{outputPath}\\doors.txt", output);
+            }
         }
 
-        if (result.ObjectType is ObjectType.TeleportWithTarget)
+        else if (result.ObjectType is ObjectType.TeleportWithTarget)
         {
             var tp = new TeleportWithTargetPacket(subpacket);
             result = tp;
-            var output =
-                $"{tp.Id:X4}\t{result.ObjectType}\t{tp.ActionType}\t{tp.X}\t{tp.Y}\t{tp.Z}\t{tp.Angle}\t{tp.SubtypeID}\n";
-            File.AppendAllText($@"C:\\_sphereDumps\\target_tps.txt", output);
+            if (tp.ActionType == EntityActionType.FULL_SPAWN)
+            {
+                var output =
+                    $"{tp.Id:X4}\t{result.ObjectType}\t{tp.ActionType}\t{tp.X}\t{tp.Y}\t{tp.Z}\t{tp.Angle}\t{tp.SubtypeID}\n";
+                File.AppendAllText($@"{outputPath}\\target_tps.txt", output);
+            }
         }
 
-        if (WorldObjectsToTrack.TryGetValue(result.ObjectType, out var filename))
+        else if (WorldObjectsToTrack.TryGetValue(result.ObjectType, out var filename))
         {
             var worldObject = new WorldObject(subpacket);
-            if (result is not (MobPacket or DespawnPacket or NpcTradePacket or ItemPacket))
-            {
-                result = worldObject;
-            }
+            result = worldObject;
 
-            var output =
-                $"{worldObject.Id:X4}\t{worldObject.ObjectType}\t{worldObject.ActionType}\t{worldObject.X}\t{worldObject.Y}\t{worldObject.Z}\t{worldObject.Angle}\n";
-            File.AppendAllText($@"C:\\_sphereDumps\\{filename}.txt", output);
+            if (worldObject.ActionType == EntityActionType.FULL_SPAWN)
+            {
+                var output =
+                    $"{worldObject.Id:X4}\t{worldObject.ObjectType}\t{worldObject.ActionType}\t{worldObject.X}\t{worldObject.Y}\t{worldObject.Z}\t{worldObject.Angle}\n";
+                File.AppendAllText($@"{outputPath}\\{filename}.txt", output);
+            }
         }
 
         return result;

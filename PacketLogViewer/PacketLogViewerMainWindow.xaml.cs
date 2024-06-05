@@ -31,7 +31,7 @@ public partial class PacketLogViewerMainWindow
     private const string ExportedPartExtension = ".spdp";
     private const string EnumExtension = ".sphenum";
     public static Encoding Win1251 = null!;
-    private static IConfigurationRoot AppConfig;
+    internal static IConfigurationRoot AppConfig;
 
     public static readonly LiteDatabase PacketDatabase;
 

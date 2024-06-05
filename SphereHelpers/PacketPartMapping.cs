@@ -587,9 +587,9 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.RingRuby] = "",
         [ObjectType.Ruby] = "",
         [ObjectType.RingGold] = "", //item_ring_gold_counted
-        [ObjectType.AlchemyMineral] = "", // item_alchemy_counted
-        [ObjectType.AlchemyPlant] = "", // item_alchemy_counted
-        [ObjectType.AlchemyMetal] = "", // item_alchemy_counted
+        [ObjectType.AlchemyMineral] = "alchemy_resource_ground", // item_alchemy_counted
+        [ObjectType.AlchemyPlant] = "alchemy_resource_ground", // item_alchemy_counted
+        [ObjectType.AlchemyMetal] = "alchemy_resource_ground", // item_alchemy_counted
         [ObjectType.FoodApple] = "", // item_food_counted
         [ObjectType.FoodPear] = "", // item_food_counted
         [ObjectType.FoodMeat] = "", // item_food_counted
