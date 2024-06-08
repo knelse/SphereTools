@@ -5,12 +5,11 @@ using LiteDB;
 
 public class SphGameObject
 {
-    [BsonId]
-    public int GameObjectDbId { get; set; }
+    [BsonId] public int GameObjectDbId { get; set; }
     public GameObjectKind ObjectKind { get; set; }
     public int GameId { get; set; }
     public string SphereType { get; set; } = null!;
-    public GameObjectType ObjectType { get; set; }
+    public GameObjectType GameObjectType { get; set; }
     public string ModelNameGround { get; set; } = null!;
     public string ModelNameInventory { get; set; } = null!;
     public int HpCost { get; set; }
@@ -62,27 +61,30 @@ public class SphGameObject
     public int Tier { get; set; }
     public int Range { get; set; }
     public int Radius { get; set; }
+
     /// <summary>
     /// Seconds
     /// </summary>
     public int Duration { get; set; }
+
     public ItemSuffix Suffix { get; set; } = ItemSuffix.None;
     public int ItemCount { get; set; } = 1;
-    public Dictionary<Locale, string> Localisation { get; set; } = new();
+    public Dictionary<Locale, string> Localisation { get; set; } = new ();
     public int CurrentDurability { get; set; }
 
-    public string ToDebugString()
+    public string ToDebugString ()
     {
         var itemCountStr = ItemCount > 1 ? $" ({ItemCount})" : "";
-        return $"GO: {Enum.GetName(typeof(GameObjectType), ObjectType)} [{GameId}] T{Tier}" + itemCountStr + " Tit: {TitleMinusOne} Deg: {DegreeMinusOne} $HP: {HpCost} $MP: {MpCost}\n" +
+        return $"GO: {Enum.GetName(typeof (GameObjectType), GameObjectType)} [{GameId}] T{Tier}" + itemCountStr +
+               " Tit: {TitleMinusOne} Deg: {DegreeMinusOne} $HP: {HpCost} $MP: {MpCost}\n" +
                $"Str: {StrengthReq} Agi: {AgilityReq} Acc: {AccuracyReq} End: {EnduranceReq} Ear: {EarthReq} Air: {AirReq} Wat: {WaterReq} Fir: {FireReq}\n" +
                $"Str+: {StrengthUp} Agi+: {AgilityUp} Acc+: {AccuracyUp} End+: {EnduranceUp} Ear+: {EarthUp} Air+: {AirUp} Wat+: {WaterUp} Fir+: {FireUp}\n" +
                $"MaxHP+: {MaxHpUp} MaxMP+: {MaxMpUp} PD+: {PDefUp} MD+: {MDefUp} PA: {PAtkNegative} PA+: {PAtkUpNegative} MA: {MAtkNegativeOrHeal} MA+: {MAtkUpNegative} MP+: {MPHeal}";
-               // $" T1: {t1} " +
-               // $" Weight: {Weight} Durability: {Durability} Range: {Range} Radius: {Radius} " +
-               // $"UseTime: {UseTime} VendorCost: {VendorCost} MutatorId: {MutatorId} Duration: {Duration} " +
-               // $"ReuseDelayHours: {ReuseDelayHours} T2: {t2} T3: {t3} T4: {t4} T5: {t5} T6: {t6} T7: {t7}" +
-               // $"Suffix: {Enum.GetName(typeof(ItemSuffix), Suffix)} {itemCountStr}";
+        // $" T1: {t1} " +
+        // $" Weight: {Weight} Durability: {Durability} Range: {Range} Radius: {Radius} " +
+        // $"UseTime: {UseTime} VendorCost: {VendorCost} MutatorId: {MutatorId} Duration: {Duration} " +
+        // $"ReuseDelayHours: {ReuseDelayHours} T2: {t2} T3: {t3} T4: {t4} T5: {t5} T6: {t6} T7: {t7}" +
+        // $"Suffix: {Enum.GetName(typeof(ItemSuffix), Suffix)} {itemCountStr}";
         // Kind: {Enum.GetName(typeof(GameObjectKind), ObjectKind)} 
         //Ground: {ModelNameGround} 
         //Inv: {ModelNameInventory} 
@@ -90,14 +92,15 @@ public class SphGameObject
         //KarmaMax: {Enum.GetName(typeof(KarmaTypes), MaxKarmaLevel)} 
     }
 
-    public bool IsTierVisible()
+    public bool IsTierVisible ()
     {
         return ObjectKind is GameObjectKind.Armor or GameObjectKind.Axe or GameObjectKind.Guild
-            or GameObjectKind.Magical or GameObjectKind.Powder or GameObjectKind.Quest or GameObjectKind.Sword
-            or GameObjectKind.Unique or GameObjectKind.Armor_New or GameObjectKind.Armor_Old or GameObjectKind.Axe_New
-            or GameObjectKind.Crossbow_New or GameObjectKind.Magical_New or GameObjectKind.MantraBlack
-            or GameObjectKind.MantraWhite or GameObjectKind.Sword_New
-            && ObjectType is not GameObjectType.Ear;
+                   or GameObjectKind.Magical or GameObjectKind.Powder or GameObjectKind.Quest or GameObjectKind.Sword
+                   or GameObjectKind.Unique or GameObjectKind.Armor_New or GameObjectKind.Armor_Old
+                   or GameObjectKind.Axe_New
+                   or GameObjectKind.Crossbow_New or GameObjectKind.Magical_New or GameObjectKind.MantraBlack
+                   or GameObjectKind.MantraWhite or GameObjectKind.Sword_New
+               && GameObjectType is not GameObjectType.Ear;
     }
 
     public static SphGameObject CreateFromGameObject (SphGameObject old)

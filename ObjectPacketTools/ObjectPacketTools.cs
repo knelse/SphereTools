@@ -196,7 +196,7 @@ public struct ObjectPacket
         {
             result.FriendlyName = SphObjectDb.GameObjectDataDb[result.GameId].Localisation[localeForFriendlyName];
             result.GameObject = SphObjectDb.GameObjectDataDb[result.GameId];
-            var type = result.GameObject.ObjectType;
+            var type = result.GameObject.GameObjectType;
 
             if (GameObjectDataHelper.ObjectTypeToSuffixLocaleMap.ContainsKey(type))
             {
@@ -439,7 +439,7 @@ public struct ObjectPacket
         var typeName = $"({Enum.GetName(ObjectType)!})";
         string tier;
 
-        if (GameObject?.ObjectType == GameObjectType.Ring)
+        if (GameObject?.GameObjectType == GameObjectType.Ring)
         {
             tier = GameObject.TitleMinusOne > 0
                 ? $"{GameObject.TitleMinusOne + 1}т"
@@ -458,16 +458,16 @@ public struct ObjectPacket
         {
             suffix = (GameObject?.Suffix ?? ItemSuffix.None) == ItemSuffix.None
                 ? string.Empty
-                : GameObjectDataHelper.ObjectTypeToSuffixLocaleMap.ContainsKey(GameObject!.ObjectType) &&
-                  GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.ObjectType]
+                : GameObjectDataHelper.ObjectTypeToSuffixLocaleMap.ContainsKey(GameObject!.GameObjectType) &&
+                  GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.GameObjectType]
                       .ContainsKey(GameObject!.Suffix)
-                    ? @$" {GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.ObjectType][GameObject!.Suffix]
+                    ? @$" {GameObjectDataHelper.ObjectTypeToSuffixLocaleMap[GameObject!.GameObjectType][GameObject!.Suffix]
                         .localization[Locale.Russian]}"
                     : string.Empty;
         }
         catch
         {
-            Console.WriteLine($"No suffix for {GameObject.ObjectType} and ID {GameObject?.Suffix}");
+            Console.WriteLine($"No suffix for {GameObject.GameObjectType} and ID {GameObject?.Suffix}");
         }
 
         var count = Count > 1 ? $" ({Count})" : string.Empty;

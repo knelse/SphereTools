@@ -154,7 +154,7 @@ public static class SphObjectDb
                     ObjectKind = objKind,
                     GameId = gameId,
                     SphereType = entrySplit[1],
-                    ObjectType = GameObjectDataHelper.GetTypeBySphereName(entrySplit[1]),
+                    GameObjectType = GameObjectDataHelper.GetTypeBySphereName(entrySplit[1]),
                     ModelNameGround = entrySplit[2],
                     ModelNameInventory = entrySplit[3],
                     HpCost = int.Parse(entrySplit[4]),
@@ -212,7 +212,7 @@ public static class SphObjectDb
                 if (GameObjectDataDb.ContainsKey(gameId))
                 {
                     // 4251: special case, no longer an "old" robe, now it's an event amulet
-                    if (gameId == 4251 && GameObjectDataDb[gameId].ObjectType == Robe)
+                    if (gameId == 4251 && GameObjectDataDb[gameId].GameObjectType == Robe)
                     {
                         GameObjectDataDb.Remove(gameId);
                     }
@@ -226,14 +226,14 @@ public static class SphObjectDb
 
                 if (isPref)
                 {
-                    if (!SuffixDataDb.ContainsKey(gameObj.ObjectType))
+                    if (!SuffixDataDb.ContainsKey(gameObj.GameObjectType))
                     {
-                        SuffixDataDb.Add(gameObj.ObjectType, new Dictionary<ItemSuffix, SphGameObject>());
+                        SuffixDataDb.Add(gameObj.GameObjectType, new Dictionary<ItemSuffix, SphGameObject>());
                     }
 
-                    var suffix = SphObjectDbHelper.TypeToSuffixIdMap[gameObj.ObjectType][gameObj.GameId];
+                    var suffix = SphObjectDbHelper.TypeToSuffixIdMap[gameObj.GameObjectType][gameObj.GameId];
                     gameObj.Suffix = suffix;
-                    SuffixDataDb[gameObj.ObjectType][gameObj.Suffix] = gameObj;
+                    SuffixDataDb[gameObj.GameObjectType][gameObj.Suffix] = gameObj;
                 }
                 else
                 {
