@@ -631,6 +631,11 @@ public static class ObjectPacketTools
         bitStream.WriteBits(IntToBits(val, countBits));
     }
 
+    public static void WriteUInt32 (this BitStream bitStream, uint val, int countBits)
+    {
+        bitStream.WriteBits(IntToBits(val, countBits));
+    }
+
     public static int BitsToInt (Bit[] bits)
     {
         var result = 0;
@@ -644,13 +649,13 @@ public static class ObjectPacketTools
         return result;
     }
 
-    public static Bit[] IntToBits (int val, int length)
+    public static Bit[] IntToBits (uint val, int length)
     {
         var result = new List<Bit>();
 
         while (val > 0)
         {
-            result.Add(val & 0b1);
+            result.Add((int) val & 0b1);
             val >>= 1;
         }
 

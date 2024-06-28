@@ -31,7 +31,7 @@ public partial class CreatePacketPartDefinitionDialog
         EnumNameComboBox.ItemsSource = enumNames;
         EnumNameComboBox.SelectedIndex = 0;
         PacketPartTypeComboBox.ItemsSource = partTypeNames;
-        PacketPartTypeComboBox.SelectedIndex = 0;
+        PacketPartTypeComboBox.SelectedIndex = 3;
 
         PacketPartName.Focus();
     }

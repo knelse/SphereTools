@@ -2,6 +2,7 @@
 // ReSharper disable FieldCanBeMadeReadOnly.Global
 
 using LiteDB;
+using Microsoft.VisualBasic.CompilerServices;
 
 public class SphGameObject
 {
@@ -56,8 +57,8 @@ public class SphGameObject
     public int t3 { get; set; }
     public int t4 { get; set; }
     public int t5 { get; set; }
-    public string t6 { get; set; } = null!;
-    public string t7 { get; set; } = null!;
+    public string TierRaw { get; set; } = null!;
+    public string SuffixSetName { get; set; } = null!;
     public int Tier { get; set; }
     public int Range { get; set; }
     public int Radius { get; set; }

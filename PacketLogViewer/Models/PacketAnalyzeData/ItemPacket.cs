@@ -119,7 +119,7 @@ public class ItemPacket : PacketAnalyzeData
                     ? ObjectPacketTools.GetFriendlyNameByObjectType(ObjectType)
                     : OverrideType;
 
-        if (GameObject?.ObjectType == GameObjectType.Ring)
+        if (GameObject?.GameObjectType == GameObjectType.Ring)
         {
             tier = GameObject.TitleMinusOne > 0
                 ? $"{GameObject.TitleMinusOne + 1}т"
@@ -137,16 +137,17 @@ public class ItemPacket : PacketAnalyzeData
         {
             if (HasSuffix)
             {
-                if (GameObjectDataHelper.ObjectTypeToSuffixLocaleMapActual.ContainsKey(GameObject!.ObjectType) &&
-                    GameObjectDataHelper.ObjectTypeToSuffixLocaleMapActual[GameObject!.ObjectType]
+                if (GameObjectDataHelper.ObjectTypeToSuffixLocaleMapActual.ContainsKey(GameObject!.GameObjectType) &&
+                    GameObjectDataHelper.ObjectTypeToSuffixLocaleMapActual[GameObject!.GameObjectType]
                         .Any(x => x.Value.value == Suffix))
                 {
-                    GameObject.Suffix = GameObjectDataHelper.ObjectTypeToSuffixLocaleMapActual[GameObject!.ObjectType]
+                    GameObject.Suffix = GameObjectDataHelper
+                        .ObjectTypeToSuffixLocaleMapActual[GameObject!.GameObjectType]
                         .First(x => x.Value.value == Suffix).Key;
                 }
                 else
                 {
-                    Console.WriteLine($"No suffix for {GameObject.ObjectType} and ID {Suffix}");
+                    Console.WriteLine($"No suffix for {GameObject.GameObjectType} and ID {Suffix}");
                 }
 
                 if (SphObjectDb.LocalisationContent.ContainsKey(GameObject.SphereType))

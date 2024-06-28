@@ -215,7 +215,15 @@ public class PacketCapture
                 continue;
             }
 
-            result.Add(content[offset..end]);
+            try
+            {
+                result.Add(content[offset..end]);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.Message);
+            }
+
             offset = end;
         }
 

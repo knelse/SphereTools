@@ -423,6 +423,11 @@ internal static class PacketAnalyzer
                 var actionType = Enum.IsDefined(typeof (EntityActionType), (int) actionTypeVal)
                     ? (EntityActionType) actionTypeVal
                     : EntityActionType.UNDEF;
+                if (actionType == EntityActionType.INTERACT)
+                {
+                    shouldHidePacket = false;
+                }
+
                 var interactionTypeVal = fullStream.ReadUInt16();
                 var interactionType = Enum.IsDefined(typeof (EntityInteractionType), (int) interactionTypeVal)
                     ? (EntityInteractionType) interactionTypeVal
