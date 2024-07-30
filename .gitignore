@@ -58,3 +58,7 @@ packet_types.txt
 statPacket.txt
 time.txt
 _sphFilesDecode/players
+_sphBRFilesDecode
+_sphFilesDecode/gmxp-cfg
+_sphFilesDecode/old
+_sphFilesDecode/players

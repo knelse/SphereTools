@@ -195,6 +195,7 @@ public partial class PacketLogViewerMainWindow
     public bool ShowFavoritesOnly { get; set; }
     public bool ListenerEnabled { get; set; } = true;
     public bool HideUninteresting { get; set; } = true;
+    public bool ShowNewInUI { get; set; } = true;
 
     private void OnPacketProcessed (List<StoredPacket> storedPackets, bool forceProcess)
     {
@@ -373,15 +374,17 @@ public partial class PacketLogViewerMainWindow
 
             Dispatcher.Invoke(() =>
             {
-                LogRecords.Add(storedPacket);
                 if (PacketAnalyzer.IsClientPingPacket(storedPacket))
                 {
                     UpdateClientCoordsAndId(storedPacket);
                 }
 
                 UpdateClientState(storedPacket);
-
-                LogListFullPackets.UpdateLayout();
+                if (ShowNewInUI)
+                {
+                    LogRecords.Add(storedPacket);
+                    LogListFullPackets.UpdateLayout();
+                }
             });
         }
     }
@@ -1856,5 +1859,15 @@ public partial class PacketLogViewerMainWindow
                 PacketCapture.ProcessPacketRawDataForce(rawData, true);
             }
         }
+    }
+
+    private void ShowInUI_OnChecked (object sender, RoutedEventArgs e)
+    {
+        ShowNewInUI = true;
+    }
+
+    private void ShowInUI_OnUnchecked (object sender, RoutedEventArgs e)
+    {
+        ShowNewInUI = false;
     }
 }
