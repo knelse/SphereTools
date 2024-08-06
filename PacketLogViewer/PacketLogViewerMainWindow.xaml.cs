@@ -1297,7 +1297,13 @@ public partial class PacketLogViewerMainWindow
     {
         if (!bits.Any())
         {
-            PacketSelectedValueDisplay.Text = "Select bits to show value preview";
+            PacketSelectedValueDisplay.Text = "Select bits to show value preview\n\n" +
+                                              "Key mappings for binary view:\n\n" +
+                                              "S\t - begin selection\n" +
+                                              "E\t - end selection\n" +
+                                              "Esc\t - clear selection\n" +
+                                              "Ctrl-D\t - define new packet part\n\n" +
+                                              "To search, input string as is or a number with corresponding basis (0xAB, 0d13, 0b101)";
             return;
         }
 
@@ -1869,5 +1875,10 @@ public partial class PacketLogViewerMainWindow
     private void ShowInUI_OnUnchecked (object sender, RoutedEventArgs e)
     {
         ShowNewInUI = false;
+    }
+
+    private void ClearClientState_OnClick (object sender, RoutedEventArgs e)
+    {
+        CurrentClientState.Clear();
     }
 }

@@ -277,6 +277,10 @@
                                        TextWrapping="Wrap"
                                        Padding="4">
                                 Select bits to show value preview
+                                Key mappings for binary view:
+                                s - begin selection
+                                e - end selection
+                                Esc - clear selection
                             </TextBlock>
                         </ScrollViewer>
                     </Border>
@@ -421,6 +425,10 @@
                         </DataTemplate>
                     </ListView.ItemTemplate>
                 </ListView>
+                <Button Grid.Column="0" Click="ClearClientState_OnClick" Width="100" Height="30"
+                        HorizontalAlignment="Right" VerticalAlignment="Top" Margin="10">
+                    Clear All
+                </Button>
                 <TextBox Name="ContentPreview" Grid.Column="1" Margin="4 8 4 0"
                          HorizontalScrollBarVisibility="Auto" VerticalScrollBarVisibility="Auto" IsReadOnly="True"
                          Style="{StaticResource LogRecordContentPreviewTextStyle}" Background="LightGray" />
