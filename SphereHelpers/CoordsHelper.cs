@@ -149,7 +149,7 @@ public static class SavedCoords
                 {
                     [nameof (Shipstone)] = new WorldCoords(-3900, 1509, 106, 3.1),
                     [nameof (Bangville)] = new WorldCoords(-3753, 1509, 100, 1.6),
-                    [nameof (Torweal)] = new WorldCoords(-3055, 1500, 106, 3.1)
+                    [nameof (Torweal)] = new WorldCoords(-3055, 1499, 106, 3.1)
                     // [nameof(Sunpool)] = new ()
                 },
                 [CityCenter] = new ()
