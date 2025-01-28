@@ -1,22 +1,24 @@
 using System.Text;
 
+// ReSharper disable CollectionNeverQueried.Global
+
 namespace sphModelInfo;
 
 public class SphModelInfo
 {
-    public static readonly byte[] SphModelMagicBytes = { 0x4d, 0x44, 0x4c, 0x21 }; // MDL!
     public const int FirstTextureNameIndex = 0x102;
+    public static readonly byte[] SphModelMagicBytes = { 0x4d, 0x44, 0x4c, 0x21 }; // MDL!
+    public readonly List<byte> ObjectIndices = new ();
+    public readonly List<Object3D> Objects = new ();
+    public readonly List<Surface> Surfaces = new ();
+    public readonly List<string> TextureNames = new ();
+    public readonly List<Triangle> Triangles = new ();
+    public readonly List<Vertex> Vertices = new ();
+    public ModelHeader Header;
 
     public string Name;
-    public ModelHeader Header;
-    public List<string> TextureNames = new ();
-    public List<Vertex> Vertices = new ();
-    public List<Triangle> Triangles = new ();
-    public List<Surface> Surfaces = new ();
-    public List<Object3D> Objects = new ();
-    public List<byte> ObjectIndices = new ();
 
-    public static SphModelInfo? GetModelInfo(string filePath)
+    public static SphModelInfo? GetModelInfo (string filePath)
     {
         using var file = File.OpenRead(filePath);
         using var reader = new BinaryReader(file, Encoding.ASCII);

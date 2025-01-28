@@ -1,3 +1,5 @@
+// ReSharper disable UnassignedField.Global
+
 namespace sphModelInfo;
 
 public struct Triangle

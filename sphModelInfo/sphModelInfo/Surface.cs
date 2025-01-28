@@ -1,3 +1,4 @@
+// ReSharper disable UnassignedField.Global
 using System.Runtime.InteropServices;
 
 namespace sphModelInfo;

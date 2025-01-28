@@ -48,8 +48,6 @@ MapInfo
 SimpleKaitaiParser/Program.cs
 SphereKaitaiPackets/new_entity_inkpot.ksy
 SphLandscapeInfo
-sphModelImport
-sphModelInfo
 mapInfo.csv
 muts.txt
 objectSpawn.txt
