@@ -469,7 +469,7 @@ public class PacketPart
                 contentStream.SeekBitOffset(currentOffset);
             }
 
-            if (packetPart.Name == "should_be_36_0s")
+            if (packetPart.Name == "skip_36_bits")
             {
                 var zeroCount = 0;
                 var bitsRead = 0;
@@ -496,6 +496,25 @@ public class PacketPart
                             parts[j].BitOffset += (int) lengthDiff;
                         }
                     }
+                }
+
+                // after this it's either a delimiter or named mob parts
+                try
+                {
+                    var bitTest = contentStream.ReadByte();
+                    if (bitTest == 0x14)
+                    {
+                        // named
+                        packetPart.BitLength += 47;
+                        length = packetPart.BitLength;
+                        for (var j = i + 1; j < parts.Count; j++)
+                        {
+                            parts[j].BitOffset += 47;
+                        }
+                    }
+                }
+                catch (Exception)
+                {
                 }
 
                 contentStream.SeekBitOffset(currentOffset);
