@@ -92,7 +92,7 @@ foreach (var filePath in fileList)
 
     var offzipAgrs = $"-a -1 -o {outputDecryptedFilePath} {tempUnzippedPath}";
     Console.WriteLine(offzipAgrs);
-    using var offzipProcess = Process.Start("C:\\source\\offzip\\offzip.exe", offzipAgrs);
+    using var offzipProcess = Process.Start("D:\\SphereDev\\SphereSource\\source\\offzip\\offzip.exe", offzipAgrs);
     offzipProcess.WaitForExit();
 
     var offzippedFile = Directory.EnumerateFiles(tempUnzippedPath).FirstOrDefault();

@@ -1,4 +1,4 @@
-﻿// var output = "C:\\source\\packets\\mainhand_equip_fists";
+﻿// var output = "D:\\SphereDev\\SphereSource\\source\\packets\\mainhand_equip_fists";
 //
 // var input = Console.ReadLine();
 //

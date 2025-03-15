@@ -3,9 +3,9 @@
 using System.Text;
 
 // Use with decoded files (via sphFileDecode in the same repo and skip files for language you don't need (_e is English, _i is Italian, _p is Portuguese and no suffix is Russian))
-var entPaths = Directory.EnumerateFiles("c:\\source\\_sphFilesDecode\\language\\");
+var entPaths = Directory.EnumerateFiles("D:\\SphereDev\\SphereSource\\source\\_sphFilesDecode\\language\\");
 var entDict = new SortedDictionary<int, string>();
-using var entOutput = File.Create("C:\\source\\entityNamesCollected");
+using var entOutput = File.Create("D:\\SphereDev\\SphereSource\\source\\entityNamesCollected");
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
 foreach (var path in entPaths)
@@ -43,9 +43,9 @@ foreach ((var key, var value) in entDict)
     entOutput.Write(Encoding.GetEncoding(1251).GetBytes(key + "   " + value + "\n"));
 }
 
-var itemPaths = Directory.EnumerateFiles("c:\\source\\_sphFilesDecode\\params\\");
+var itemPaths = Directory.EnumerateFiles("D:\\SphereDev\\SphereSource\\source\\_sphFilesDecode\\params\\");
 var itemsDict = new SortedDictionary<int, string>();
-using var itemsOutput = File.Create("C:\\source\\itemNamesCollected");
+using var itemsOutput = File.Create("D:\\SphereDev\\SphereSource\\source\\itemNamesCollected");
 
 foreach (var path in itemPaths)
 {

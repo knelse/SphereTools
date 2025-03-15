@@ -16,7 +16,7 @@ namespace SpherePacketVisualEditor;
 
 public partial class MainWindow
 {
-    private const string PacketDefinitionPath = @"C:\\source\\sphPacketDefinitions";
+    private const string PacketDefinitionPath = @"D:\\SphereDev\\SphereSource\\source\\sphPacketDefinitions";
     private const string PacketDefinitionExtension = ".spd";
     private const string ExportedPartExtension = ".spdp";
     private const string EnumExtension = ".sphenum";
