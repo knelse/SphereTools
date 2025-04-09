@@ -2,7 +2,6 @@
 // ReSharper disable FieldCanBeMadeReadOnly.Global
 
 using LiteDB;
-using Microsoft.VisualBasic.CompilerServices;
 
 public class SphGameObject
 {
