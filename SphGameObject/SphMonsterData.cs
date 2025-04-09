@@ -31,4 +31,5 @@ public class SphMonsterInstance (SphMonsterData monsterData, int level, bool isN
     public int BasePDef { get; set; } = level * monsterData.PDefPerLevel;
     public int BaseMDef { get; set; } = level * monsterData.MDefPerLevel;
     public bool IsNamed { get; set; } = isNamed;
+    public KarmaTypes KarmaType = monsterData.KarmaType;
 }
