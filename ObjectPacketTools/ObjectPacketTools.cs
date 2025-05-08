@@ -119,6 +119,7 @@ public struct ObjectPacket
             case ObjectType.TokenMultiuse:
             case ObjectType.TokenIsland:
             case ObjectType.TokenIslandGuest:
+            case ObjectType.TokenTutorialTorweal:
                 result.GetStreamDataAsToken(stream);
                 break;
             case ObjectType.Blueprint: // craft formula

@@ -1,10 +1,10 @@
 ﻿{
   "Settings": {
     "PacketDefinitionPath": "D:\\SphereDev\\SphereSource\\source\\sphPacketDefinitions",
-    "MacAddress": "C87F54061FF1",
-    "OutputFolder": "C:\\_sphereDumps"
+    "MacAddress": "345A6048EBF0",
+    "OutputFolder": "d:\\SphereDev\\_sphereDumps"
   },
   "ConnectionStrings": {
-    "LiteDbPacketCollection": "Filename=C:\\_sphereStuff\\sph_packets.db;Connection=shared;"
+    "LiteDbPacketCollection": "Filename=d:\\SphereDev\\_sphereStuff\\sph_packets.db;Connection=shared;"
   }
 }

@@ -262,6 +262,19 @@ public class PacketPart
             contentStream.SeekBitOffset(initialOffset);
         }
 
+        if (groupName == "new_player_dungeon_start")
+        {
+            // some of these are longer than others for whatever reason
+            contentStream.ReadBits(696);
+            var delimTest = contentStream.ReadByte();
+            if (delimTest != 0x7E)
+            {
+                filePath = filePath.Replace("new_player_dungeon_start", "new_player_dungeon_start_long");
+            }
+            
+            contentStream.SeekBitOffset(initialOffset);
+        }
+
         var contents = File.ReadAllLines(filePath);
         var parts = new List<PacketPart>();
 

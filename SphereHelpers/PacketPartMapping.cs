@@ -44,6 +44,7 @@ public static class PacketPartMapping
         ObjectType.Mission,
         ObjectType.TokenIsland,
         ObjectType.TokenIslandGuest,
+        ObjectType.TokenTutorialTorweal,
         ObjectType.Bead,
         ObjectType.BackpackLarge,
         ObjectType.BackpackSmall,
@@ -61,6 +62,7 @@ public static class PacketPartMapping
         ObjectType.ElixirCastle,
         ObjectType.ElixirTrap,
         ObjectType.WeaponSword,
+        ObjectType.WeaponStartingSword,
         ObjectType.WeaponAxe,
         ObjectType.WeaponCrossbow,
         ObjectType.Arrows,
@@ -127,6 +129,7 @@ public static class PacketPartMapping
     [
         ObjectType.Token,
         ObjectType.Mutator,
+        ObjectType.Dungeon,
         ObjectType.SeedCastle,
         ObjectType.XpPillDegree,
         ObjectType.DoorEntrance,
@@ -134,8 +137,11 @@ public static class PacketPartMapping
         ObjectType.Teleport,
         ObjectType.TeleportWithTarget,
         ObjectType.DungeonEntrance,
+        ObjectType.TutorialMessage,
         ObjectType.TeleportWild,
         ObjectType.TokenMultiuse,
+        ObjectType.TokenIsland,
+        ObjectType.TokenTutorialTorweal,
         ObjectType.TradeLicense,
         ObjectType.MobSpawner,
         ObjectType.TournamentTeleport,
@@ -147,13 +153,15 @@ public static class PacketPartMapping
         ObjectType.NpcQuestKarma,
         ObjectType.NpcQuestTitle,
         ObjectType.NpcGuilder,
+        ObjectType.NpcGuide,
+        ObjectType.NpcTradeRandomName,
         ObjectType.SackMobLoot,
         ObjectType.ChestInDungeon,
+        ObjectType.NewPlayerDungeonStartPoint,
         ObjectType.Chest,
         ObjectType.ScrollLegend,
         ObjectType.ScrollRecipe,
         ObjectType.Mission,
-        ObjectType.TokenIsland,
         ObjectType.TokenIslandGuest,
         ObjectType.Bead,
         ObjectType.BackpackLarge,
@@ -172,6 +180,7 @@ public static class PacketPartMapping
         ObjectType.ElixirCastle,
         ObjectType.ElixirTrap,
         ObjectType.WeaponSword,
+        ObjectType.WeaponStartingSword,
         ObjectType.WeaponAxe,
         ObjectType.WeaponCrossbow,
         ObjectType.Arrows,
@@ -255,6 +264,7 @@ public static class PacketPartMapping
     public static HashSet<ObjectType> EquippableItemTypes =
     [
         ObjectType.WeaponSword,
+        ObjectType.WeaponStartingSword,
         ObjectType.WeaponAxe,
         ObjectType.WeaponCrossbow,
         ObjectType.ArmorChest,
@@ -367,6 +377,12 @@ public static class PacketPartMapping
                     case ObjectType.NpcGuilder:
                         packetName = "npc_guilder";
                         break;
+                    case ObjectType.NpcGuide:
+                        packetName = "npc_guide";
+                        break;
+                    case ObjectType.NpcTradeRandomName:
+                        packetName = "npc_trade_random_name";
+                        break;
                     case ObjectType.ChestInDungeon:
                         packetName = "chest_in_dungeon";
                         break;
@@ -412,6 +428,9 @@ public static class PacketPartMapping
                     case ObjectType.Token:
                         packetName = "item_token";
                         break;
+                    case ObjectType.TokenTutorialTorweal:
+                        packetName = "item_token_tutorial";
+                        break;
                     case ObjectType.TokenMultiuse:
                         packetName = "item_token_multiuse";
                         break;
@@ -445,6 +464,15 @@ public static class PacketPartMapping
                         break;
                     case ObjectType.Workshop:
                         packetName = "workshop";
+                        break;
+                    case ObjectType.Dungeon:
+                        packetName = "new_player_dungeon";
+                        break;
+                    case ObjectType.WeaponStartingSword:
+                        packetName = "weapon_starting_sword";
+                        break;
+                    case ObjectType.NewPlayerDungeonStartPoint:
+                        packetName = "new_player_dungeon_start";
                         break;
                     default:
                         if (ItemRecipeBagObjectTypes.Contains(objectType))
