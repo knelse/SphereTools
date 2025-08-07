@@ -1,6 +1,7 @@
 ﻿public class SphMonsterData (SphGameObject sphGameObject)
 {
     public int GameId { get; set; } = sphGameObject.GameId;
+    public GameObjectType ObjectType { get; } = sphGameObject.GameObjectType;
     public GameObjectKind ObjectKind { get; } = GameObjectKind.Monster;
     public string SphereType { get; set; } = sphGameObject.SphereType;
     public string ModelNameGround { get; set; } = sphGameObject.ModelNameGround;

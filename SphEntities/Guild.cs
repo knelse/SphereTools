@@ -14,5 +14,5 @@ public enum Guild : byte
     Blacksmith = 0x11,
     Warlock = 0x12,
     Necromancer = 0x13,
-    Bandier = 0x14,
+    Bandier = 0x14
 }

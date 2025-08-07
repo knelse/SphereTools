@@ -14,9 +14,9 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Reference Include="PresentationCore">
-        <HintPath>C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App\9.0.3\PresentationCore.dll</HintPath>
-      </Reference>
+        <Reference Include="PresentationCore">
+            <HintPath>C:\Program Files\dotnet\shared\Microsoft.WindowsDesktop.App\9.0.3\PresentationCore.dll</HintPath>
+        </Reference>
     </ItemGroup>
 
 </Project>

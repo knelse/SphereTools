@@ -61,7 +61,7 @@ public enum GameObjectType
     Monster_Flying,
     Monster_Tower_Spirit, //invisible, empty model
     Monster_Castle_Spirit,
-    Elixir_Castle, 
+    Elixir_Castle,
     Elixir_Trap,
     Powder, // fb02
     Powder_Area, //fb03

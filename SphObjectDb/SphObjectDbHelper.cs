@@ -8,14 +8,14 @@ public static class SphObjectDbHelper
         // TODO: calc proper values
         var prefType = GameObjectToPrefTypeMap.GetValueOrDefault(objectType, Unknown);
 
-        if (prefType == Unknown || !SphObjectDb.SuffixDataDb.ContainsKey(prefType) ||
-            !SphObjectDb.SuffixDataDb[prefType].ContainsKey(suffix))
+        if (prefType == Unknown || !SphObjectDb.SuffixDataDb.TryGetValue(prefType, out Dictionary<ItemSuffix, SphGameObject>? value) ||
+            !value.ContainsKey(suffix))
         {
             return new SphGameObject();
         }
 
         // TODO: if perf is impacted switch to direct field assignment instead of reflection
-        var suffixObj = SphGameObject.CreateFromGameObject(SphObjectDb.SuffixDataDb[prefType][suffix]);
+        var suffixObj = SphGameObject.CreateFromGameObject(value[suffix]);
         var tierScale = BaseItemStatScale[tier];
 
         suffixObj.Tier = tier;
@@ -44,25 +44,25 @@ public static class SphObjectDbHelper
         suffixObj.MAtkUpNegative *= tierScale;
         suffixObj.MAtkNegativeOrHeal *= tierScale;
         suffixObj.VendorCost *= tierScale;
-        
+
         return suffixObj;
     }
 
     public static readonly ItemSuffix[] AxeSwordSuffixes =
     {
-        Exhaustion, Valor, Damage, Cruelty, Haste, Speed, Disorder, Chaos, Ether, Fatigue, Disease, Instability, 
+        Exhaustion, Valor, Damage, Cruelty, Haste, Speed, Disorder, Chaos, Ether, Fatigue, Disease, Instability,
         ItemSuffix.Range, Distance, Decay, Devastation, Weakness, Penetration, Interdict, Value
     };
 
     public static readonly ItemSuffix[] CrossbowSuffixes =
     {
-        Exhaustion, Valor, Damage, Cruelty, Haste, Speed, Disorder, Chaos, Penetration, Instability, Decay, 
+        Exhaustion, Valor, Damage, Cruelty, Haste, Speed, Disorder, Chaos, Penetration, Instability, Decay,
         ItemSuffix.Range, Distance, Mastery, Fatigue, Ether, Radiance, Disease, Value
     };
 
     public static readonly ItemSuffix[] ChestplateSuffixes =
     {
-        Valor, Durability, Absorption, Deflection, Safety, Invincibility, Health, Life, Meditation, Prana, 
+        Valor, Durability, Absorption, Deflection, Safety, Invincibility, Health, Life, Meditation, Prana,
         Strength_Old, Agility_Old, Majesty_Old, Concentration_Old, Earth, Water, Air, Fire, Elements, Value, Strength,
         Agility, Majesty, Concentration, Integrity
     };
@@ -79,26 +79,26 @@ public static class SphObjectDbHelper
 
     public static readonly ItemSuffix[] RingSuffixes =
     {
-        Durability, Absorption, Safety, Health, Life, Meditation, Prana, Ether, Precision, Strength, Agility, Accuracy, 
-        Endurance, Earth, Water, Air, Fire, Value 
+        Durability, Absorption, Safety, Health, Life, Meditation, Prana, Ether, Precision, Strength, Agility, Accuracy,
+        Endurance, Earth, Water, Air, Fire, Value
     };
 
     public static readonly ItemSuffix[] RobeSuffixes =
     {
-        Value, Durability, Deflection, Safety, Health, Life, Meditation, Prana, Earth, Water, Air, Fire, Ether, 
+        Value, Durability, Deflection, Safety, Health, Life, Meditation, Prana, Earth, Water, Air, Fire, Ether,
         Eclipse, Archmage, Durability, Deflection, Safety, Health, Life, Meditation, Prana, Ether, Dragon
     };
 
     public static readonly ItemSuffix[] CastleSuffixes =
     {
-        Eradication_Old, Devastation_Castle_Old, Reliability_Old, Invincibility_Castle_Old, Life_Castle_Old, 
+        Eradication_Old, Devastation_Castle_Old, Reliability_Old, Invincibility_Castle_Old, Life_Castle_Old,
         Eradication, Devastation_Castle, Reliability, Invincibility_Castle, Life_Castle, Rule, Blinding, Fright, Halt,
         Deliverance, Purification, Punishment, Shackle, Whirl, Curse
     };
 
     public static readonly ItemSuffix[] ShieldSuffixes =
     {
-        Valor, Durability,Absorption, Deflection, Safety, Invincibility, Health, Life, Meditation, Prana, Strength_Old,
+        Valor, Durability, Absorption, Deflection, Safety, Invincibility, Health, Life, Meditation, Prana, Strength_Old,
         Agility_Old, Majesty_Old, Concentration_Old, Earth, Water, Air, Fire, Elements_Old, Value, Strength, Agility,
         Majesty, Concentration, Integrity, Elements, Elements_New
     };
@@ -121,7 +121,7 @@ public static class SphObjectDbHelper
         [Pref_Robe] = RobeSuffixes,
         [Pref_Castle] = CastleSuffixes,
         [Pref_Shield] = ShieldSuffixes,
-        [Pref_Quest] = QuestSuffixes,
+        [Pref_Quest] = QuestSuffixes
     };
 
     public static readonly Dictionary<GameObjectType, GameObjectType> GameObjectToPrefTypeMap = new()
@@ -228,6 +228,6 @@ public static class SphObjectDbHelper
         [Packet] = Unknown,
         [Unknown] = Unknown,
         [Client] = Unknown,
-        [LootBag] = Unknown,
+        [LootBag] = Unknown
     };
 }

@@ -1,6 +1,7 @@
 public enum ItemSuffix
 {
     None,
+
     //---- Rings ----//
     Health,
     Ether,
@@ -20,10 +21,12 @@ public enum ItemSuffix
     Prana,
     Agility,
     Water,
+
     //---- Crossbows ----//
     Cruelty,
     Chaos,
     Range,
+
     // Ether,
     Exhaustion,
     Haste,
@@ -39,18 +42,21 @@ public enum ItemSuffix
     Disorder,
     Decay,
     Fatigue,
+
     // Value,
     //---- Other weapons ----//
     // Cruelty,
     // Chaos,
     // Instability,
     Devastation,
+
     // Value,
     // Exhaustion,
     // Haste,
     // Ether,
     // Range,
     Weakness,
+
     // Valor,
     // Speed,
     // Fatigue,
@@ -61,6 +67,7 @@ public enum ItemSuffix
     // Disease,
     // Decay,
     Interdict,
+
     //---- Robes ----//
     // Safety,
     // Prana,
@@ -68,25 +75,30 @@ public enum ItemSuffix
     // Durability,
     // Life,
     Dragon,
+
     // Value,
     // Health,
     // Earth,
     // Ether,
     Deflection,
+
     // Meditation,
     Durability_Old, // These perks have different stat reqs, we'll leave them at their standard / first occurance values
     Life_Old,
+
     // Water,
     Eclipse,
     Safety_Old,
     Prana_Old,
     Deflection_Old,
     Meditation_Old,
+
     // Air,
     Archmage,
     Health_Old,
     Ether_Old,
     DragonOther,
+
     //---- Bracelets, Amulets ----//
     // Safety,
     // Ether,
@@ -115,17 +127,22 @@ public enum ItemSuffix
     // Water,
     // Value,
     Concentration,
+
     // Valor,
     // Safety,
     // Meditation,
     Majesty_Old,
+
     // Air,
     // Strength,
     Integrity,
+
     // Durability,
     Invincibility,
+
     // Prana,
     Concentration_Old,
+
     // Fire,
     // Agility,
     // Absorption,
@@ -134,10 +151,12 @@ public enum ItemSuffix
     // Earth,
     Elements,
     Majesty,
+
     //---- Shields ----//
     // Deflection,
     // Life,
     Agility_Old,
+
     // Water,
     // Value,
     // Concentration,
@@ -148,6 +167,7 @@ public enum ItemSuffix
     // Air,
     // Strength,
     IntegrityOther,
+
     // Durability,
     // Invincibility,
     // Prana,
@@ -158,10 +178,13 @@ public enum ItemSuffix
     // Absorption,
     // Health,
     Strength_Old,
+
     // Earth,
     Elements_Old,
+
     // Majesty,
     Elements_New,
+
     //---- Quest ----//
     Secret,
     Existence,
@@ -173,10 +196,12 @@ public enum ItemSuffix
     Peace,
     Prophecy,
     Hike,
+
     //---- Crystal ----//
     // Strength,
     Energy,
     Persistence,
+
     // Deflection,
     //---- Castle ----// TODO: later
     Invincibility_Castle,

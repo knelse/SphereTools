@@ -1,4 +1,5 @@
-public enum Locale {
+public enum Locale
+{
     Russian,
     English,
     Italian,

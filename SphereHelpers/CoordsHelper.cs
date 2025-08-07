@@ -101,7 +101,7 @@ public enum PoiType
 
 public static class SavedCoords
 {
-    public static Dictionary<Continents, Dictionary<Cities, Dictionary<KarmaTypes, WorldCoords>>> RespawnPoints =
+    public static readonly Dictionary<Continents, Dictionary<Cities, Dictionary<KarmaTypes, WorldCoords>>> RespawnPoints =
         new ()
         {
             [Hyperion] = new Dictionary<Cities, Dictionary<KarmaTypes, WorldCoords>>
@@ -297,6 +297,11 @@ public class WorldCoords
         y = y1;
         z = z1;
         turn = turn1;
+    }
+
+    public override string ToString ()
+    {
+        return $"{x:F1}, {y:F1}, {z:F1}, {turn:F2}";
     }
 
     public string ToDebugString ()

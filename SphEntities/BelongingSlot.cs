@@ -46,5 +46,5 @@ public enum BelongingSlot
     Ammo = 1014,
     SpeedhackMantra = 1015,
     MainHand = 1016,
-    Unknown = -1,
+    Unknown = -1
 }
