@@ -1,4 +1,4 @@
-public enum ObjectType : ushort
+public enum PacketObjectTypes
 {
     Despawn = 0,
     UpdateState = 2,

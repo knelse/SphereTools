@@ -29,7 +29,7 @@ public struct ObjectPacket
     public bool FourBitShiftedSuffix { get; set; }
     public bool IsStrangeSuffix { get; set; }
     public ObjectPacketEncodingGroup EncodingGroup { get; set; }
-    public ObjectType ObjectType { get; set; }
+    public PacketObjectTypes PacketObjectTypes { get; set; }
     public byte ObjectSeparator => shorterObjectSeparator ? (byte)(0x7E >> 1) : (byte)0x7E;
     public int ObjectSeparatorLength => shorterObjectSeparator ? 7 : noObjectSeparator ? 0 : 8;
 
@@ -69,104 +69,104 @@ public struct ObjectPacket
             result._strangeSkip = stream.ReadBits(suffix is 0xE ? 31 : 26);
         }
 
-        result.ObjectType = ObjectType.Unknown;
-        if (Enum.IsDefined(typeof(ObjectType), result.Type))
+        result.PacketObjectTypes = PacketObjectTypes.Unknown;
+        if (Enum.IsDefined(typeof(PacketObjectTypes), result.Type))
         {
-            result.ObjectType = (ObjectType)result.Type;
+            result.PacketObjectTypes = (PacketObjectTypes)result.Type;
         }
 
-        switch (result.ObjectType)
+        switch (result.PacketObjectTypes)
         {
-            case ObjectType.Sack: // 4 bag slot
+            case PacketObjectTypes.Sack: // 4 bag slot
                 result.GetStreamDataAs4SlotBag(stream);
                 break;
-            case ObjectType.MantraBookSmall:
-            case ObjectType.MantraBookLarge:
-            case ObjectType.MantraBookGreat:
+            case PacketObjectTypes.MantraBookSmall:
+            case PacketObjectTypes.MantraBookLarge:
+            case PacketObjectTypes.MantraBookGreat:
                 result.GetStreamDataAsMantraBook(stream);
                 break;
-            case ObjectType.MantraWhite:
-            case ObjectType.MantraBlack:
+            case PacketObjectTypes.MantraWhite:
+            case PacketObjectTypes.MantraBlack:
                 result.GetStreamDataAsMantra(stream);
                 break;
-            case ObjectType.AlchemyMineral:
-            case ObjectType.AlchemyPlant:
-            case ObjectType.AlchemyMetal:
-            case ObjectType.PowderSingleTarget:
-            case ObjectType.PowderAoE:
-            case ObjectType.ElixirCastle:
-            case ObjectType.ElixirTrap:
-            case ObjectType.MonsterPart:
-            case ObjectType.Arrows:
+            case PacketObjectTypes.AlchemyMineral:
+            case PacketObjectTypes.AlchemyPlant:
+            case PacketObjectTypes.AlchemyMetal:
+            case PacketObjectTypes.PowderSingleTarget:
+            case PacketObjectTypes.PowderAoE:
+            case PacketObjectTypes.ElixirCastle:
+            case PacketObjectTypes.ElixirTrap:
+            case PacketObjectTypes.MonsterPart:
+            case PacketObjectTypes.Arrows:
                 result.GetStreamDataAsMaterialPowderElixir(stream);
                 break;
-            case ObjectType.Ring:
-            case ObjectType.RingGolem:
+            case PacketObjectTypes.Ring:
+            case PacketObjectTypes.RingGolem:
                 result.GetStreamDataAsRing(stream);
                 break;
-            case ObjectType.RingRuby:
-            case ObjectType.RingDiamond:
-            case ObjectType.RingGold:
-            case ObjectType.FoodApple:
-            case ObjectType.FoodPear:
-            case ObjectType.FoodMeat:
-            case ObjectType.FoodBread:
-            case ObjectType.FoodFish:
-            case ObjectType.AlchemyBrushwood:
+            case PacketObjectTypes.RingRuby:
+            case PacketObjectTypes.RingDiamond:
+            case PacketObjectTypes.RingGold:
+            case PacketObjectTypes.FoodApple:
+            case PacketObjectTypes.FoodPear:
+            case PacketObjectTypes.FoodMeat:
+            case PacketObjectTypes.FoodBread:
+            case PacketObjectTypes.FoodFish:
+            case PacketObjectTypes.AlchemyBrushwood:
                 result.GetStreamDataAsBrushwoodFood(stream);
                 break;
-            case ObjectType.Token:
-            case ObjectType.TokenMultiuse:
-            case ObjectType.TokenIsland:
-            case ObjectType.TokenIslandGuest:
-            case ObjectType.TokenTutorialTorweal:
+            case PacketObjectTypes.Token:
+            case PacketObjectTypes.TokenMultiuse:
+            case PacketObjectTypes.TokenIsland:
+            case PacketObjectTypes.TokenIslandGuest:
+            case PacketObjectTypes.TokenTutorialTorweal:
                 result.GetStreamDataAsToken(stream);
                 break;
-            case ObjectType.Blueprint: // craft formula
+            case PacketObjectTypes.Blueprint: // craft formula
                 result.GetStreamDataAsCraftFormula(stream);
                 break;
             // case 0: // TBD: figure out, some chests get there
             // case 210: // chest, container
-            case ObjectType.Chest: // chest
+            case PacketObjectTypes.Chest: // chest
                 // case 415: // container with different shift
                 result.GetStreamDataAsChestContainer(stream);
                 break;
             // case 407:
-            case ObjectType.ScrollLegend:
-            case ObjectType.ScrollRecipe:
+            case PacketObjectTypes.ScrollLegend:
+            case PacketObjectTypes.ScrollRecipe:
                 result.GetStreamDataAsScroll(stream);
                 break;
             // case 30: // mut added
-            case ObjectType.ArmorAmulet:
-            case ObjectType.ArmorBelt:
-            case ObjectType.ArmorBoots:
-            case ObjectType.ArmorBracelet:
-            case ObjectType.ArmorChest:
-            case ObjectType.ArmorGloves:
-            case ObjectType.ArmorHelmet:
-            case ObjectType.ArmorPants:
-            case ObjectType.ArmorRobe:
-            case ObjectType.ArmorShield:
-            case ObjectType.QuestArmorChest2:
-            case ObjectType.QuestArmorBelt:
-            case ObjectType.QuestArmorBoots:
-            case ObjectType.QuestArmorBracelet:
-            case ObjectType.QuestArmorChest:
-            case ObjectType.QuestArmorGloves:
-            case ObjectType.QuestArmorHelmet:
-            case ObjectType.QuestArmorPants:
-            case ObjectType.QuestArmorRing:
-            case ObjectType.QuestArmorRobe:
-            case ObjectType.QuestArmorShield:
-            case ObjectType.WeaponAxe:
-            case ObjectType.WeaponCrossbow:
-            case ObjectType.WeaponSword:
-            case ObjectType.QuestWeaponAxe:
-            case ObjectType.QuestWeaponCrossbow:
-            case ObjectType.QuestWeaponSword:
-            case ObjectType.ArmorHelmetPremium:
+            case PacketObjectTypes.ArmorAmulet:
+            case PacketObjectTypes.ArmorBelt:
+            case PacketObjectTypes.ArmorBoots:
+            case PacketObjectTypes.ArmorBracelet:
+            case PacketObjectTypes.ArmorChest:
+            case PacketObjectTypes.ArmorGloves:
+            case PacketObjectTypes.ArmorHelmet:
+            case PacketObjectTypes.ArmorPants:
+            case PacketObjectTypes.ArmorRobe:
+            case PacketObjectTypes.ArmorShield:
+            case PacketObjectTypes.QuestArmorChest2:
+            case PacketObjectTypes.QuestArmorBelt:
+            case PacketObjectTypes.QuestArmorBoots:
+            case PacketObjectTypes.QuestArmorBracelet:
+            case PacketObjectTypes.QuestArmorChest:
+            case PacketObjectTypes.QuestArmorGloves:
+            case PacketObjectTypes.QuestArmorHelmet:
+            case PacketObjectTypes.QuestArmorPants:
+            case PacketObjectTypes.QuestArmorRing:
+            case PacketObjectTypes.QuestArmorRobe:
+            case PacketObjectTypes.QuestArmorShield:
+            case PacketObjectTypes.WeaponAxe:
+            case PacketObjectTypes.WeaponCrossbow:
+            case PacketObjectTypes.WeaponSword:
+            case PacketObjectTypes.QuestWeaponAxe:
+            case PacketObjectTypes.QuestWeaponCrossbow:
+            case PacketObjectTypes.QuestWeaponSword:
+            case PacketObjectTypes.ArmorHelmetPremium:
 
-            case ObjectType.Unknown:
+            case PacketObjectTypes.Unknown:
             default:
                 result.GetStreamDataAsWeaponArmor(stream, hasLongTail);
                 break;
@@ -205,7 +205,7 @@ public struct ObjectPacket
         }
         else
         {
-            result.FriendlyName = ObjectPacketTools.GetFriendlyNameByObjectType(result.ObjectType);
+            result.FriendlyName = ObjectPacketTools.GetFriendlyNameByObjectType(result.PacketObjectTypes);
         }
 
         result.BitsRead = stream.Offset * 8 + stream.Bit;
@@ -237,13 +237,13 @@ public struct ObjectPacket
         stream.WriteUInt16(BagId);
         stream.WriteBits(_skip4);
 
-        if (ObjectType is ObjectType.Arrows or ObjectType.Bead or ObjectType.Ruby or ObjectType.Token
-            or ObjectType.AlchemyBrushwood or ObjectType.AlchemyMetal or ObjectType.AlchemyMineral
-            or ObjectType.AlchemyPlant or ObjectType.ElixirCastle or ObjectType.ElixirTrap or ObjectType.FoodApple
-            or ObjectType.FoodBread or ObjectType.FoodFish or ObjectType.FoodMeat or ObjectType.FoodPear
-            or ObjectType.MantraBlack or ObjectType.MantraWhite or ObjectType.MonsterPart or ObjectType.PowderAmilus
-            or ObjectType.PowderFinale or ObjectType.PowderSingleTarget or ObjectType.RingDiamond or ObjectType.RingRuby
-            or ObjectType.SeedCastle or ObjectType.TokenIsland or ObjectType.PowderAoE)
+        if (PacketObjectTypes is PacketObjectTypes.Arrows or PacketObjectTypes.Bead or PacketObjectTypes.Ruby or PacketObjectTypes.Token
+            or PacketObjectTypes.AlchemyBrushwood or PacketObjectTypes.AlchemyMetal or PacketObjectTypes.AlchemyMineral
+            or PacketObjectTypes.AlchemyPlant or PacketObjectTypes.ElixirCastle or PacketObjectTypes.ElixirTrap or PacketObjectTypes.FoodApple
+            or PacketObjectTypes.FoodBread or PacketObjectTypes.FoodFish or PacketObjectTypes.FoodMeat or PacketObjectTypes.FoodPear
+            or PacketObjectTypes.MantraBlack or PacketObjectTypes.MantraWhite or PacketObjectTypes.MonsterPart or PacketObjectTypes.PowderAmilus
+            or PacketObjectTypes.PowderFinale or PacketObjectTypes.PowderSingleTarget or PacketObjectTypes.RingDiamond or PacketObjectTypes.RingRuby
+            or PacketObjectTypes.SeedCastle or PacketObjectTypes.TokenIsland or PacketObjectTypes.PowderAoE)
         {
             stream.WriteUInt16(Count);
         }
@@ -435,7 +435,7 @@ public struct ObjectPacket
 
     public string ToDebugString()
     {
-        var typeName = $"({Enum.GetName(ObjectType)!})";
+        var typeName = $"({Enum.GetName(PacketObjectTypes)!})";
         string tier;
 
         if (GameObject?.GameObjectType == GameObjectType.Ring)
@@ -521,7 +521,7 @@ public static class ObjectPacketTools
                     containerStream.ReadBits(2);
                     var typeCheck = containerStream.ReadUInt16(10);
 
-                    if (Enum.IsDefined(typeof(ObjectType), typeCheck))
+                    if (Enum.IsDefined(typeof(PacketObjectTypes), typeCheck))
                     {
                         offsets.Add(pos);
                     }
@@ -695,72 +695,72 @@ public static class ObjectPacketTools
                && test[3] is 0x44 or 0x45;
     }
 
-    public static string GetFriendlyNameByObjectType(ObjectType objectType)
+    public static string GetFriendlyNameByObjectType(PacketObjectTypes packetObjectTypes)
     {
-        return (objectType switch
+        return (packetObjectTypes switch
         {
-            ObjectType.Arrows => "Стрелы",
-            ObjectType.Bead => "Бусинка",
-            ObjectType.Blueprint => "Формула",
-            ObjectType.Ear => "Ухо",
-            ObjectType.Firecracker => "Петарда",
-            ObjectType.Firework => "Фейерверк",
-            ObjectType.Inkpot => "Чернильница",
-            ObjectType.Key => "Ключ",
-            ObjectType.Sack => "Мешочек",
-            ObjectType.Token => "Жетон телепортации",
-            ObjectType.AlchemyBrushwood => "Хворост",
-            ObjectType.AlchemyPot => "Алхимический котелок",
-            ObjectType.BackpackLarge => "Большая торба",
-            ObjectType.BackpackSmall => "Малая торба",
-            ObjectType.EarString => "Нитка для ушей",
-            ObjectType.FoodApple => "Яблоко",
-            ObjectType.FoodBread => "Хлебная лепешка",
-            ObjectType.FoodFish => "Сушеная рыба",
-            ObjectType.FoodMeat => "Вяленое мясо",
-            ObjectType.FoodPear => "Груша",
-            ObjectType.KeyBarn => "Ключ от амбара",
-            ObjectType.MapBook => "Книга карт",
-            ObjectType.RecipeBook => "Книга рецептов",
-            ObjectType.ScrollLegend => "Свиток (легенда)",
-            ObjectType.ScrollRecipe => "Свиток, рецепт",
-            ObjectType.SeedCastle => "Замковое семя",
-            ObjectType.SpecialGuild => "Гильдия",
-            ObjectType.SpecialAbility => "Спецспособность",
-            ObjectType.TokenIsland => "Жетон телепортации на ЛО",
-            ObjectType.TokenMultiuse => "Жетон телепортации",
-            ObjectType.TradeLicense => "Торговая лицензия",
-            ObjectType.MantraBookGreat => "Великая книга мантр",
-            ObjectType.MantraBookLarge => "Большая книга мантр",
-            ObjectType.MantraBookSmall => "Малая книга мантр",
-            ObjectType.TokenIslandGuest => "Гостевой жетон на ЛО",
-            ObjectType.XpPillDegree => "Пилюля опыта (степень)",
-            ObjectType.RingDiamond => "Кольцо с алмазом",
-            ObjectType.RingGold => "Золотое кольцо",
-            ObjectType.RingRuby => "Кольцо с рубином",
-            ObjectType.Ruby => "Рубин",
-            ObjectType.Mutator => "Мутатор",
-            ObjectType.PowderAmilus => "Порошок Амилуса",
-            ObjectType.PowderFinale => "Порошок Файналя",
-            _ => Enum.GetName(objectType)
+            PacketObjectTypes.Arrows => "Стрелы",
+            PacketObjectTypes.Bead => "Бусинка",
+            PacketObjectTypes.Blueprint => "Формула",
+            PacketObjectTypes.Ear => "Ухо",
+            PacketObjectTypes.Firecracker => "Петарда",
+            PacketObjectTypes.Firework => "Фейерверк",
+            PacketObjectTypes.Inkpot => "Чернильница",
+            PacketObjectTypes.Key => "Ключ",
+            PacketObjectTypes.Sack => "Мешочек",
+            PacketObjectTypes.Token => "Жетон телепортации",
+            PacketObjectTypes.AlchemyBrushwood => "Хворост",
+            PacketObjectTypes.AlchemyPot => "Алхимический котелок",
+            PacketObjectTypes.BackpackLarge => "Большая торба",
+            PacketObjectTypes.BackpackSmall => "Малая торба",
+            PacketObjectTypes.EarString => "Нитка для ушей",
+            PacketObjectTypes.FoodApple => "Яблоко",
+            PacketObjectTypes.FoodBread => "Хлебная лепешка",
+            PacketObjectTypes.FoodFish => "Сушеная рыба",
+            PacketObjectTypes.FoodMeat => "Вяленое мясо",
+            PacketObjectTypes.FoodPear => "Груша",
+            PacketObjectTypes.KeyBarn => "Ключ от амбара",
+            PacketObjectTypes.MapBook => "Книга карт",
+            PacketObjectTypes.RecipeBook => "Книга рецептов",
+            PacketObjectTypes.ScrollLegend => "Свиток (легенда)",
+            PacketObjectTypes.ScrollRecipe => "Свиток, рецепт",
+            PacketObjectTypes.SeedCastle => "Замковое семя",
+            PacketObjectTypes.SpecialGuild => "Гильдия",
+            PacketObjectTypes.SpecialAbility => "Спецспособность",
+            PacketObjectTypes.TokenIsland => "Жетон телепортации на ЛО",
+            PacketObjectTypes.TokenMultiuse => "Жетон телепортации",
+            PacketObjectTypes.TradeLicense => "Торговая лицензия",
+            PacketObjectTypes.MantraBookGreat => "Великая книга мантр",
+            PacketObjectTypes.MantraBookLarge => "Большая книга мантр",
+            PacketObjectTypes.MantraBookSmall => "Малая книга мантр",
+            PacketObjectTypes.TokenIslandGuest => "Гостевой жетон на ЛО",
+            PacketObjectTypes.XpPillDegree => "Пилюля опыта (степень)",
+            PacketObjectTypes.RingDiamond => "Кольцо с алмазом",
+            PacketObjectTypes.RingGold => "Золотое кольцо",
+            PacketObjectTypes.RingRuby => "Кольцо с рубином",
+            PacketObjectTypes.Ruby => "Рубин",
+            PacketObjectTypes.Mutator => "Мутатор",
+            PacketObjectTypes.PowderAmilus => "Порошок Амилуса",
+            PacketObjectTypes.PowderFinale => "Порошок Файналя",
+            _ => Enum.GetName(packetObjectTypes)
         })!;
     }
 
-    public static bool IsQuestItem(ObjectType objectType)
+    public static bool IsQuestItem(PacketObjectTypes packetObjectTypes)
     {
-        return objectType is
-            ObjectType.QuestArmorChest2
-            or ObjectType.QuestArmorBelt
-            or ObjectType.QuestArmorBoots
-            or ObjectType.QuestArmorChest
-            or ObjectType.QuestArmorGloves
-            or ObjectType.QuestArmorBracelet
-            or ObjectType.QuestArmorHelmet
-            or ObjectType.QuestArmorPants
-            or ObjectType.QuestArmorRobe
-            or ObjectType.QuestArmorShield
-            or ObjectType.QuestWeaponAxe
-            or ObjectType.QuestWeaponCrossbow
-            or ObjectType.QuestWeaponSword;
+        return packetObjectTypes is
+            PacketObjectTypes.QuestArmorChest2
+            or PacketObjectTypes.QuestArmorBelt
+            or PacketObjectTypes.QuestArmorBoots
+            or PacketObjectTypes.QuestArmorChest
+            or PacketObjectTypes.QuestArmorGloves
+            or PacketObjectTypes.QuestArmorBracelet
+            or PacketObjectTypes.QuestArmorHelmet
+            or PacketObjectTypes.QuestArmorPants
+            or PacketObjectTypes.QuestArmorRobe
+            or PacketObjectTypes.QuestArmorShield
+            or PacketObjectTypes.QuestWeaponAxe
+            or PacketObjectTypes.QuestWeaponCrossbow
+            or PacketObjectTypes.QuestWeaponSword;
     }
 }
