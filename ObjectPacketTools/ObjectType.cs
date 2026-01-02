@@ -1,4 +1,4 @@
-public enum PacketObjectTypes
+public enum ObjectType
 {
     Despawn = 0,
     UpdateState = 2,

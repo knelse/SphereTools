@@ -101,27 +101,28 @@ public enum PoiType
 
 public static class SavedCoords
 {
-    public static readonly Dictionary<Continents, Dictionary<Cities, Dictionary<KarmaTypes, WorldCoords>>> RespawnPoints =
-        new ()
-        {
-            [Hyperion] = new Dictionary<Cities, Dictionary<KarmaTypes, WorldCoords>>
+    public static readonly Dictionary<Continents, Dictionary<Cities, Dictionary<KarmaTypes, WorldCoords>>>
+        RespawnPoints =
+            new ()
             {
-                [Shipstone] = new ()
+                [Hyperion] = new Dictionary<Cities, Dictionary<KarmaTypes, WorldCoords>>
                 {
-                    [VeryBad] = new WorldCoords(1194, 159.9, -2194, -4)
-                },
-                [Sunpool] = new ()
-                {
-                    [Bad] = new WorldCoords(3648, 155, -3455),
-                    [VeryBad] = new WorldCoords(1194, 159.9, -2194, -4)
-                },
-                [Torweal] = new ()
-                {
-                    [Bad] = new WorldCoords(2489, 159.7, -2181, 0),
-                    [VeryBad] = new WorldCoords(1194, 159.9, -2194, -4)
+                    [Shipstone] = new ()
+                    {
+                        [VeryBad] = new WorldCoords(1194, 159.9, -2194, -4)
+                    },
+                    [Sunpool] = new ()
+                    {
+                        [Bad] = new WorldCoords(3648, 155, -3455),
+                        [VeryBad] = new WorldCoords(1194, 159.9, -2194, -4)
+                    },
+                    [Torweal] = new ()
+                    {
+                        [Bad] = new WorldCoords(2489, 159.7, -2181, 0),
+                        [VeryBad] = new WorldCoords(1194, 159.9, -2194, -4)
+                    }
                 }
-            }
-        };
+            };
 
     public static readonly Dictionary<Continents, Dictionary<PoiType, Dictionary<string, WorldCoords>>> TeleportPoints =
         new ()
@@ -396,7 +397,7 @@ public static class CoordsHelper
 
         if (shouldReverse)
         {
-            a = a.Reverse().ToArray();
+            a = ((IEnumerable<byte>) a).Reverse().ToArray();
         }
 
         var stream = new BitStream(a);

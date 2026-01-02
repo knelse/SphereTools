@@ -627,11 +627,11 @@ public static class ObjectTypeToPacketNameMap
         [ObjectType.Key] = "item_key",
         [ObjectType.Map] = "item_map",
         [ObjectType.Inkpot] = "item_inkpot",
-        [ObjectType.Firecracker] = "item_firework",
+        [ObjectType.Firecracker] = "alchemy_resource_ground",
         [ObjectType.Ear] = "",
         [ObjectType.EarString] = "item_earstring",
         [ObjectType.MonsterPart] = "",
-        [ObjectType.Firework] = "item_firework",
+        [ObjectType.Firework] = "alchemy_resource_ground",
         [ObjectType.InkpotBroken] = "",
         [ObjectType.ArmorChest] = "item_amulet", // generic item packet
         [ObjectType.ArmorAmulet] = "item_amulet", // generic item packet

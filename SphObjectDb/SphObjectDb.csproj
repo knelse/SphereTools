@@ -12,7 +12,7 @@
         <ProjectReference Include="..\SphGameObject\SphGameObject.csproj"/>
     </ItemGroup>
     <ItemGroup>
-        <Content Include="sphdbsettings.json" />
+        <Content Include="sphdbsettings.json"/>
     </ItemGroup>
 
 </Project>
