@@ -1,7 +1,0 @@
-01 palla di fuoco gialla
-02 palle di fuoco gialle
-03 palla di fuoco gialla
-
-#6649
-01 Polvere dell'invisibilità
-03 polvere dell'invisibilità

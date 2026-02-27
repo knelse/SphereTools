@@ -1,8 +1,0 @@
-01 Nos comerciantes 
-03 Nos comerciantes
-
-100 Em frente à vocÊ está um pergaminho com uma antiga lenda na vida de Sphere.
-
-TEXT
-
-    Muitos comerciantes e artesãos vendem seus artigos longe das cidades povoadas: em estalagens remotas ou em suas próprias casas situadas perto de grandes estradas. Uma estranha prática, você diria, vender algo tão distante das cidades, mas é a boa qualidade de seus produtos que fazem essas lojas ficarem abarrotadas de compradores.

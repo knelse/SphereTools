@@ -1,9 +1,0 @@
-01 Fórmula do pó da fraqueza
-02 Fórmula do pó da fraqueza
-03 Fórmula do pó da fraqueza
-
-100 Na sua frente tem um pergaminho com a descrição de uma poção mágica. Do lado de cada fórmula tem uma lista de tempo de consumo e danos de muitas gerações de mágicos. Para não se perder um precioso pergaminho, é melhor salvá-lo num livro especial de fórmulas.
-
-TEXT
-
-    Para se obter o pó desejado terá primeiro de tudo achar Flint, Melvera e Ferro. Misture tudo no pote, coloque pó de Amilus para completar a reação e use o pó obtido. Não se esqueça que para completar esta reação, seu gral deverá ser maior de que um pupilo. 

@@ -1,4 +1,0 @@
-01 Árvore de natal com lindos pequenos presentes
-03 árvore de Natal
-100 Árvore de natal
-//100  Empurre a árvore de natal para derrubar um presente dentro do seu inventário. O inventário deve ter duas celulas disponiveis para alojar o presente.

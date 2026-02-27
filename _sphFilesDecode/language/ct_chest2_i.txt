@@ -1,5 +1,0 @@
-01 cassa
-03 cassa
-05 nuova
-06 usata
-07 rotta

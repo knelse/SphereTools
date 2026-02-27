@@ -1,7 +1,0 @@
-01 Peixe seco
-02 Peixe seco
-03 Peixe seco
-05 fresco
-06 velho
-07 embolorado
-10 Você comeu um peixe seco.

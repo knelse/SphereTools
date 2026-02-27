@@ -1,5 +1,0 @@
-01 Sacchetto per la polvere
-03 Sacchetto per la polvere
-05 nuovo
-06 usato
-07 lacerato

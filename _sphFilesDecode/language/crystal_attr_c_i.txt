@@ -1,3 +1,0 @@
-01 Attributo della resistenza
-03 Attributo della resistenza
-100 Fornisce al possessore abilità addizionali. L'attributo dipende direttamente dal cristallo nel Grande Libro del castello: una volta che il cristallo viene distrutto, tutti gli attributi scompariranno.

@@ -1,9 +1,0 @@
-01 Fórmula da doença
-02 Fórmula da doença
-03 Fórmula da doença
-
-100 Na sua frente tem um pergaminho com a descrição de uma poção mágica. Do lado de cada fórmula tem uma lista de tempo de consumo e danos de muitas gerações de mágicos. Para não se perder um precioso pergaminho, é melhor salvá-lo num livro especial de fórmulas.
-
-TEXT
-
-    Para se obter o pó de doença, o feiticeiro experiente (não abaixo de professor) mixture carvão, ferengon e ferro na fornalha. Alimente o fogo com lenha e use o pó obtido.

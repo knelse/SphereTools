@@ -1,9 +1,0 @@
-01 Fórmula do pó do grande fogo
-02 Fórmula do pó do grande fogo
-03 Fórmula do pó do grande fogo
-
-100 Na sua frente tem um pergaminho com a descrição de uma poção mágica. Do lado de cada fórmula tem uma lista de tempo de consumo e danos de muitas gerações de mágicos. Para não se perder um precioso pergaminho, é melhor salvá-lo num livro especial de fórmulas.
-
-TEXT
-
-    Ponha Flema, Circulonia e Chumbo no pote alquimico. Mixture precisamente e adicione o pó de Amilus para completar a reação. Se você for acima de chanceller, você obterá o pó de grande fogo.

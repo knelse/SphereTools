@@ -1,4 +1,0 @@
-01 Atributo de reflexão
-03 Atributo de reflexão
-
-100 Adiciona ao jogador habilidades adicionais. O atributo é diretamente relacionado com o cristal do compêndio no castelo: Uma vez destruido (Cristal), todos atributos serão removidos.

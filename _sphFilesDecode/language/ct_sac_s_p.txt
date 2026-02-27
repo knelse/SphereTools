@@ -1,5 +1,0 @@
-01 bolso
-03 bolso
-05 novo
-06 usado
-07 rasgar

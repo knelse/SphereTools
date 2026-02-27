@@ -1,7 +1,0 @@
-01 Peixe
-02 peixe
-03 peixe
-05 vivo
-06 fresco
-07 podre
-10 Você não pode comer peixe cru.

@@ -1,8 +1,0 @@
-01 Receita do pó de flechas de fogo
-02 receita do pó de flechas de fogo
-03 receita do pó de flechas de fogo
-
-100 Na sua frente está um pergaminho com uma receita de uma poção mágica escrita nele. Junto com qualquer receita está uma vida inteira de trabalho de varias gerações de mágicos. Tenha certeza de ter em seu livro especial de receitas algo bem valioso.
-
-TEXT
-    Para se formar o pó de flechas de fogo, mágicos experientes misturam sard e circulonia num pote alquimista e então adicionam pó de Fainal na mistura.      

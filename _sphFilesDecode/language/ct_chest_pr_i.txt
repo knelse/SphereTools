@@ -1,3 +1,0 @@
-01 Cassa
-03 Cassa
-10 Solamente il proprietario dell'isola può aprire la cassa.

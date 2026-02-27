@@ -1,2 +1,0 @@
-01 Porta
-10 Ti serve una chiave per aprire la porta.

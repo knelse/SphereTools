@@ -1,9 +1,0 @@
-01 Fórmula do pó de proteção extra
-02 Fórmula do pó de proteção extra
-03 Fórmula do pó de proteção extra
-
-100 Na sua frente tem um pergaminho com a descrição de uma poção mágica. Do lado de cada fórmula tem uma lista de tempo de consumo e danos de muitas gerações de mágicos. Para não se perder um precioso pergaminho, é melhor salvá-lo num livro especial de fórmulas. 
-
-TEXT
-
-    Mágicos experientes (com nível não menor que professor) para obter o pó de proteção extra, misturam Meleosit, Zelena e ouro no pote alquímico e adicionam pó de Amilusà mistura para completar a reação. 

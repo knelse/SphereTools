@@ -1,5 +1,0 @@
-01 Barattolo
-03 barattolo
-05 nuovo
-06 usato
-07 rovinato

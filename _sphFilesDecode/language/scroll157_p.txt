@@ -1,9 +1,0 @@
-01 Fórmula de proteção extra
-02 Fórmula de proteção extra
-03 Fórmula de proteção extra
-
-100 Na sua frente tem um pergaminho com a descrição de uma poção mágica. Do lado de cada fórmula tem uma lista de tempo de consumo e danos de muitas gerações de mágicos. Para não se perder um precioso pergaminho, é melhor salvá-lo num livro especial de fórmulas.
-
-TEXT
-
-    Para se obter o pó de super proteção, o feiticeiro experiente (não abaixo de professor) precisa mixturar meleosite e ouro na fornalha. Então adicione a planta jelena e alimente o fogo com lenha.

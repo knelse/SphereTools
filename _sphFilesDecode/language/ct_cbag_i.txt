@@ -1,5 +1,0 @@
-01 borsa
-03 borsa
-05 vecchia
-06 lacerata
-07 lacerata

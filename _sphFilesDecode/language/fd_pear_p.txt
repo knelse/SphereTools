@@ -1,7 +1,0 @@
-01 Pêra
-02 Pêras
-03 Pêra
-05 fresca
-06 seca
-07 podre
-10 Você comeu uma pêra.

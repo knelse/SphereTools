@@ -1,9 +1,0 @@
-01 Fórmula do pó da praga de fogo
-02 Fórmula do pó da praga de fogo
-03 Fórmula do pó da praga de fogo
-
-100 Na sua frente está um pergaminho com a descriçao da fabricação do pó mágico. Junto com cada fórmula estão muitos sofrimentos e tempo tomado por varias gerações de mágicos. Para não perder tão valiosa anotação, melhor salvar no seu livro especial de fórmulas. 
-
-TEXT
-
-    Ponha sapronak, florus e ferro na fornalha. Mixture-os cuidadosamente e alimente a fornalha com lenha. Se você for mas forte que bacharel, você obterá o pó da  maldição flamejante.

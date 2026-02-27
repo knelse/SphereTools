@@ -1,0 +1,484 @@
+
+/* ------------- START> SECTION: render[render] ------------- */
+html, body, form {
+	width:100%;
+	height:100%;
+	margin:0;
+	padding:0;
+}
+.clear {
+	content:".";
+	display:block;
+	height:0;
+	clear:both;
+	visibility:hidden;
+}
+#render-main {
+	min-height:100%;
+	height:auto !important;
+	height:100%;
+	margin:0 auto;
+}
+#render-header {
+    margin:0 auto;
+}
+#render-center {
+	min-height:100%;
+	height:auto !important;
+	height:100%;
+	margin:0 auto;
+}
+#render-footer {
+	margin:0 auto;
+}
+.render {}
+.render .header-left {
+	float:left;
+}
+.render .header-right {
+	float:right;
+	padding:0;
+}
+.render .header-mid {
+    width:auto;
+}
+.render .center-left {
+	float:left;
+}
+.render .center-right {
+	float:right;
+}
+.render .center-mid {
+    width:auto;
+}
+.render .footer-left {
+	float:left;
+}
+.render .footer-right {
+	float:right;
+}
+.render .footer-mid {
+    width:auto;
+}
+.render-clear {
+	overflow:hidden;
+}
+.render-clear-left {
+	clear:left;
+}
+.render-clear-right {
+	clear:right;
+}
+.render-clear-both {
+	clear:both;
+}
+.render-loader {
+	background-image: url('/core/templates/default//render/images/ajax-loader.gif');
+}
+.render-loader-lb {
+	background-image: url('/core/templates/default//render/images/lightbox-loading.gif');
+}
+.render-loader-sl {
+	background-image: url('/core/templates/default//render/images/loading.gif');
+}
+.render-loading {
+	position:absolute;
+	left:50%;
+	top:0;
+	padding:10px 20px 10px 36px;
+	margin-left:-55px;
+	background-color:#fff;
+	background-position:10px center;
+	background-repeat:no-repeat;
+	color:#000;
+}
+.render-loading span {
+	color:#fff;
+}
+/* ------------- END> SECTION: render[render] ------------- */
+
+
+/* ------------- START> SECTION: msgr[msgr] ------------- */
+/* ---- сообщения (поп-ап) --- */
+.msgr {}
+.msgr .alert-box {
+	text-align:left;
+}
+.msgr .alert-box .mab-title {
+	padding:5px 5px 5px 40px;
+	font-size:14px;
+  	font-weight:bold;
+  	text-align:left;
+  	line-height:30px;
+	background-color:#eceaea;
+}
+.msgr .alert-box .mab-title.mab-inf {
+	color:#6d6d6d;
+	background:url('/core/templates/default//msgr/images/alert_i.gif') left center no-repeat;
+}
+.msgr .alert-box .mab-title.mab-wrn {
+	color:#775c1f;
+	background:url('/core/templates/default//msgr/images/alert_w.png') left center no-repeat;
+}
+.msgr .alert-box .mab-title.mab-err {
+	color:#772020;
+	background:url('/core/templates/default//msgr/images/alert_e.gif') left center no-repeat;
+}
+.msgr .alert-box .mab-title.mab-confirm {
+	color:#204B77;
+	background:url('/core/templates/default//msgr/images/confirm.png') left center no-repeat;
+}
+.msgr .alert-box .mab-title.mab-confirm2 {
+	color:#457720;
+	background:url('/core/templates/default//msgr/images/confirm2.png') left center no-repeat;
+}
+.msgr .alert-box .mab-body {
+	font-size:14px;
+	padding:15px 15px 30px 15px;
+	overflow:hidden;
+	background-position:20px center;
+	background-repeat:no-repeat;
+}
+.msgr .alert-box .mab-buttons {
+	text-align:center;
+}
+.msgr .alert-box .mab-buttons .mab-btn {
+	display:inline-block;
+	width:90px;
+	padding:4px 0;
+	margin-left:20px;
+	text-align:center;
+	cursor:pointer;
+	border:1px solid #bcbcbc;
+	border-radius: 3px;
+	background-color:#fff;
+}
+.msgr .alert-box .mab-buttons .mab-btn:first-child {
+	margin-left:0;
+}
+.msgr .alert-box .mab-buttons .mab-btn:hover {
+	background-color:#f0f0f0;
+	color:#0b55c4;
+}
+
+/* ------------- END> SECTION: msgr[msgr] ------------- */
+
+
+/* ------------- START> SECTION: auth[auth] ------------- */
+.auth{}
+.auth .login-box {
+
+}
+.auth .login-box h2.head {
+	color: black;
+	font-size:24px;
+	line-height:37px;
+	text-transform:uppercase;
+	font-family:'HeliosUltraCompressed', sans-serif;
+	font-weight:normal;
+	margin-top:0;
+	margin-bottom:14px;
+}
+.auth .login-box .inner {
+	border:solid 1px #eceaea;
+	padding:10px;
+	margin-bottom:40px;
+}
+.auth .login-box .inner .rel {
+	position:relative;
+	height:18px;
+}
+.auth .login-box .inner .rel .sect-head {
+	position:absolute;
+	left:20px;
+	top:0;
+	padding:10px 20px;
+	border: solid 1px #eceaea;
+	color:#494949;
+	font-weight:bold;
+	font-family:Arial, Helvetica, sans-serif;
+	font-size:12px;
+	background:#fff;
+	z-index:+1;
+}
+.auth .login-box .inner .fields {
+	border:solid 1px #eceaea;
+	padding:55px 20px 33px 20px;
+}
+.auth .login-box .inner .fields .field {
+	margin-bottom:10px;
+}
+.auth .login-box .inner .fields span.field-title {
+	display:inline-block;
+	width:120px;
+	height:16px;
+	color:#494949;
+	font-family:Arial,Helvetica,sans-serif;
+	font-size:12px;
+	text-align:left;
+}
+.auth .login-box .inner .fields input.field-input {
+	width:405px;
+}
+.auth .login-box .inner .btns {
+	padding:20px 0 40px 0;
+}
+.auth .login-box .inner .btns span.btn-link {
+	display:inline-block;
+	height:16px;
+	cursor:pointer;
+	color:#333;
+	font-family:Arial, Helvetica, sans-serif;
+	font-size:11px;
+	text-transform:uppercase;
+	text-decoration:underline;
+}
+.auth .login-box .inner .btns .rmargin {
+	margin-right:10px;
+}
+.auth .login-box .inner .btns span.btn-link:hover {
+	text-decoration:none;
+}
+.auth .login-box .inner .fields .regnote {
+	padding-bottom:10px;
+	color:#666;
+	font-family:Arial, Helvetica, sans-serif;
+	font-style:italic;
+	font-size:12px;
+}
+/* ---------- --- logged box --- -------------- */
+.auth .logged-box {
+
+}
+.auth .logged-box h2.head {
+	color: black;
+	font-size:24px;
+	line-height:37px;
+	text-transform:uppercase;
+	font-family:'HeliosUltraCompressed', sans-serif;
+	font-weight:normal;
+	margin-top:0;
+	margin-bottom:14px;
+}
+.auth .logged-box .inner {
+	border:solid 1px #eceaea;
+	padding:10px;
+	margin-bottom:40px;
+}
+.auth .logged-box .inner .msg {
+	text-align:center;
+}
+.auth .logged-box .inner .msg-text {
+	font-size:14px;
+	color:#333;
+	text-align:center;
+	padding:0 0 10px 0;
+}
+.auth .logged-box .inner .msg a.main-go {
+	font-size:14px;
+	color:#666;
+	text-decoration:underline;
+}
+.auth .logged-box .inner .msg a.main-go:hover {
+	text-decoration:none;
+}
+/* ------------- END> SECTION: auth[auth] ------------- */
+
+
+/* ------------- START> SECTION: mycss[mystyles.css] ------------- */
+@font-face {
+	font-family: 'HeliosUltraCompressed';
+	src: url('/data/_mycss/demigods/fonts/helios/helios-ultra-compressed.eot');
+	src: url('/data/_mycss/demigods/fonts/helios/helios-ultra-compressed.eot?#iefix') format('embedded-opentype'),
+		 url('/data/_mycss/demigods/fonts/helios/helios-ultra-compressed.ttf') format('truetype');
+}
+body {
+	background-image:url('/data/_mycss/demigods/images/bg.jpg');
+	background-position:50% 50%;
+	background-repeat:no-repeat;
+	background-attachment:fixed;
+	background-size:cover;
+}
+* {
+	color:#444;
+	font-family: Arial, Helvetica, sans-serif;
+}
+input[type="text"], input[type="password"], select {
+	border:1px solid #ccc;
+	padding:2px;
+	margin:0;
+	outline:0;
+	-moz-border-radius:5px;
+	-webkit-border-radius:5px;
+	-khtml-border-radius:5px;
+	border-radius:5px;
+}
+#render-main {
+	background-color:#fff;
+	opacity:0.9;
+	box-shadow:#fff 0px 0px 20px;
+}
+#render-center {
+	padding:0 10px;
+}
+.content h1.title {
+	display:block;
+	padding:8px 0 15px 0;
+	margin:0;
+	border-top:2px solid #2f3336;
+	color:#333;
+	font-family:'HeliosUltraCompressed';
+	font-size:24px;
+	font-weight:normal;
+	text-transform:uppercase;
+}
+/* ------------- END> SECTION: mycss[mystyles.css] ------------- */
+
+
+/* ------------- START> SECTION: phpbb[phpbb] ------------- */
+.phpbb h2.title {
+	padding:8px 0 15px 0;
+	margin:0;
+	border-top:2px solid #2f3336;
+	color:#333;
+	font-family:'HeliosUltraCompressed';
+	font-size:24px;
+	font-weight:normal;
+	text-transform: uppercase;
+}
+.phpbb .table-recent {
+	width:755px;
+	border-right:1px solid #ccc;
+	border-bottom:1px solid #ccc;
+	font-size:11px;
+}
+.phpbb .table-recent th {
+	border-left:1px solid #ccc;
+	border-top:1px solid #ccc;
+	background-color:#f2f2f2;
+	padding:10px 0;
+}
+.phpbb .table-recent td {
+	border-left:1px solid #ccc;
+	border-top:1px solid #ccc;
+	padding:10px 3px;
+	font-size:12px;
+	vertical-align:top;
+}
+.phpbb .table-recent td.user {
+	text-align:center;
+	width:110px;
+}
+.phpbb .table-recent td .date {
+	font-style:italic;
+}
+.phpbb .table-recent td .icon {
+	padding-left:22px;
+	background-position:left center;
+	background-repeat:no-repeat;
+}
+.phpbb .table-recent td .icon.empty {
+	background-image:url('/templates/demigods/phpbb/images/topic_read.png');
+}
+.phpbb .table-recent td a.subject {
+	color:#0fb2f0;
+	font-size:14px;
+}
+.phpbb .table-recent tr.hidden {
+	display:none;
+}
+/* ------------- END> SECTION: phpbb[phpbb] ------------- */
+
+
+/* ------------- START> SECTION: menu[menu] ------------- */
+.menu {}
+.menu .main {
+	height:40px;
+	margin:0 auto;
+	text-align:center;
+	background-color:#282828;
+	border-bottom:5px solid #418cd1;
+}
+.menu .main ul {
+	list-style-type:none;
+	padding:0;
+	margin:0;
+}
+.menu .main ul li {
+	list-style-type:none;
+	padding:0 16px 0 16px;
+	margin:0;
+	float:left;
+}
+.menu .main ul li:hover {
+	background-color:#777;
+}
+.menu .main ul li a {
+	text-decoration:none;
+	font:normal 12px/40px Arial,Helvetica,sans-serif;
+	color:#777;
+}
+.menu .main ul li a:hover {
+	text-decoration:none;
+	color:#fff;
+}
+.menu .main ul li:hover a {
+	color:#fff;
+}
+.menu .side {
+	width:170px;
+	padding:0 10px 10px 20px;
+	overflow:hidden;
+	background-color:#2f3336;
+}
+.menu .side h2.title {
+	display:none;
+	height:28px;
+	padding:10px 0;
+	margin:0;
+	font-family:'HeliosUltraCompressed';
+	font-size:24px;
+	font-weight:normal;
+	text-transform: uppercase;
+	color:#fff;
+}
+.menu .side .title.show {
+	display:block;
+}
+.menu .side .item {
+	padding:10px 0;
+	border-bottom:1px solid #444444;
+}
+.menu .side .item a {
+	font-size:14px;
+	color:#fff;
+	text-decoration:none;
+}
+.menu .side .item a:hover {
+	color:#ccc;
+}
+/* ------------- END> SECTION: menu[menu] ------------- */
+
+
+/* ------------- START> SECTION: header[header] ------------- */
+.header .main {
+	height:150px;
+	margin-bottom:10px;
+	background:url('/templates/demigods/header/images/header.jpg') left top no-repeat;
+}
+.header .main .cont {
+	padding-left:10px;
+	background:url('/templates/demigods/header/images/moto.png') 220px 10px no-repeat;
+}
+/* ------------- END> SECTION: header[header] ------------- */
+
+
+/* ------------- START> SECTION: footer[footer] ------------- */
+/* File not found.
+/* ------------- END> SECTION: footer[footer] ------------- */
+
+
+/* ------------- START> SECTION: render[ender] ------------- */
+/*  -- ender styles -- */
+/* ------------- END> SECTION: render[ender] ------------- */
+

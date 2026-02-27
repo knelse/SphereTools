@@ -1,4 +1,0 @@
-01 Attributo dell'energia
-03 Attributo dell'energia
-
-100 Fornisce al possessore abilità addizionali. L'attributo dipende direttamente dal cristallo nel Grande Libro del castello: una volta che il cristallo viene distrutto, tutti gli attributi scompariranno.

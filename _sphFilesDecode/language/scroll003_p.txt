@@ -1,7 +1,0 @@
-01 Nota ao cidadão
-03 Nota ao cidadão
-
-TEXT
-    Saudação cidadão! Você está se vendo no reino de sua Real Majestade Arthur o quinto, Rei de Sphere, Duque de Haron, Soberano dos seis continentes. É sabido pela sua majestade que você, cidadão, chegou das terras que não podem ser alcançadas pelo nosso glorioso reino.
-    Enquanto estiver em Sphere e enquanto está sobre a proteção de todos pertencentes a sua majestade real, você deve aceitar ser um leal membro do Rei Arthur o quinto. Para não perturbar a paz de nossos cidadãos você deve se hospedar em alguma taverna.
-    Sua majestade real deseja a você vitórias gloriosas contra monstros que perturbam e atormentam as boas partes de nosso reino

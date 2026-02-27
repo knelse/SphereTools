@@ -1,3 +1,0 @@
-01 Manovra
-
-100 Un alfiere può raggruppare instantaneamente i membri del suo gruppo attorno a lui

@@ -1,3 +1,0 @@
-01 Orelha
-03 orelha
-10 Morto por: %s

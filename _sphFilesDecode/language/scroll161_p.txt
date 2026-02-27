@@ -1,9 +1,0 @@
-01 Fórmula para proteção física
-02 Fórmula para proteção física
-03 Fórmula para proteção física
-
-100 Na sua frente tem um pergaminho com a descrição de uma poção mágica. Do lado de cada fórmula tem uma lista de tempo de consumo e danos de muitas gerações de mágicos. Para não se perder um precioso pergaminho, é melhor salvá-lo num livro especial de fórmulas.
-
-TEXT
-
-    Para obter o pó de proteção física, um feiticeiro experiente (não abaixo de bacharel) precisa misturar meleosite e cobre na fornalha. Mandragora é tambem o pré requisito. Então Alimente a fornalha com lenha.

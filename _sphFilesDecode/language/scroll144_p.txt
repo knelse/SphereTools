@@ -1,9 +1,0 @@
-01 Fórmula do pó da chuva sulfúrica
-02 Fórmula do pó da chuva sulfúrica
-03 Fórmula do pó da chuva sulfúrica
-
-100 Na sua frente está um pergaminho com a descriçao da fabricação do pó mágico. Junto com cada fórmula estão muitos sofrimentos e tempo tomado por varias gerações de mágicos. Para não perder tão valiosa anotação, melhor salvar no seu livro especial de fórmulas. 
-
-TEXT
-
-    Para obter o pó de chuva sulfurica, o feitceiro experiente (não abaixo de doutor), precisa  mixturar feirik, a planta chamada zirculonia e ferro na fornalha. A mixtura requer lenha para alimentar a fornalha. 

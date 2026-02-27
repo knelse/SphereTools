@@ -1,3 +1,0 @@
-01 Ear
-03 ear
-10 Killed by: %s

@@ -1,9 +1,0 @@
-01 Fórmula do pó de purificação
-02 Fórmula do pó de purificação
-03 Fórmula do pó de purificação
-
-100 Na sua frente tem um pergaminho com a descrição de uma poção mágica. Do lado de cada fórmula tem uma lista de tempo de consumo e danos de muitas gerações de mágicos. Para não se perder um precioso pergaminho, é melhor salvá-lo num livro especial de fórmulas.
-
-TEXT
-
-    Para executar primeiro encontre Turquesa, Paris e Cobre. Misture tudo no pote, adicione pó de Amilus e use a mistura obtida. Não se esqueça que para fazer esta reação devera ter grau não menor que de um candidato. 

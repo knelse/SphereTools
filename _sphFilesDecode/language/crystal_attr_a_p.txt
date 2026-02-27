@@ -1,4 +1,0 @@
-01 Atributo de poder
-03 Atributo de poder
-
-100 Adiciona ao jogador habilidades adicionais. O atributo é diretamente relacionado com o cristal do compêndio no castelo: Uma vez destruido (Cristal), todos atributos serão removidos.

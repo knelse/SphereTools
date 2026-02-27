@@ -1,9 +1,0 @@
-01 Fórmula do pó de incineração
-02 Fórmula do pó de incineração
-03 Fórmula do pó de incineração
-
-100 Na sua frente tem um pergaminho com a descrição de uma poção mágica. Do lado de cada fórmula tem uma lista de tempo de consumo e danos de muitas gerações de mágicos. Para não se perder um precioso pergaminho, é melhor salvá-lo num livro especial de fórmulas.
-
-TEXT
-
-    Para se obter o pó de inceneração, primeiro precisa-se achar Geleonat, Circulonia e Ferro. Mixture-os no pote alquimico com o pó de Amilus para completar a reação. Não se esqueçã que você precisa ter o nivel de mestre ou acima.

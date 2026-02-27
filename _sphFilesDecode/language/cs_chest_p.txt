@@ -1,2 +1,0 @@
-01 Tesouraria
-10 Você não pode abrir a tesouraria.

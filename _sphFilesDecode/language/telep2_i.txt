@@ -1,2 +1,0 @@
-01 Teletrasporto rotto
-100 Per teleportarti utilizza una pietra.

@@ -1,9 +1,0 @@
-01 Fórmula do pó de cura
-02 Fórmula do pó de cura
-03 Fórmula do pó de cura
-
-100 Na sua frente tem um pergaminho com a descrição de uma poção mágica. Do lado de cada fórmula tem uma lista de tempo de consumo e danos de muitas gerações de mágicos. Para não se perder um precioso pergaminho, é melhor salvá-lo num livro especial de fórmulas.
-
-TEXT
-
-    Coloque Granito, Zelena e ouro no pote alquímico. Misture com precisão e adicione o pó de Amilus para completar a reação. Se for mais forte que um bacharéu, terá o pó da saúde. 

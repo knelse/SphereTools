@@ -1,9 +1,0 @@
-01 Fórmula do pó de circuito de enfraquecimento
-02 Fórmula do pó de circuito de enfraquecimento
-03 Fórmula do pó de circuito de enfraquecimento
-
-100 Na sua frente tem um pergaminho com a descrição de uma poção mágica. Do lado de cada fórmula tem uma lista de tempo de consumo e danos de muitas gerações de mágicos. Para não se perder um precioso pergaminho, é melhor salvá-lo num livro especial de fórmulas.
-
-TEXT
-
-    Para obter o pó da fraqueza , primeiro ache Camelic, Serden e Ferro. Mixture-os no pote alquimico e adicione o pó de Amilus para completar a reação e usar o pó. Não esqueça que você precisa ser no minimo um iniciante. 

@@ -1,9 +1,0 @@
-01 Receita do pó de proteção mágica
-02 receita do pó de proteção mágica
-03 receita do pó de proteção mágica
-
-100 Na sua frente está um pergaminho com uma receita de uma poção mágica escrita nele. Junto com qualquer receita está uma vida inteira de trabalho de varias gerações de mágicos. Tenha certeza de ter em seu livro especial de receitas algo bem valioso.
-
-TEXT
-
-    Para compor o pó de proteção mágica, primeiro obtenha spherite e mandragora. Misture no pote de alquimista, adicione pó de Fainal e usufrua o pó obtido. Não esqueça que para fazer esta reação seu titulo não devera ser menor que de um candidato.

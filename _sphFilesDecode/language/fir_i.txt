@@ -1,4 +1,0 @@
-01 Albero di Natale con piccoli doni
-03 Albero di Natale
-100 Albero di Natale
-//100 Scuoti l'albero di Natale così un dono cadrà nell'inventario. Ci devono essere due posti liberi nell'inventario per poterci mettere il dono.

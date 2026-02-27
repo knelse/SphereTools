@@ -1,2 +1,0 @@
-01 Teleporte rústico
-100 Para teleportar clique na runa.

@@ -1,7 +1,0 @@
-01 Maçã
-02 Maçãs
-03 Maçã
-05 fresca
-06 seca
-07 podre
-10 Você comeu uma maçã.
